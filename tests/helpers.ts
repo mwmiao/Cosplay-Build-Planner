@@ -26,7 +26,8 @@ export async function register(page: Page, user: TestUser) {
   await page.locator("input[name=password]").fill(user.password);
   await page.getByLabel("Confirm password").fill(user.password);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  // Generous: on a cold dev server the first submit also compiles the projects page.
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
 }
 
 export async function login(page: Page, user: Pick<TestUser, "email" | "password">, next?: string) {
