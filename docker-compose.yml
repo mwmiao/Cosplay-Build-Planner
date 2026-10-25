@@ -6,7 +6,7 @@
 # Works as-is: no .env file needed. Login is off; the app is meant for your
 # home network and Tailscale only. Do NOT forward port 1337 on your router.
 #
-# 1. Create the data folder (DATA_PATH below).
+# 1. Create a `data` folder next to this file.
 # 2. Create a Project from this file in the Docker app (or: docker compose up -d).
 # 3. Open http://<nas-lan-ip>:1337, or http://<nas-tailscale-name>:1337 via Tailscale.
 #
@@ -36,8 +36,9 @@ services:
     ports:
       - "1337:1337"
     volumes:
-      # Everything the app stores: cosplay.db, uploads/, backups/
-      - ${DATA_PATH:-/volume1/docker/cosplay-planner/data}:/app/data
+      # Everything the app stores: cosplay.db, uploads/, backups/.
+      # Relative to this file's folder, so it works on any volume.
+      - ${DATA_PATH:-./data}:/app/data
     logging:
       driver: json-file
       options:

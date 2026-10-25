@@ -128,17 +128,18 @@ docker compose up -d
 The NAS doesn't build anything. It downloads the ready-made image from GitHub's registry, which is built for x86-64, the same CPU type as the DXP2800's Intel N100. The NAS only needs `docker-compose.yml` and a data folder: no source code and no `.env`.
 
 ### 1. Prepare the folders on the NAS
-1. In **File Manager**, create `docker/cosplay-planner` with a `data` folder inside it. On the NAS that's `/volume1/docker/cosplay-planner/data`. If your storage pool isn't volume 1, set `DATA_PATH` (see step 3).
+1. In **File Manager**, create `docker/cosplay-planner` with an empty `data` folder inside it. The compose file refers to it as `./data` (relative to its own folder), so it works whichever volume your `docker` shared folder is on.
+   - Don't change this to an absolute path like `/volume1/docker/...`. UGOS treats that as creating a shared folder, and fails with *"A shared folder with the same name already exists in other volumes"* when `docker` lives on another volume.
 2. Put `docker-compose.yml` from this repo in `docker/cosplay-planner`. It works as-is.
-3. Optional: to change a default, create a `.env` next to it with just the lines you need, for example `TZ=Europe/Lisbon` (default `Europe/London`) or `DATA_PATH=/volume2/...`. See `.env.example` for all of them. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
+3. Optional: to change a default, create a `.env` next to it with just the lines you need, for example `TZ=Europe/Lisbon` (default `Europe/London`). See `.env.example` for all of them. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
 4. Optional but recommended: turn on SSH in **Control Panel → Terminal**, run `id`, and if your user and group IDs aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user.
 
 ### 2. Create the project
-**Docker → Project → Create**. Name it `cosplay-planner`, set the path to `/volume1/docker/cosplay-planner`, and let it use the `docker-compose.yml` there. Then deploy. It downloads the image and starts.
+**Docker → Project → Create**. Name it `cosplay-planner`, set the storage path to the `docker/cosplay-planner` shared folder, and let it use the `docker-compose.yml` there. Then deploy. It downloads the image and starts.
 
 Alternatively, over SSH:
 ```bash
-cd /volume1/docker/cosplay-planner
+cd /volume1/docker/cosplay-planner    # use your volume number, e.g. /volume2
 sudo docker compose up -d
 sudo docker compose logs -f     # wait for "Starting Cosplay Build Planner on port 1337"
 ```
@@ -184,7 +185,7 @@ Back up the whole **data folder**. It contains the database, uploads and snapsho
   ```bash
   sudo docker exec cosplay-planner node scripts/backup.mjs
   ```
-- **Off-NAS copy:** include `/volume1/docker/cosplay-planner/data` in a UGOS **Sync & Backup** job to a USB drive or another location. If the shared folder is on Btrfs, you can also turn on **snapshots** for it.
+- **Off-NAS copy:** include the `docker/cosplay-planner/data` folder in a UGOS **Sync & Backup** job to a USB drive or another location. If the shared folder is on Btrfs, you can also turn on **snapshots** for it.
   - Snapshots alone don't protect you if the disk fails, so keep a copy somewhere else too.
   - Copying the live `cosplay.db` while the app is writing can capture a half-written file. Back up the `backups/` folder instead, or stop the container first.
 
