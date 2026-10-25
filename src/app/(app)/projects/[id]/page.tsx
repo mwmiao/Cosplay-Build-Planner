@@ -6,6 +6,7 @@ import { EmptyState, ProgressBar, Stat, StatusBadge } from "@/components/ui";
 import { CATEGORIES, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { daysLabel, daysUntil, hostname } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
 import { getMoneyContext, getProjectOr404 } from "@/lib/queries";
@@ -13,7 +14,8 @@ import { setProjectArchived } from "../actions";
 import { togglePartDone } from "./parts/actions";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const project = await getProjectOr404(params.id);
+  const user = await requireUser();
+  const project = await getProjectOr404(params.id, user.id);
   return { title: project.characterName };
 }
 
@@ -33,9 +35,10 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: Search;
+  searchParams: Search & { published?: string; unpublished?: string; copied?: string };
 }) {
-  const project = await getProjectOr404(params.id);
+  const user = await requireUser();
+  const project = await getProjectOr404(params.id, user.id);
   const { t, f } = getI18n();
   const P = t.project;
   const [allParts, references] = await Promise.all([
@@ -58,14 +61,34 @@ export default async function ProjectPage({
     (p) => (!filter.status || p.status === filter.status) && (!filter.category || p.category === filter.category),
   );
   const usedCategories = CATEGORIES.filter((c) => allParts.some((p) => p.category === c));
-  const ctx = await getMoneyContext();
+  const publication = await db.publication.findFirst({
+    where: { projectId: project.id, ownerId: user.id },
+    select: { id: true, versionAt: true },
+  });
+  const ctx = await getMoneyContext(user.id);
   const stats = projectStats(project, allParts, ctx);
   const base = stats.base;
   const days = daysUntil(project.deadline);
   const over = stats.overUnder !== null && stats.overUnder < 0;
 
+  const C = t.community;
   return (
     <>
+      {searchParams.published ? (
+        <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          {C.publishedOk}
+        </div>
+      ) : null}
+      {searchParams.copied ? (
+        <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          {C.copiedOk}
+        </div>
+      ) : null}
+      {searchParams.unpublished ? (
+        <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          {C.unpublishedOk}
+        </div>
+      ) : null}
       {project.archivedAt ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <span>{P.archivedBanner}</span>
@@ -84,6 +107,17 @@ export default async function ProjectPage({
             <p className="text-zinc-500 dark:text-zinc-400">
               {[project.series, project.conventionName].filter(Boolean).join(" · ") || P.noSeries}
             </p>
+            {project.copiedFromTitle && project.copiedFromCreator ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400" data-testid="attribution">
+                {project.copiedFromPublicationId ? (
+                  <Link href={`/community/${project.copiedFromPublicationId}`} className="link">
+                    {C.basedOn(project.copiedFromTitle, project.copiedFromCreator)}
+                  </Link>
+                ) : (
+                  C.basedOn(project.copiedFromTitle, project.copiedFromCreator)
+                )}
+              </p>
+            ) : null}
           </div>
           <Link href={`/projects/${project.id}/edit`} className="btn-secondary shrink-0" aria-label={P.editProject}>
             <PencilIcon className="h-5 w-5" />
@@ -280,6 +314,36 @@ export default async function ProjectPage({
             })}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="community-title" className="card mb-6" data-testid="community-card">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <h2 id="community-title" className="section-title">
+            {C.title}
+          </h2>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              publication
+                ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
+                : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            }`}
+          >
+            {publication ? C.statusPublished : C.statusPrivate}
+          </span>
+        </div>
+        <p className="hint mb-3">
+          {publication ? `${C.cardPublished} ${C.snapshotNote(f.date(publication.versionAt))}` : C.cardPrivate}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/projects/${project.id}/publish`} className={publication ? "btn-secondary" : "btn-primary"}>
+            {publication ? C.manage : C.publishTitle}
+          </Link>
+          {publication ? (
+            <Link href={`/community/${publication.id}`} className="btn-ghost">
+              {C.viewPublic}
+            </Link>
+          ) : null}
+        </div>
       </section>
 
       <section aria-labelledby="export-title" className="card mb-8">

@@ -12,3 +12,7 @@ test-results/
 playwright-report/
 dist/
 prisma/backups/
+prisma/secrets/
+prisma/outbox/
+prisma/playwright-outbox/
+prisma/stand-data/

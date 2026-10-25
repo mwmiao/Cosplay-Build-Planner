@@ -1,5 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
-import { TEST_PASSWORD } from "../playwright.config";
+import { newUser, register } from "./helpers";
+
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.2.1" } });
 
 const stamp = Date.now();
 const NAME = `Imported Lady Maria ${stamp}`;
@@ -91,13 +93,8 @@ function sampleFile(overrides: { name?: string; extraPart?: boolean; budgetCents
 }
 
 async function login(page: Page) {
+  await register(page, newUser("Importer"));
   await page.goto("/projects/import");
-  if (page.url().includes("/login")) {
-    await page.getByLabel("Password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await expect(page).toHaveURL(/\/projects$/);
-    await page.goto("/projects/import");
-  }
   await expect(page.getByRole("heading", { name: "Import project", level: 1 })).toBeVisible();
 }
 

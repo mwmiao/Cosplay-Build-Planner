@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { dateInput, moneyInput } from "@/lib/format";
 import { db } from "@/lib/db";
 import { getProjectOr404 } from "@/lib/queries";
@@ -14,11 +15,12 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
-  const project = await getProjectOr404(params.id);
+  const user = await requireUser();
+  const project = await getProjectOr404(params.id, user.id);
   const { t } = getI18n();
   const F = t.projectForm;
   const archived = project.archivedAt !== null;
-  const base = project.currency ?? (await getDefaultCurrency());
+  const base = project.currency ?? (await getDefaultCurrency(user.id));
   const converted = await db.buildPart.count({
     where: { projectId: project.id, deletedAt: null, paidAt: { not: null }, currency: { not: null } },
   });

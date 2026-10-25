@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ConfirmButton } from "@/components/FormBits";
 import { EmptyState, BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { hostname } from "@/lib/format";
@@ -22,7 +23,8 @@ export default async function ReferencesPage({
   params: { id: string };
   searchParams: { uploaded?: string; uploadError?: string };
 }) {
-  const project = await getProjectOr404(params.id);
+  const user = await requireUser();
+  const project = await getProjectOr404(params.id, user.id);
   const { t } = getI18n();
   const R = t.refs;
   const images = await db.referenceImage.findMany({

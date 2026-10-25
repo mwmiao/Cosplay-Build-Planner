@@ -4,6 +4,53 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.3.0 — 2026-10-26
+
+### Added
+- **Accounts** (Better Auth): register with an invite code (`REGISTRATION_CODE`),
+  log in/out, change display name and password. Database sessions with a
+  30-day sliding expiry; rate-limited login, registration and reset; messages
+  don't reveal whether an email is registered.
+- **Password reset** by single-use, 60-minute email link (SMTP settings), or,
+  without email, a clear "unavailable" message and an admin command:
+  `node scripts/reset-password.js --email …`.
+- **Private projects**: every project, part, image, shopping item, export and
+  import belongs to one account and is checked on the server. Image files need
+  ownership, not just the URL.
+- **Community**: opt-in publishing with a required preview. A publication is a
+  snapshot built from an allow-list (title, public description, tags,
+  progress, items; optionally budget totals, estimated item costs, shop links,
+  chosen images). Private notes, payments and account data are never
+  published. "Update published version", "Unpublish" (removes public pages and
+  image copies). Public Community list with search, sorting and pages.
+- **Copy to My Projects**: a private planning template from a published
+  project, with new ids, items reset to "needed", no spending copied, and
+  attribution to the original creator.
+- `claim-projects` admin command for assigning projects created before 1.3.
+- CI upgrade test: a real 1.2.1 container is replaced by the new image on the
+  same data folder, old projects are claimed, stored FX conversions are
+  verified unchanged, and session/data/images survive a further container
+  replacement.
+
+### Changed
+- Imports are always private and owned by the importer; exports contain no
+  account data.
+- Containers never seed an example project.
+- Navigation: Projects · Community · New · Shopping · Settings, plus an account
+  menu.
+
+### Removed
+- `APP_PASSWORD` / `SESSION_SECRET` single-password login and `SEED_EXAMPLE`.
+
+### Upgrade notes
+- Read "Upgrading from 1.2 to 1.3" in the README **before** updating: export
+  your projects and copy the data folder, add `REGISTRATION_CODE` and `APP_URL`
+  to `.env`, update, register, then run `claim-projects`. Until claimed, old
+  projects are hidden from everyone.
+- Migrations only add tables and columns. Rolling back to 1.2 keeps your data
+  but removes accounts (everything visible again), so treat it as an
+  emergency fallback only.
+
 ## 1.2.1 — 2026-10-26
 
 ### Added

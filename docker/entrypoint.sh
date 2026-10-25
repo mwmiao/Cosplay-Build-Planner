@@ -4,7 +4,8 @@
 set -e
 
 DATA_DIR=/app/data
-mkdir -p "$DATA_DIR/uploads" "$DATA_DIR/backups"
+mkdir -p "$DATA_DIR/uploads" "$DATA_DIR/backups" "$DATA_DIR/secrets"
+chmod 700 "$DATA_DIR/secrets" 2>/dev/null || true
 
 if [ "$(id -u)" = "0" ]; then
   chown -R "$PUID:$PGID" "$DATA_DIR"
@@ -13,27 +14,21 @@ else
   RUN_AS=""
 fi
 
-if [ -n "$APP_PASSWORD" ] && [ -z "$SESSION_SECRET" ]; then
-  echo "ERROR: SESSION_SECRET must be set when APP_PASSWORD is set (see .env.example)." >&2
-  exit 1
+if [ -z "$REGISTRATION_CODE" ]; then
+  echo "Registration is closed (no REGISTRATION_CODE set). Existing accounts can still log in."
 fi
-if [ -z "$APP_PASSWORD" ]; then
-  echo "Login is off (no APP_PASSWORD set): anyone who can reach port ${PORT} can use the app."
+if [ -z "$APP_URL" ]; then
+  echo "APP_URL is not set: password-reset links and secure cookies need it (see README)."
 fi
 
-# Snapshot the existing database before migrating; seed only on the very first run.
-FIRST_RUN=true
+# Snapshot the existing database before migrating. Nothing is ever seeded,
+# reset or deleted on startup.
 if [ -f "$DATA_DIR/cosplay.db" ]; then
-  FIRST_RUN=false
   $RUN_AS node /app/scripts/backup.mjs || echo "WARNING: pre-start backup failed" >&2
 fi
 
 echo "Applying database migrations..."
 $RUN_AS node /app/node_modules/prisma/build/index.js migrate deploy --schema /app/prisma/schema.prisma
-
-if [ "$FIRST_RUN" = "true" ] && [ "${SEED_EXAMPLE:-true}" = "true" ]; then
-  $RUN_AS node /app/prisma/seed.js
-fi
 
 # Periodic database backups while the container runs.
 HOURS="${BACKUP_INTERVAL_HOURS:-24}"

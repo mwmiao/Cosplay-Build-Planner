@@ -82,5 +82,7 @@ export function projectStats(
 
 export type ProjectStats = ReturnType<typeof projectStats>;
 
-/** Prisma filter for projects that are neither archived nor deleted. */
-export const activeProjectWhere = { deletedAt: null, archivedAt: null } as const;
+/** Prisma filter for the user's projects that are neither archived nor deleted. */
+export function activeProjectsOf(userId: string) {
+  return { ownerId: userId, deletedAt: null, archivedAt: null } as const;
+}

@@ -1,6 +1,6 @@
 # Cosplay Build Planner
 
-A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Single-user, no login by default (an optional password is available), no cloud services. It's meant to run on a home NAS and be reached through Tailscale.
+A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Each person has their own account and private projects, and can choose to share a project in the Community tab. No cloud services are required. It's meant to run on a home NAS and be reached through Tailscale.
 
 **Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** [`eazyeight/cosplay-build-planner`](https://hub.docker.com/r/eazyeight/cosplay-build-planner) (also `ghcr.io/mwmiao/cosplay-build-planner`)
 
@@ -8,6 +8,8 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 ## Features
 
+- **Accounts**: register with an invite code, log in and out, change your display name and password. Password reset uses a single-use email link when email is configured. Every project is private to its owner (see [Accounts](#accounts)).
+- **Community**: publish a project on purpose, choosing exactly what becomes public, and browse what others shared. Others can copy a published project into their own projects as a private template (see [Community](#community)).
 - **Projects**: character, series, convention, deadline, status, base currency, budget, notes. The dashboard shows completion %, days left, and paid / planned / budget left / over-or-under budget. Projects can be archived, deleted (restorable from Settings) or deleted permanently.
 - **Build parts**: category, status (needed → ordered → arrived → building → done), estimated and actual cost per item, quantity, supplier, link and notes. Filter parts by status or category, and tick them done with one tap.
 - **Shopping list**: parts marked *Needed* in active projects appear automatically. You can also add items by hand. Group by supplier, category or project. Ticking an item marks its part *Ordered*. Exports to CSV.
@@ -24,24 +26,93 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `APP_PASSWORD` | no | empty | Leave empty for no login (the default). Set it (8+ characters) to require a password. |
-| `SESSION_SECRET` | only with a password | empty | Signs the login cookie (32+ characters). Changing it logs you out everywhere. |
+| `APP_URL` | recommended | `http://localhost:1337` | The address you open the app at, e.g. `https://nas.your-tailnet.ts.net`. Password-reset links use it, and an `https://` value makes login cookies *Secure*. |
+| `REGISTRATION_CODE` | to register | empty | Invite code needed to create an account (6+ characters). Empty means registration is closed; existing accounts can still log in. |
+| `AUTH_SECRET` | no | generated | Signs session cookies (32+ characters). If empty, one is generated **once** into `data/secrets/auth-secret` and reused across container updates. Changing it logs everyone out. |
+| `COOKIE_SECURE` | no | from `APP_URL` | Override the *Secure* cookie flag. Leave empty unless you know you need it. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `EMAIL_FROM` | no | empty | Outgoing email for password-reset links. Without `SMTP_HOST`, "Forgot password" says it's unavailable (see [Accounts](#accounts)). |
 | `DATABASE_URL` | yes | `file:./dev.db` locally, `file:/app/data/cosplay.db` in Docker | SQLite database location. |
-| `UPLOAD_DIR` | no | `./data/uploads`, `/app/data/uploads` in Docker | Where images are stored. |
+| `UPLOAD_DIR` | no | `./data/uploads`, `/app/data/uploads` in Docker | Where images are stored (private images, plus published copies under `public/`). |
 | `MAX_UPLOAD_MB` | no | `15` | Maximum size per image. |
-| `COOKIE_SECURE` | no | `false` | Set `true` **only** if you use the app over HTTPS. On plain `http://`, a `true` here means you can't stay logged in. |
-| `DEFAULT_CURRENCY` | no | `EUR` | Starting default currency (e.g. `GBP`). Once you pick one in Settings, that choice wins. |
+| `DEFAULT_CURRENCY` | no | `EUR` | Starting default currency for new accounts. Each user can change theirs in Settings. |
 | `TZ` | no | container default | Time zone used to count "days left". |
 | `PUID` / `PGID` | no | `1000` / `1000` | (Docker) The user and group that will own the files in the data folder. |
 | `BACKUP_INTERVAL_HOURS` | no | `24` | (Docker) How often to back up the database automatically. `0` turns it off. |
-| `BACKUP_KEEP` | no | `14` | How many database backups to keep. |
-| `SEED_EXAMPLE` | no | `true` | (Docker) Adds an example project the first time the app starts. |
+| `BACKUP_KEEP` | no | `14` | How many automatic database backups to keep. |
+| `EMAIL_OUTBOX_DIR` | **testing only** | empty | Writes emails to files instead of sending them (used by the automated tests). Never set this in production. |
 
-To generate a secret:
+`APP_PASSWORD`, `SESSION_SECRET` and `SEED_EXAMPLE` from 1.2 are no longer used.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+---
+
+## Accounts
+
+- **Registration** needs the invite code from `REGISTRATION_CODE`. Share it only with people you want on your NAS. To close registration, empty the setting and restart.
+- **Login** uses email and password. Passwords are hashed with scrypt by [Better Auth](https://www.better-auth.com) and never stored in readable form. Sessions are stored in the database, checked on every request, and expire after 30 days of not using the app.
+- **Rate limits:** too many login, registration or password-reset attempts are refused for a while, per address and per account. Error messages don't reveal whether an email is registered.
+- **Account page:** change your display name (the only thing shown publicly, and only if you publish) and your password. Changing the password signs out your other devices.
+- **Password reset by email** needs SMTP settings (any provider: a Gmail app password, Fastmail, Brevo…) and `APP_URL`. The link works **once** and expires after **60 minutes**.
+- **Without email:** "Forgot password" says reset isn't available; it never pretends to send anything. The admin resets the password on the server instead:
+  ```bash
+  sudo docker exec -it cosplay-planner node scripts/reset-password.js --email user@example.com
+  ```
+  This prints a new random password once and signs that user out everywhere.
+
+**Privacy:** every project, part, image, shopping item, export and import belongs to one account. The server checks the owner on every page, action and download. Another user's project looks exactly like one that doesn't exist, and knowing an image's address isn't enough to open it.
+
+---
+
+## Community
+
+- **Publishing is always opt-in:** open a project, go to **Community → Publish to Community**, choose what to share, check the **preview**, then publish.
+- **Always public** once published: a public title, a public description (written separately; your private notes are never published), tags, status and progress, and the item list (name, category, status, quantity).
+- **Your choice, off by default:**
+  - budget totals (budget, total spent, total still planned)
+  - estimated item costs (what you actually paid stays private)
+  - shop names and links
+  - which images to publish (only ticked images are copied, and the copies get new file names)
+- **Never public:** private notes, payments (dates, actual amounts, exchange-rate details), receipts, delivery details and anything about your account. Your display name is shown; your email never is.
+- **It's a snapshot:** the public page shows the version you published. Changes you make afterwards stay private until you press **Update published version**.
+- **Unpublish** at any time. The public page, its data and its image addresses stop working immediately. Anything someone already downloaded or saved can't be recalled.
+- **Browsing:** the **Community** tab can be read without logging in, with search, newest/recently-updated sorting and pages. Anyone who can reach the app can see published projects, which on a private NAS means your home network and tailnet.
+- **Copy to My Projects:** logged-in users can copy a published project. The copy:
+  - is private and theirs, with new IDs
+  - contains only what was published
+  - has every item set to *needed*, with no actual costs or payments
+  - shows "Based on … by …"
+  - never affects the original when edited
+
+---
+
+## Upgrading from 1.2 to 1.3 (one time)
+
+1.3 adds accounts. Projects created before 1.3 have no owner yet: they're **hidden from everyone** until you claim them, so nobody can take them by registering first.
+
+1. **Back up first:**
+   - In 1.2, open each project and use **Export → Export JSON**.
+   - Copy the whole `docker/cosplay-planner/data` folder somewhere safe.
+2. **Add the new settings.** Create `docker/cosplay-planner/.env` next to `docker-compose.yml` with at least:
+   ```bash
+   REGISTRATION_CODE=pick-a-long-invite-code
+   APP_URL=https://<nas-name>.<tailnet>.ts.net
+   ```
+   See [HTTPS with tailscale serve](#https-with-tailscale-serve). Use your real address and a code only you know.
+3. **Update** to the 1.3 image: set `image:` back to `eazyeight/cosplay-build-planner:latest` (or `:1.3`) and redeploy. On start it backs up the database and applies the migrations. These only add tables and columns, so nothing is changed or deleted.
+4. **Register** your account in the app. Your old projects won't be visible yet.
+5. **Claim them** over SSH, first as a dry run that only lists what it would do:
+   ```bash
+   sudo docker exec cosplay-planner node scripts/claim-projects.js --email you@example.com --dry-run
+   sudo docker exec cosplay-planner node scripts/claim-projects.js --email you@example.com
+   ```
+   The second command:
+   - takes a database snapshot (`data/backups/…-pre-claim.db`)
+   - in one transaction, assigns every unowned project, its shopping items and the old default currency to your account
+   - never changes paid amounts or exchange rates
+
+   Running it again does nothing: projects that already have an owner are never touched.
+6. Check your projects and totals.
+
+**Rolling back to 1.2 after upgrading** is possible without losing data, because 1.2 ignores the new tables. But 1.2 has no accounts, so every project would be visible to anyone who can reach the app again. Use it only as an emergency fallback.
 
 ---
 
@@ -94,6 +165,8 @@ Editing the part later (notes, status…) never redoes the conversion at today's
 
 Amounts are whole cents (`"actualCostCents": 6400` = 64.00).
 
+**With accounts (1.3+):** you can only export your own projects, and the file contains no account data. Imports always become private projects owned by you: owner or publication information in a file is ignored, and you can only merge into or replace your own projects.
+
 **Import:** go to **Projects → Import** and choose a `.json` file. Nothing changes until you confirm.
 1. **Validation:** the format and schema version, currency codes, dates, amounts, required fields and duplicate IDs are checked. Every problem is listed with its location, e.g. `parts[3].currency: unknown currency code`.
 2. **Preview:** project name, number of expenses and paid expenses, currencies, paid and planned totals, budget, and warnings. For example, unknown categories are imported as *Other*, and listed reference images aren't imported.
@@ -116,10 +189,11 @@ Requires **Node.js 20 or newer** (22 LTS recommended).
 
 ```bash
 npm install
-cp .env.example .env          # defaults work as-is (no login)
+cp .env.example .env          # set REGISTRATION_CODE and APP_URL=http://localhost:1337
 npx prisma migrate dev        # creates prisma/dev.db and applies migrations
-npm run db:seed               # optional example project
-npm run dev                   # http://localhost:1337
+npm run db:seed               # optional example project (unclaimed)
+npm run dev                   # http://localhost:1337 → register with your REGISTRATION_CODE
+npm run claim-projects -- --email you@example.com   # take ownership of the example project
 ```
 
 Useful scripts:
@@ -130,7 +204,9 @@ Useful scripts:
 | `npm run build && npm start` | Production build and run locally |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run backup` | Write a database snapshot to `prisma/backups/` |
-| `npx playwright install chromium` then `npm run test:e2e` | Smoke test (uses its own throwaway database on port 3100) |
+| `npm run claim-projects -- --email …` / `npm run reset-password -- --email …` | Admin commands (same as in Docker) |
+| `npx playwright install chromium` then `npm run test:e2e` | End-to-end tests (own throwaway database on port 3100) |
+| `npx playwright test -c playwright.container.config.ts` | Container upgrade/persistence test (run by CI against real containers) |
 
 After changing `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>` and commit the new folder in `prisma/migrations/`.
 
@@ -180,16 +256,19 @@ The image listens on **port 1337**. Everything it stores lives in one folder mou
 
 ```
 data/
-├── cosplay.db        SQLite database
-├── uploads/          reference images (one folder per project)
-└── backups/          automatic database snapshots
+├── cosplay.db        SQLite database (accounts, sessions, projects…)
+├── uploads/          private images (one folder per project)
+│   └── public/       copies of images published to the Community
+├── secrets/          auth-secret (session signing; created once, keep it)
+└── backups/          automatic and pre-claim / pre-import snapshots
 ```
 
 Each time the container starts, it:
 1. Backs up the existing database.
 2. Applies any pending database migrations.
-3. On the first run only, adds the example project.
-4. Starts the app as `PUID:PGID`, then keeps making database backups every `BACKUP_INTERVAL_HOURS`.
+3. Starts the app as `PUID:PGID`, then keeps making database backups every `BACKUP_INTERVAL_HOURS`.
+
+It never seeds, resets or deletes data. The session-signing secret lives in `data/secrets/`, so it survives container replacement (Watchtower) and logins stay valid. CI checks this on every release: it upgrades a real 1.2.1 container to the new image on the same data folder, claims the old project, verifies the stored exchange-rate conversions are unchanged, replaces the container again, and checks that the session, data and images survive.
 
 Because of this, updating is just replacing the container with a newer image. Your data and a fresh backup are already in place.
 
@@ -198,7 +277,7 @@ Because of this, updating is just replacing the container with a newer image. Yo
 Run the published image anywhere:
 
 ```bash
-docker compose up -d    # no .env needed; add one only to change defaults
+docker compose up -d    # with a .env containing at least REGISTRATION_CODE and APP_URL
 ```
 
 To build from source instead (e.g. to try local changes in Docker):
@@ -212,13 +291,13 @@ docker compose up -d
 
 ## Setting it up on a UGREEN NAS (DXP2800, UGOS Pro)
 
-The NAS doesn't build anything. It downloads the ready-made image from GitHub's registry, which is built for x86-64, the same CPU type as the DXP2800's Intel N100. The NAS only needs `docker-compose.yml` and a data folder: no source code and no `.env`.
+The NAS doesn't build anything. It downloads the ready-made image from GitHub's registry, which is built for x86-64, the same CPU type as the DXP2800's Intel N100. The NAS only needs `docker-compose.yml`, a `.env` with your settings, and a data folder; no source code.
 
 ### 1. Prepare the folders on the NAS
 1. In **File Manager**, create `docker/cosplay-planner` with an empty `data` folder inside it. The compose file refers to it as `./data` (relative to its own folder), so it works whichever volume your `docker` shared folder is on.
    - Don't change this to an absolute path like `/volume1/docker/...`. UGOS treats that as creating a shared folder, and fails with *"A shared folder with the same name already exists in other volumes"* when `docker` lives on another volume.
 2. Put `docker-compose.yml` from this repo in `docker/cosplay-planner`. It works as-is.
-3. Optional: to change a default, create a `.env` next to it with just the lines you need, for example `TZ=Europe/Lisbon` (default `Europe/London`). See `.env.example` for all of them. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
+3. Create a `.env` next to it with at least `REGISTRATION_CODE` and `APP_URL` (see [Accounts](#accounts)). Add `TZ=…` and any other settings from `.env.example` you want. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
 4. Optional but recommended: turn on SSH in **Control Panel → Terminal**, run `id`, and if your user and group IDs aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user.
 
 ### 2. Create the project
@@ -231,7 +310,7 @@ sudo docker compose up -d
 sudo docker compose logs -f     # wait for "Starting Cosplay Build Planner on port 1337"
 ```
 
-Open `http://<nas-lan-ip>:1337` on your home network.
+Then set up [HTTPS with tailscale serve](#https-with-tailscale-serve), open that address and register.
 
 ### 3. Updates
 After you push changes and the GitHub workflow finishes (about 3–5 minutes), a new `latest` image exists.
@@ -252,23 +331,34 @@ Before the new version starts, it backs up the database and applies any migratio
 
 ## Access via Tailscale (outside your home)
 
-Tailscale is already on the NAS, so the app is reachable from any device on your tailnet:
-
-- `http://<nas-tailscale-name>:1337`. Find the MagicDNS name or the `100.x.y.z` address in the Tailscale admin console.
-- On your phone, turn Tailscale on and open that address. Use **Share → Add to Home Screen** to get an app-style icon.
+Tailscale is already on the NAS, so the app is reachable from any device on your tailnet. Turn Tailscale on on your phone and open the app's address. Use **Share → Add to Home Screen** for an app-style icon.
 
 **Keep it private:**
 - **Do not** forward port 1337 on your router, and don't use Tailscale *Funnel*.
-- Login is off by default, so anyone who can reach port 1337 can see and change your plans. On your home network and tailnet that's only you and your devices, which is the intended setup.
-- For extra protection, a Tailscale ACL can limit which of your devices can reach the NAS on port 1337.
+- The Community tab can be read without logging in by anyone who can reach the app. On your home network and tailnet that's you and the people you invite.
+- For extra protection, a Tailscale ACL can limit which devices can reach the NAS.
 
-**Optional HTTPS.** If the NAS's Tailscale install gives you the `tailscale` command, run `tailscale serve --bg 1337`. You can then use `https://<nas-name>.<tailnet>.ts.net`. If you've turned on the optional login, also set `COOKIE_SECURE=true` in `.env` and restart the container. Do that only if you'll always use the HTTPS address, otherwise logging in over plain `http://` will fail.
+### HTTPS with tailscale serve
+
+Use HTTPS so login cookies are *Secure*. Over plain `http://`, anyone snooping on your home network could read them.
+
+1. In the [Tailscale admin console](https://login.tailscale.com/admin/dns), make sure **MagicDNS** and **HTTPS Certificates** are enabled.
+2. On the NAS (SSH), run:
+   ```bash
+   sudo tailscale serve --bg 1337
+   sudo tailscale serve status        # shows https://<nas-name>.<tailnet>.ts.net
+   ```
+   If your UGOS Tailscale app doesn't provide the `tailscale` command over SSH, run it inside the Tailscale container (`sudo docker exec <tailscale-container> tailscale serve --bg 1337`) or use the app's own "serve" setting if it has one.
+3. Put that address in `.env` as `APP_URL=https://<nas-name>.<tailnet>.ts.net` and redeploy.
+4. Always open the app at that **https** address. With an https `APP_URL`, the app sets *Secure* cookies, which browsers won't send to `http://<nas-ip>:1337`, so logging in via the plain address won't stick.
+
+`tailscale serve` passes the visitor's address on (`X-Forwarded-For`), which the app uses for per-address rate limits. Per-account limits apply regardless.
 
 ---
 
 ## Backup and restore
 
-Back up the whole **data folder**. It contains the database, uploads and snapshots.
+Back up the whole **data folder**. It contains the database (including accounts), uploads, published copies, the session secret and snapshots. If `secrets/` is lost, nothing breaks: a new secret is generated and everyone simply logs in again.
 
 ### Backing up
 - **Automatic database snapshots:** the container writes `data/backups/cosplay-YYYYMMDD-HHMMSS.db` at every start and every `BACKUP_INTERVAL_HOURS`, keeping the newest `BACKUP_KEEP` (14 by default). These are consistent copies made safely while the app is running (SQLite `VACUUM INTO`).
@@ -295,26 +385,42 @@ Back up the whole **data folder**. It contains the database, uploads and snapsho
 To get back to the state just before an update, use the newest snapshot taken before the update time (the container makes one on every start).
 
 ### Moving to a new machine
-Copy the data folder, `docker-compose.yml` and your `.env` (if you made one), then run `docker compose up -d` on the new host.
+Copy the data folder (including `secrets/`), `docker-compose.yml` and your `.env`, then run `docker compose up -d` on the new host. Accounts, sessions and projects come along.
 
 ---
 
 ## Security notes
 
-- **No login by default.** The app trusts its network: anyone who can reach port 1337 can use it. Keep it on your home network and Tailscale; never expose it to the internet.
-- **Optional login.** Set `APP_PASSWORD` and `SESSION_SECRET` (in a `.env` next to `docker-compose.yml`) and restart to require a password. The login cookie is signed, `HttpOnly` and `SameSite=Lax`, and lasts 30 days. After 10 wrong attempts within 15 minutes, logins from that address are refused for a while. Every page, API route and server action then checks the cookie itself, not only the middleware.
-- Uploads are checked by actually reading the image, not by trusting the file name. They're re-encoded with metadata (including GPS) stripped and saved under random file names. Requests for files outside the upload folder are refused.
-- CSV exports neutralise spreadsheet formulas, so a cell can't run code when opened in Excel.
+- **Accounts** (Better Auth):
+  - scrypt password hashes
+  - database sessions checked on every request
+  - `HttpOnly`, `SameSite=Lax` cookies, *Secure* over HTTPS
+  - 30-day sliding expiry
+  - rate-limited login, registration and reset, with messages that don't reveal whether an email is registered
+  - single-use, 60-minute reset links
+- **Authorization** happens on the server for every page, server action, API route, export, import and image. Ownership always comes from the session, never from an ID sent by the browser. Tests include a user tampering with a form submission to target someone else's project.
+- **CSRF:** server actions use Next.js's built-in origin check; the image-upload route rejects cross-site requests.
+- **Public vs private data:** published projects are separate snapshots built from an allow-list and checked against a strict schema. Published images are separate copies served by a separate route. Private image URLs always require ownership.
+- **Imports** are always private and owned by the importer. Owner IDs and publication state in a file are ignored, internal IDs are always new, and paid conversions are copied exactly.
+- **Exports** contain no account data (no email, owner ID or session data).
+- **Uploads** are checked by actually reading the image, re-encoded with metadata (including GPS) removed, size-limited, and saved under random file names.
+- **User text** is always shown as plain text (React escapes it), and links from projects open with `rel="nofollow noopener noreferrer"`.
+- **CSV exports** neutralise spreadsheet formulas.
+- **Errors** shown to users never include database messages or secrets.
 
 ## Project layout
 
 ```
 prisma/              schema, migrations, seed
-src/app/(app)/       logged-in pages: projects, parts, references, shopping, settings
-src/app/api/         health, uploads (serve + upload), CSV exports
-src/app/login/       login page and actions
+src/app/(app)/       logged-in pages: projects, parts, references, publish, shopping, settings, account
+src/app/(auth)/      login, register, forgot/reset password
+src/app/(community)/ public Community list and detail pages (+ Copy to My Projects)
+src/app/api/         health, uploads (serve + upload), exports, community JSON + public images
 src/lib/             db, auth, validation (Zod), uploads, shopping-list logic, CSV
 src/lib/transfer/    project export/import: file format, export builder, import + preview
+src/lib/community/   public snapshot (allow-list), public read model, published image copies
+scripts/admin/       claim-projects and reset-password commands (bundled into the image)
+tests/, tests-container/  end-to-end tests; container upgrade/persistence test
 src/i18n/            translations: en.ts, pt-PT.ts (same keys, type-checked)
 src/components/      UI building blocks
 .github/workflows/  CI: tests, then publishes the image to Docker Hub and ghcr.io

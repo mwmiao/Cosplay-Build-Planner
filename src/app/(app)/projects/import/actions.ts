@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getI18n } from "@/i18n/server";
-import { requireAuth } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { getMoneyContext } from "@/lib/queries";
 import {
   ImportError,
@@ -20,17 +20,17 @@ export type ImportResult = { ok: true; report: ImportReport } | { ok: false; err
 
 /** Validates the file and summarises it (optionally against a target project). Changes nothing. */
 export async function previewImport(text: string, targetId?: string): Promise<PreviewResult> {
-  await requireAuth();
+  const user = await requireUser();
   const { t } = getI18n();
   const parsed = parseImportText(text, t);
   if (!parsed.ok) return parsed;
   const target = targetId && idSchema.safeParse(targetId).success ? targetId : undefined;
-  return { ok: true, preview: await buildPreview(parsed.file, await getMoneyContext(), t, target) };
+  return { ok: true, preview: await buildPreview(parsed.file, user.id, await getMoneyContext(user.id), t, target) };
 }
 
 /** Re-validates and imports in one transaction. */
 export async function runImport(text: string, options: ImportOptions): Promise<ImportResult> {
-  await requireAuth();
+  const user = await requireUser();
   const { t } = getI18n();
   const parsed = parseImportText(text, t);
   if (!parsed.ok) return parsed;
@@ -39,7 +39,7 @@ export async function runImport(text: string, options: ImportOptions): Promise<I
     return { ok: false, errors: [t.transfer.errors.missingTarget] };
   }
   try {
-    const report = await applyImport(parsed.file, options, await getMoneyContext(), t);
+    const report = await applyImport(parsed.file, options, user.id, await getMoneyContext(user.id), t);
     revalidatePath("/projects", "layout");
     revalidatePath("/shopping");
     return { ok: true, report };

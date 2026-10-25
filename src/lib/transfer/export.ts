@@ -9,10 +9,18 @@ import { EXPORT_FORMAT, EXPORT_SCHEMA_VERSION, type ExportFile } from "./format"
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-/** Builds the canonical JSON export of one project (null if it doesn't exist). */
-export async function buildProjectExport(projectId: string, ctx: MoneyContext, t: Dict): Promise<ExportFile | null> {
+/**
+ * Builds the canonical JSON export of one of the user's projects (null if it
+ * doesn't exist or isn't theirs). Contains no account data (owner, email, ids of users).
+ */
+export async function buildProjectExport(
+  projectId: string,
+  userId: string,
+  ctx: MoneyContext,
+  t: Dict,
+): Promise<ExportFile | null> {
   const project = await db.project.findFirst({
-    where: { id: projectId, deletedAt: null },
+    where: { id: projectId, ownerId: userId, deletedAt: null },
     include: {
       parts: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
       // Part-linked items are rebuilt from their parts on import.

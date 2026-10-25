@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { getDefaultCurrency } from "@/lib/settings";
 import { createProject } from "../actions";
 import { ProjectForm } from "../ProjectForm";
@@ -10,6 +11,7 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function NewProjectPage() {
+  const user = await requireUser();
   const { t } = getI18n();
   return (
     <>
@@ -20,7 +22,7 @@ export default async function NewProjectPage() {
           action={createProject}
           cancelHref="/projects"
           submitLabel={t.projectForm.create}
-          defaultCurrency={await getDefaultCurrency()}
+          defaultCurrency={await getDefaultCurrency(user.id)}
         />
       </div>
     </>

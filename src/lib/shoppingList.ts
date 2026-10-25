@@ -11,13 +11,16 @@ export function parseGroup(value: string | undefined): GroupBy {
   return value === "category" || value === "project" ? value : "supplier";
 }
 
-/** Items from active (not archived/deleted) projects plus general items. */
-export async function loadShoppingItems(includePurchased: boolean) {
+/** The user's items: their general items plus items from their active projects. */
+export async function loadShoppingItems(userId: string, includePurchased: boolean) {
   return db.shoppingListItem.findMany({
     where: {
       deletedAt: null,
       ...(includePurchased ? {} : { purchased: false }),
-      OR: [{ projectId: null }, { project: { deletedAt: null, archivedAt: null } }],
+      OR: [
+        { projectId: null, ownerId: userId },
+        { project: { ownerId: userId, deletedAt: null, archivedAt: null } },
+      ],
     },
     include: { project: { select: { id: true, characterName: true, currency: true } } },
     orderBy: [{ purchased: "asc" }, { name: "asc" }],

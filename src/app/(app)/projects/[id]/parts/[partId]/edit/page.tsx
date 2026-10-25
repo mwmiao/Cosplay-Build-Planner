@@ -5,6 +5,7 @@ import { ConfirmButton } from "@/components/FormBits";
 import { BackLink } from "@/components/ui";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { dateInput, moneyInput } from "@/lib/format";
 import { getProjectOr404, knownSuppliers } from "@/lib/queries";
 import { getDefaultCurrency } from "@/lib/settings";
@@ -17,14 +18,15 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function EditPartPage({ params }: { params: { id: string; partId: string } }) {
-  const project = await getProjectOr404(params.id);
+  const user = await requireUser();
+  const project = await getProjectOr404(params.id, user.id);
   const partId = idSchema.safeParse(params.partId);
   if (!partId.success) notFound();
   const part = await db.buildPart.findFirst({
     where: { id: partId.data, projectId: project.id, deletedAt: null },
   });
   if (!part) notFound();
-  const base = project.currency ?? (await getDefaultCurrency());
+  const base = project.currency ?? (await getDefaultCurrency(user.id));
   const { t, f } = getI18n();
   const F = t.partForm;
 
@@ -43,7 +45,7 @@ export default async function EditPartPage({ params }: { params: { id: string; p
           baseCurrency={base}
           cancelHref={`/projects/${project.id}#parts`}
           submitLabel={F.save}
-          suppliers={await knownSuppliers()}
+          suppliers={await knownSuppliers(user.id)}
           conversion={<ConversionDetails part={part} base={base} />}
           initial={{
             name: part.name,

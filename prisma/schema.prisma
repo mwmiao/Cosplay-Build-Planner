@@ -16,6 +16,9 @@ datasource db {
 
 model Project {
   id             String    @id @default(cuid())
+  /// Owner. Null only for projects created before accounts existed ("unclaimed"):
+  /// those are visible to nobody until assigned with scripts/claim-projects.
+  ownerId        String?
   characterName  String
   series         String?
   conventionName String?
@@ -28,15 +31,22 @@ model Project {
   /// Unused since multi-currency (totals are always calculated from paid parts); kept for old data.
   spentCents     Int?
   notes          String?
+  /// Attribution when copied from a Community project (public info only)
+  copiedFromPublicationId String?
+  copiedFromTitle         String?
+  copiedFromCreator       String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   archivedAt     DateTime?
   deletedAt      DateTime?
 
+  owner         User?              @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  publication   Publication?
   parts         BuildPart[]
   references    ReferenceImage[]
   shoppingItems ShoppingListItem[]
 
+  @@index([ownerId, deletedAt, archivedAt])
   @@index([deletedAt, archivedAt])
 }
 
@@ -104,6 +114,8 @@ model ReferenceImage {
 
 model ShoppingListItem {
   id                 String    @id @default(cuid())
+  /// Owner (also set for project items). Null = created before accounts existed.
+  ownerId            String?
   /// Stable ID used by export/import (unique within a project)
   uid                String    @default(cuid())
   /// Null for general items not tied to a project
@@ -125,10 +137,12 @@ model ShoppingListItem {
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
 
+  owner   User?      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   project Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   part    BuildPart? @relation(fields: [partId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, uid])
+  @@index([ownerId, deletedAt])
   @@index([deletedAt, purchased])
 }
 
@@ -147,4 +161,139 @@ model ExchangeRate {
   source     String
   rateDate   String
   fetchedAt  DateTime
+}
+
+// ---------------------------------------------------------------------------
+// Accounts (Better Auth). Field names follow Better Auth's schema; extra
+// columns (defaultCurrency) are ours and ignored by the library.
+
+model User {
+  id              String    @id
+  /// Public display name
+  name            String
+  /// Private: never shown publicly or included in exports
+  email           String    @unique
+  emailVerified   Boolean   @default(false)
+  image           String?
+  /// Base currency for new projects and shopping-list totals
+  defaultCurrency String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  projects      Project[]
+  shoppingItems ShoppingListItem[]
+  publications  Publication[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  /// Password hash (scrypt, managed by Better Auth)
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/// Fixed-window counters for login/registration/reset rate limiting.
+model AuthRateLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}
+
+// ---------------------------------------------------------------------------
+// Community. A publication is a SNAPSHOT of public data, built from an
+// allow-list when the owner publishes or presses "Update published version".
+// Private edits never reach it automatically. Unpublishing deletes the row,
+// its PublicImage rows and the copied files.
+
+model Publication {
+  id            String   @id @default(cuid())
+  projectId     String   @unique
+  ownerId       String
+  title         String
+  series        String?
+  /// Public text written for the community (never copied from private notes)
+  description   String?
+  /// JSON array of lowercase tags
+  tags          String   @default("[]")
+  includeBudget Boolean  @default(false)
+  includeCosts  Boolean  @default(false)
+  includeLinks  Boolean  @default(false)
+  /// JSON of the public representation (see src/lib/community/snapshot.ts)
+  snapshot      String
+  coverImageId  String?
+  version       Int      @default(1)
+  publishedAt   DateTime @default(now())
+  /// When the published version was last replaced
+  versionAt     DateTime @default(now())
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  images  PublicImage[]
+
+  @@index([publishedAt])
+  @@index([versionAt])
+  @@index([ownerId])
+}
+
+/// A copy of a reference image the owner chose to publish (separate files
+/// under <UPLOAD_DIR>/public/, so private image URLs stay private).
+model PublicImage {
+  id            String  @id @default(cuid())
+  publicationId String
+  /// Private ReferenceImage it was copied from (owner side only; never in public responses)
+  sourceImageId String?
+  /// Paths relative to <UPLOAD_DIR>/public
+  filePath      String
+  thumbPath     String
+  caption       String?
+  position      Int
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@index([publicationId])
 }

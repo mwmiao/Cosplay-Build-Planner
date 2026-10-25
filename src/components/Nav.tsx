@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/client";
-import { CartIcon, CogIcon, FolderIcon, PlusIcon } from "./Icons";
+import { CartIcon, CogIcon, FolderIcon, GlobeIcon, PlusIcon } from "./Icons";
 
 function useItems() {
   const { t } = useI18n();
@@ -15,13 +15,15 @@ function useItems() {
       Icon: FolderIcon,
       match: (p: string) => p.startsWith("/projects") && p !== "/projects/new",
     },
-    { href: "/shopping", label: t.nav.shopping, long: t.nav.shopping, Icon: CartIcon, match: (p: string) => p.startsWith("/shopping") },
+    { href: "/community", label: t.nav.community, long: t.nav.community, Icon: GlobeIcon, match: (p: string) => p.startsWith("/community") },
     { href: "/projects/new", label: t.nav.new, long: t.nav.newProject, Icon: PlusIcon, match: (p: string) => p === "/projects/new" },
+    { href: "/shopping", label: t.nav.shopping, long: t.nav.shopping, Icon: CartIcon, match: (p: string) => p.startsWith("/shopping") },
     { href: "/settings", label: t.nav.settings, long: t.nav.settings, Icon: CogIcon, match: (p: string) => p.startsWith("/settings") },
   ];
 }
 
-export function Sidebar() {
+/** Desktop sidebar with an account menu (name, Account page, log out) at the bottom. */
+export function Sidebar({ userName, signOut }: { userName: string; signOut: () => Promise<void> }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const items = useItems();
@@ -52,6 +54,26 @@ export function Sidebar() {
           </Link>
         );
       })}
+      <div className="mt-auto border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        <Link
+          href="/account"
+          aria-current={pathname.startsWith("/account") ? "page" : undefined}
+          className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
+            {userName.slice(0, 1).toUpperCase()}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-medium">{userName}</span>
+            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{t.auth.account}</span>
+          </span>
+        </Link>
+        <form action={signOut}>
+          <button type="submit" className="btn-ghost mt-1 w-full justify-start">
+            {t.auth.logout}
+          </button>
+        </form>
+      </div>
     </nav>
   );
 }
@@ -65,7 +87,7 @@ export function BottomNav() {
       aria-label={t.nav.main}
       className="bottom-safe fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95 md:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {items.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
           return (

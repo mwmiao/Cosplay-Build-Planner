@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getI18n } from "@/i18n/server";
 import { categoryLabel, statusLabel } from "@/lib/constants";
 import { centsToDecimal, csvResponse, today } from "@/lib/csv";
@@ -12,20 +12,19 @@ import { idSchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  if (!(await isAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = idSchema.safeParse(params.id);
   if (!id.success) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const project = await db.project.findFirst({
-    where: { id: id.data, deletedAt: null },
+    where: { id: id.data, ownerId: user.id, deletedAt: null },
     include: { parts: { where: { deletedAt: null }, orderBy: [{ category: "asc" }, { name: "asc" }] } },
   });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { t } = getI18n();
   const c = t.csv;
-  const ctx = await getMoneyContext();
+  const ctx = await getMoneyContext(user.id);
   const stats = projectStats(project, project.parts, ctx);
   const base = stats.base;
 

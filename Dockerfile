@@ -20,8 +20,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate \
  && npm run build \
- && npx esbuild prisma/seed.ts --bundle --platform=node --format=cjs \
-      --external:@prisma/client --outfile=dist/seed.js
+ && npx esbuild scripts/admin/claim-projects.ts scripts/admin/reset-password.ts \
+      --bundle --platform=node --format=cjs --external:@prisma/client --outdir=dist/admin
 
 # ---- runtime ---------------------------------------------------------------
 FROM base AS runner
@@ -48,8 +48,9 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/dist/seed.js ./prisma/seed.js
-COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/scripts/backup.mjs ./scripts/backup.mjs
+# Admin commands: docker exec cosplay-planner node scripts/claim-projects.js --email …
+COPY --from=builder /app/dist/admin/ ./scripts/
 # Prisma CLI (for migrations) and native modules the standalone trace can miss
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma

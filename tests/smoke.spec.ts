@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { TEST_PASSWORD } from "../playwright.config";
+import { newUser, register } from "./helpers";
+
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.1.1" } });
 
 test("health endpoint responds without login", async ({ request }) => {
   const res = await request.get("/api/health");
@@ -13,9 +15,8 @@ test("create project, add part, shopping list, pay in another currency", async (
 
   // Unauthenticated visits go to the login page.
   await page.goto("/projects");
-  await expect(page).toHaveURL(/\/login$/);
-  await page.getByLabel("Password").fill(TEST_PASSWORD);
-  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page).toHaveURL(/\/login\?next=%2Fprojects$/);
+  await register(page, newUser("Smoke"));
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
 
   // Create a project (validation first).
@@ -85,13 +86,8 @@ test("create project, add part, shopping list, pay in another currency", async (
 });
 
 test("switch the interface to European Portuguese and back", async ({ page }) => {
+  await register(page, newUser("Lang"));
   await page.goto("/settings");
-  if (page.url().includes("/login")) {
-    await page.getByLabel("Password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await expect(page).toHaveURL(/\/projects$/);
-    await page.goto("/settings");
-  }
   await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
 
   // Each language is labelled in its own language.

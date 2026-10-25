@@ -31,4 +31,3 @@ export function statusLabel(value: string, t: Dict): string {
   return t.status[value] ?? value;
 }
 
-export const SESSION_COOKIE = "cbp_session";

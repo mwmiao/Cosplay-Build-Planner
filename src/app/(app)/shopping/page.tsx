@@ -4,9 +4,10 @@ import { ConfirmButton } from "@/components/FormBits";
 import { CheckIcon, DownloadIcon, LinkIcon } from "@/components/Icons";
 import { EmptyState } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { categoryLabel } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { activeProjectWhere } from "@/lib/projects";
+import { activeProjectsOf } from "@/lib/projects";
 import { getMoneyContext } from "@/lib/queries";
 import {
   type GroupBy,
@@ -31,18 +32,19 @@ export default async function ShoppingPage({
 }: {
   searchParams: { group?: string; show?: string };
 }) {
+  const user = await requireUser();
   const { t, f } = getI18n();
   const S = t.shopping;
   const group = parseGroup(searchParams.group);
   const showPurchased = searchParams.show === "all";
   const [items, projects, ctx] = await Promise.all([
-    loadShoppingItems(showPurchased),
+    loadShoppingItems(user.id, showPurchased),
     db.project.findMany({
-      where: activeProjectWhere,
+      where: activeProjectsOf(user.id),
       select: { id: true, characterName: true },
       orderBy: { characterName: "asc" },
     }),
-    getMoneyContext(),
+    getMoneyContext(user.id),
   ]);
   const cur = ctx.defaultCurrency;
   const groups = groupItems(items, group, t);

@@ -9,9 +9,10 @@ type Tx = Prisma.TransactionClient;
  * - any later status, or paid      → item is marked purchased
  * - part deleted     → item is soft-deleted
  */
-export async function syncShoppingItemForPart(tx: Tx, part: BuildPart): Promise<void> {
+export async function syncShoppingItemForPart(tx: Tx, part: BuildPart, ownerId: string): Promise<void> {
   const existing = await tx.shoppingListItem.findUnique({ where: { partId: part.id } });
   const details = {
+    ownerId,
     projectId: part.projectId,
     name: part.name,
     category: part.category,

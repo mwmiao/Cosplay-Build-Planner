@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { sameOrigin } from "@/lib/http";
 import { db } from "@/lib/db";
 import { UploadError, removeStoredFiles, storeImage } from "@/lib/uploads";
 import { getI18n } from "@/i18n/server";
@@ -15,9 +16,10 @@ export const dynamic = "force-dynamic";
  * Works as a plain HTML form post: redirects back with ?uploaded= or ?uploadError=.
  */
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  if (!(await isAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Cookie-authenticated POST outside server actions: reject cross-site requests.
+  if (!sameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const idResult = idSchema.safeParse(params.id);
   if (!idResult.success) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const projectId = idResult.data;
@@ -31,7 +33,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     });
   };
 
-  const project = await db.project.findFirst({ where: { id: projectId, deletedAt: null } });
+  // Only the owner may attach files; another user's project looks missing.
+  const project = await db.project.findFirst({ where: { id: projectId, ownerId: user.id, deletedAt: null } });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { t } = getI18n();
   const E = t.refs.errors;

@@ -1,73 +1,32 @@
 import "server-only";
-import { createHash, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE } from "./constants";
-import { authEnabled, env } from "./env";
-import { SESSION_MAX_AGE_SECONDS, createSessionToken, verifySessionToken } from "./session";
+import { cache } from "react";
+import { getAuth } from "./betterAuth";
 
-export function passwordMatches(candidate: string): boolean {
-  const password = env().APP_PASSWORD;
-  if (!password) return false;
-  const a = createHash("sha256").update(candidate).digest();
-  const b = createHash("sha256").update(password).digest();
-  return timingSafeEqual(a, b);
-}
-
-export async function isAuthenticated(): Promise<boolean> {
-  if (!authEnabled()) return true;
-  return verifySessionToken(cookies().get(SESSION_COOKIE)?.value, env().SESSION_SECRET);
-}
+export type CurrentUser = { id: string; name: string; email: string };
 
 /**
- * Checked in every server action, page layout and API route, in addition to
- * middleware, so a middleware bypass never exposes data.
+ * The signed-in user, validated server-side against the session table on
+ * every request (cached for the duration of one request).
  */
-export async function requireAuth(): Promise<void> {
-  if (!(await isAuthenticated())) redirect("/login");
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+  const session = await getAuth().api.getSession({ headers: headers() });
+  if (!session) return null;
+  return { id: session.user.id, name: session.user.name, email: session.user.email };
+});
+
+/** Use in every page, action and route that touches private data. */
+export async function requireUser(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return user;
 }
 
-export async function startSession(): Promise<void> {
-  const secret = env().SESSION_SECRET;
-  if (!secret) throw new Error("SESSION_SECRET is not set");
-  const token = await createSessionToken(secret);
-  cookies().set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: env().COOKIE_SECURE,
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-}
-
-export function endSession(): void {
-  cookies().delete(SESSION_COOKIE);
-}
-
-// Simple in-memory login throttle: 10 failures per 15 minutes per client.
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILURES = 10;
-const failures = new Map<string, { count: number; first: number }>();
-
-export function loginBlocked(clientId: string): boolean {
-  const entry = failures.get(clientId);
-  if (!entry) return false;
-  if (Date.now() - entry.first > WINDOW_MS) {
-    failures.delete(clientId);
-    return false;
-  }
-  return entry.count >= MAX_FAILURES;
-}
-
-export function recordLoginFailure(clientId: string): void {
-  const entry = failures.get(clientId);
-  if (!entry || Date.now() - entry.first > WINDOW_MS) {
-    failures.set(clientId, { count: 1, first: Date.now() });
-  } else {
-    entry.count += 1;
-  }
-}
-
-export function clearLoginFailures(clientId: string): void {
-  failures.delete(clientId);
+/** Only same-site relative paths are allowed as post-login destinations. */
+export function safeNext(next: unknown): string {
+  if (typeof next !== "string") return "/projects";
+  if (!next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/projects";
+  if (/^\/(login|register|forgot-password|reset-password)(\/|\?|$)/.test(next)) return "/projects";
+  return next;
 }

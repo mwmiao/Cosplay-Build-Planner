@@ -52,8 +52,86 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  image:
+  # Real-container test: upgrade from the published 1.2.1 image (no accounts)
+  # to this build on the same data volume, claim the old project, check the
+  # stored FX conversion is unchanged, then replace the container and check
+  # the session, data and images survive. Nothing is published if it fails.
+  container:
     needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATA: ${{ github.workspace }}/ci-data
+      REGISTRATION_CODE: ci-invite-code
+      STATE_DIR: ${{ github.workspace }}/container-state
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - uses: docker/setup-buildx-action@v3
+      - name: Build this version (not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: cosplay-planner:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Helper scripts
+        run: |
+          cat > "$RUNNER_TEMP/wait.sh" <<'EOS'
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:1337/api/health >/dev/null 2>&1; then echo "healthy"; exit 0; fi
+            sleep 2
+          done
+          docker logs app; exit 1
+          EOS
+          chmod +x "$RUNNER_TEMP/wait.sh"
+          mkdir -p "$DATA"
+      - name: Start 1.2.1 (before accounts)
+        run: |
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) eazyeight/cosplay-build-planner:1.2.1
+          "$RUNNER_TEMP/wait.sh"
+      - run: npx playwright test -c playwright.container.config.ts
+        env: { CONTAINER_PHASE: legacy }
+      - name: Replace with this build (same volume)
+        run: |
+          docker rm -f app
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e REGISTRATION_CODE -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
+          "$RUNNER_TEMP/wait.sh"
+      - run: npx playwright test -c playwright.container.config.ts
+        env: { CONTAINER_PHASE: register }
+      - name: Claim old projects (dry run, then for real)
+        run: |
+          docker exec app node scripts/claim-projects.js --email ci-owner@example.test --dry-run
+          docker exec app node scripts/claim-projects.js --email ci-owner@example.test
+          docker exec app node scripts/claim-projects.js --email ci-owner@example.test | grep "Nothing to claim"
+      - run: npx playwright test -c playwright.container.config.ts
+        env: { CONTAINER_PHASE: verify-upgrade }
+      - name: Replace the container again (same volume); secret must not change
+        run: |
+          before=$(sha256sum "$DATA/secrets/auth-secret" | cut -c1-64)
+          docker rm -f app
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e REGISTRATION_CODE -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
+          "$RUNNER_TEMP/wait.sh"
+          after=$(sha256sum "$DATA/secrets/auth-secret" | cut -c1-64)
+          test "$before" = "$after" && echo "auth secret unchanged"
+          ls "$DATA/backups"
+      - run: npx playwright test -c playwright.container.config.ts
+        env: { CONTAINER_PHASE: verify-replaced }
+      - name: Admin password reset works
+        run: docker exec app node scripts/reset-password.js --email ci-owner@example.test | grep "Password reset for"
+      - name: Container logs
+        if: always()
+        run: docker logs app || true
+
+  image:
+    needs: [test, container]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30

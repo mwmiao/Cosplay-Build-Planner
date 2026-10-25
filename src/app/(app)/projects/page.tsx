@@ -4,6 +4,7 @@ import { CalendarIcon, DownloadIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState, ProgressBar, StatusBadge } from "@/components/ui";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { statusLabel } from "@/lib/constants";
 import { daysLabel, daysUntil } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
@@ -18,10 +19,11 @@ export default async function ProjectsPage({
 }: {
   searchParams: { view?: string };
 }) {
+  const user = await requireUser();
   const { t, f } = getI18n();
   const archived = searchParams.view === "archived";
   const projects = await db.project.findMany({
-    where: { deletedAt: null, archivedAt: archived ? { not: null } : null },
+    where: { ownerId: user.id, deletedAt: null, archivedAt: archived ? { not: null } : null },
     include: {
       parts: {
         where: { deletedAt: null },
@@ -36,12 +38,13 @@ export default async function ProjectsPage({
         },
       },
       references: { take: 1, orderBy: { createdAt: "asc" }, select: { thumbPath: true } },
+      publication: { select: { id: true } },
     },
     // Soonest deadline first; projects without one go last.
     orderBy: [{ deadline: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }],
   });
 
-  const ctx = await getMoneyContext();
+  const ctx = await getMoneyContext(user.id);
 
   return (
     <>
@@ -114,7 +117,18 @@ export default async function ProjectsPage({
                       <h2 className="min-w-0 truncate font-semibold">{p.characterName}</h2>
                       <span className="shrink-0"><StatusBadge status={p.status} label={statusLabel(p.status, t)} /></span>
                     </div>
-                    <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">{p.series ?? "—"}</p>
+                    <p className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                      <span className="truncate">{p.series ?? "—"}</span>
+                      <span
+                        className={`shrink-0 rounded-full px-2 text-[11px] font-semibold ${
+                          p.publication
+                            ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
+                            : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                        }`}
+                      >
+                        {p.publication ? t.community.statusPublished : t.community.statusPrivate}
+                      </span>
+                    </p>
                     <div className="mt-2 flex items-center gap-2">
                       <ProgressBar value={stats.completion} label={t.projects.completionOf(p.characterName)} />
                       <span className="text-xs font-semibold tabular-nums">{stats.completion}%</span>

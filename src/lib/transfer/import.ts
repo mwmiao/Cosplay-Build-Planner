@@ -139,9 +139,14 @@ function plannedTotal(file: ExportFile, ctx: MoneyContext) {
   return { total, converted, missing: [...missing] };
 }
 
-async function summarizeTarget(file: ExportFile, targetId: string, ctx: MoneyContext): Promise<TargetSummary | null> {
+async function summarizeTarget(
+  file: ExportFile,
+  targetId: string,
+  userId: string,
+  ctx: MoneyContext,
+): Promise<TargetSummary | null> {
   const target = await db.project.findFirst({
-    where: { id: targetId, deletedAt: null },
+    where: { id: targetId, ownerId: userId, deletedAt: null },
     include: {
       parts: { select: { uid: true, deletedAt: true } },
       shoppingItems: { where: { partId: null }, select: { uid: true, deletedAt: true } },
@@ -169,6 +174,7 @@ async function summarizeTarget(file: ExportFile, targetId: string, ctx: MoneyCon
 
 export async function buildPreview(
   file: ExportFile,
+  userId: string,
   ctx: MoneyContext,
   t: Dict,
   targetId?: string,
@@ -186,8 +192,9 @@ export async function buildPreview(
 
   let matchingProject: ImportPreview["matchingProject"] = null;
   if (file.project.id) {
+    // Only the user's own projects can be suggested; the file's ids grant nothing.
     const match = await db.project.findFirst({
-      where: { id: file.project.id, deletedAt: null },
+      where: { id: file.project.id, ownerId: userId, deletedAt: null },
       select: { id: true, characterName: true },
     });
     if (match) {
@@ -218,7 +225,7 @@ export async function buildPreview(
     budgetCents: file.project.budgetCents,
     warnings,
     matchingProject,
-    target: targetId ? await summarizeTarget(file, targetId, ctx) : null,
+    target: targetId ? await summarizeTarget(file, targetId, userId, ctx) : null,
   };
 }
 
@@ -296,6 +303,7 @@ async function insertRows(
   tx: Tx,
   file: ExportFile,
   projectId: string,
+  ownerId: string,
   skipPartUids: Set<string>,
   skipItemUids: Set<string>,
 ) {
@@ -303,8 +311,9 @@ async function insertRows(
   let paidPreserved = 0;
   for (const p of file.parts) {
     if (skipPartUids.has(p.id)) continue;
+    // New database ids every time; only the stable uid comes from the file.
     const part = await tx.buildPart.create({ data: partData(p, projectId) });
-    await syncShoppingItemForPart(tx, part);
+    await syncShoppingItemForPart(tx, part, ownerId);
     partsCreated += 1;
     if (p.payment) paidPreserved += 1;
   }
@@ -314,6 +323,7 @@ async function insertRows(
     await tx.shoppingListItem.create({
       data: {
         uid: s.id,
+        ownerId,
         projectId,
         name: s.name,
         category: (CATEGORIES as readonly string[]).includes(s.category) ? s.category : "other",
@@ -340,11 +350,12 @@ async function insertRows(
 export async function applyImport(
   file: ExportFile,
   options: ImportOptions,
+  userId: string,
   ctx: MoneyContext,
   t: Dict,
 ): Promise<ImportReport> {
   const E = t.transfer.errors;
-  const preview = await buildPreview(file, ctx, t, options.mode === "create" ? undefined : options.targetId);
+  const preview = await buildPreview(file, userId, ctx, t, options.mode === "create" ? undefined : options.targetId);
   const warnings = preview.warnings.filter((w) => w !== (preview.matchingProject ? t.transfer.warn.matchesExisting(preview.matchingProject.name) : ""));
 
   let backup: string | null = null;
@@ -374,8 +385,9 @@ export async function applyImport(
   return db.$transaction(
     async (tx) => {
       if (options.mode === "create") {
-        const project = await tx.project.create({ data: projectData(file) });
-        const r = await insertRows(tx, file, project.id, new Set(), new Set());
+        // Always a new private project owned by the importing user.
+        const project = await tx.project.create({ data: { ...projectData(file), ownerId: userId } });
+        const r = await insertRows(tx, file, project.id, userId, new Set(), new Set());
         return {
           mode: "create",
           projectId: project.id,
@@ -389,7 +401,7 @@ export async function applyImport(
         } satisfies ImportReport;
       }
 
-      const target = await tx.project.findFirst({ where: { id: options.targetId, deletedAt: null } });
+      const target = await tx.project.findFirst({ where: { id: options.targetId, ownerId: userId, deletedAt: null } });
       if (!target) throw new ImportError(E.targetNotFound);
 
       if (options.mode === "replace") {
@@ -397,7 +409,7 @@ export async function applyImport(
         await tx.shoppingListItem.deleteMany({ where: { projectId: target.id } });
         const removedParts = await tx.buildPart.deleteMany({ where: { projectId: target.id } });
         const updated = await tx.project.update({ where: { id: target.id }, data: projectData(file) });
-        const r = await insertRows(tx, file, target.id, new Set(), new Set());
+        const r = await insertRows(tx, file, target.id, userId, new Set(), new Set());
         return {
           mode: "replace",
           projectId: target.id,
@@ -419,7 +431,7 @@ export async function applyImport(
       ]);
       const partUids = new Set(parts.map((p) => p.uid));
       const itemUids = new Set(items.map((s) => s.uid));
-      const r = await insertRows(tx, file, target.id, partUids, itemUids);
+      const r = await insertRows(tx, file, target.id, userId, partUids, itemUids);
       if (!target.currency) {
         await tx.project.update({ where: { id: target.id }, data: { currency: file.project.currency } });
       }

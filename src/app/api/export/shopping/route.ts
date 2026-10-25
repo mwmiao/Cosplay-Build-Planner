@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getI18n } from "@/i18n/server";
 import { categoryLabel } from "@/lib/constants";
 import { centsToDecimal, csvResponse, today } from "@/lib/csv";
@@ -17,14 +17,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  if (!(await isAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { t } = getI18n();
   const c = t.csv;
   const params = new URL(req.url).searchParams;
   const group = parseGroup(params.get("group") ?? undefined);
-  const [items, ctx] = await Promise.all([loadShoppingItems(params.get("show") === "all"), getMoneyContext()]);
+  const [items, ctx] = await Promise.all([
+    loadShoppingItems(user.id, params.get("show") === "all"),
+    getMoneyContext(user.id),
+  ]);
   const base = ctx.defaultCurrency;
 
   const rows: (string | number)[][] = [

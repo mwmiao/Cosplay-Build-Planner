@@ -3,12 +3,13 @@ import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { ThemePicker } from "@/components/ThemePicker";
 import pkg from "../../../../package.json";
 import { db } from "@/lib/db";
-import { authEnabled } from "@/lib/env";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { getMoneyContext } from "@/lib/queries";
 import { crossRate } from "@/lib/rates";
 import { DefaultCurrencyForm, LanguagePicker, RefreshRatesButton } from "./CurrencySettings";
-import { logout } from "../../login/actions";
+import Link from "next/link";
+import { signOut } from "../../(auth)/actions";
 import { purgeProject, restoreProject } from "../projects/actions";
 
 export function generateMetadata(): Metadata {
@@ -16,29 +17,30 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function SettingsPage() {
+  const user = await requireUser();
   const { t, f } = getI18n();
   const S = t.settings;
   const [deleted, counts] = await Promise.all([
     db.project.findMany({
-      where: { deletedAt: { not: null } },
+      where: { ownerId: user.id, deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
       select: { id: true, characterName: true, series: true, deletedAt: true },
     }),
     Promise.all([
-      db.project.count({ where: { deletedAt: null } }),
-      db.buildPart.count({ where: { deletedAt: null } }),
-      db.referenceImage.count(),
+      db.project.count({ where: { ownerId: user.id, deletedAt: null } }),
+      db.buildPart.count({ where: { deletedAt: null, project: { ownerId: user.id, deletedAt: null } } }),
+      db.referenceImage.count({ where: { project: { ownerId: user.id, deletedAt: null } } }),
     ]),
   ]);
   const [projectCount, partCount, imageCount] = counts;
-  const ctx = await getMoneyContext();
+  const ctx = await getMoneyContext(user.id);
   const base = ctx.defaultCurrency;
   // Currencies actually used anywhere, to show their current rates.
   const used = new Set<string>();
   for (const rows of await Promise.all([
-    db.project.findMany({ where: { deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
-    db.buildPart.findMany({ where: { deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
-    db.shoppingListItem.findMany({ where: { deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
+    db.project.findMany({ where: { ownerId: user.id, deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
+    db.buildPart.findMany({ where: { deletedAt: null, currency: { not: null }, project: { ownerId: user.id } }, select: { currency: true }, distinct: ["currency"] }),
+    db.shoppingListItem.findMany({ where: { deletedAt: null, currency: { not: null }, ownerId: user.id }, select: { currency: true }, distinct: ["currency"] }),
   ])) {
     for (const r of rows) if (r.currency && r.currency !== base) used.add(r.currency);
   }
@@ -173,15 +175,22 @@ export default async function SettingsPage() {
         <p className="hint mt-3">{S.dataHint}</p>
       </section>
 
-      {authEnabled() ? (
-        <form action={logout}>
-          <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText={t.login.loggingOut}>
-            {t.login.logout}
-          </SubmitButton>
-        </form>
-      ) : (
-        <p className="hint">{S.loginOff}</p>
-      )}
+      <section className="card mb-6 flex flex-wrap items-center justify-between gap-3" aria-label={t.auth.account}>
+        <div className="min-w-0 text-sm">
+          <div className="font-semibold">{t.auth.signedInAs(user.name)}</div>
+          <div className="truncate text-zinc-500 dark:text-zinc-400">{user.email}</div>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/account" className="btn-secondary">
+            {t.auth.account}
+          </Link>
+          <form action={signOut}>
+            <SubmitButton className="btn-ghost" pendingText={t.auth.loggingOut}>
+              {t.auth.logout}
+            </SubmitButton>
+          </form>
+        </div>
+      </section>
     </>
   );
 }

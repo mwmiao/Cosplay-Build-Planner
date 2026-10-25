@@ -1,26 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE } from "@/lib/constants";
-import { verifySessionToken } from "@/lib/session";
 
-export async function middleware(req: NextRequest) {
-  // No password configured: login is turned off.
-  if (!process.env.APP_PASSWORD?.trim()) return NextResponse.next();
-  const ok = await verifySessionToken(
-    req.cookies.get(SESSION_COOKIE)?.value,
-    process.env.SESSION_SECRET,
-  );
-  if (ok) return NextResponse.next();
+// Optimistic check only: is there a session cookie at all? Every page, action
+// and API route validates the session against the database itself
+// (lib/auth.ts), so this never decides access on its own.
+const SESSION_COOKIES = ["cbp.session_token", "__Secure-cbp.session_token"];
 
-  if (req.nextUrl.pathname.startsWith("/api/")) {
+const PUBLIC_PAGES = /^\/(login|register|forgot-password|reset-password|community)(\/|$)/;
+const PUBLIC_API = /^\/api\/(health|community)(\/|$)/;
+
+export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+  if (PUBLIC_PAGES.test(pathname) || PUBLIC_API.test(pathname)) return NextResponse.next();
+  if (SESSION_COOKIES.some((name) => req.cookies.has(name))) return NextResponse.next();
+
+  if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const url = req.nextUrl.clone();
   url.pathname = "/login";
   url.search = "";
+  if (pathname !== "/") url.searchParams.set("next", `${pathname}${search}`);
   return NextResponse.redirect(url);
 }
 
 export const config = {
-  // Everything except the login page, health check and static assets.
-  matcher: ["/((?!login|api/health|_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest).*)"],
 };

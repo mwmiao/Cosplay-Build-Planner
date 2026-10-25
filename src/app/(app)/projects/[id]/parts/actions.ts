@@ -2,10 +2,10 @@
 
 import type { BuildPart, Project } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Dict } from "@/i18n";
 import { getI18n } from "@/i18n/server";
-import { requireAuth } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UNPAID, type PaymentFields, convertPayment } from "@/lib/payments";
 import { RateUnavailableError } from "@/lib/rates";
@@ -26,10 +26,20 @@ function revalidate(projectId: string) {
   revalidatePath("/shopping");
 }
 
-async function liveProject(projectId: string) {
-  const project = await db.project.findFirst({ where: { id: projectId, deletedAt: null } });
-  if (!project) throw new Error("Project not found");
+/** The session user's live project, or 404 (another user's project counts as not found). */
+async function liveProject(projectId: string, userId: string) {
+  const project = await db.project.findFirst({ where: { id: projectId, ownerId: userId, deletedAt: null } });
+  if (!project) notFound();
   return project;
+}
+
+/** A live part inside the user's project, or 404. */
+async function livePart(partId: string, projectId: string, userId: string, tx: Pick<typeof db, "buildPart"> = db) {
+  const part = await tx.buildPart.findFirst({
+    where: { id: partId, projectId, deletedAt: null, project: { ownerId: userId, deletedAt: null } },
+  });
+  if (!part) notFound();
+  return part;
 }
 
 /**
@@ -41,8 +51,9 @@ async function paymentFor(
   project: Project,
   previous: BuildPart | null,
   t: Dict,
+  userId: string,
 ): Promise<{ fields: PaymentFields; base: string } | FormState> {
-  const base = project.currency ?? (await getDefaultCurrency());
+  const base = project.currency ?? (await getDefaultCurrency(userId));
   if (!d.paid || !d.paidAt || d.actualCostCents === undefined) return { fields: UNPAID, base };
   try {
     const fields = await convertPayment(
@@ -98,13 +109,13 @@ export async function createPart(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireAuth();
+  const user = await requireUser();
   const pid = idSchema.parse(projectId);
-  const project = await liveProject(pid);
+  const project = await liveProject(pid, user.id);
   const { t } = getI18n();
   const parsed = schemas(t).part.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
-  const payment = await paymentFor(parsed.data, project, null, t);
+  const payment = await paymentFor(parsed.data, project, null, t, user.id);
   if (!("fields" in payment)) return payment;
 
   await db.$transaction(async (tx) => {
@@ -116,7 +127,7 @@ export async function createPart(
         completedAt: parsed.data.status === "done" ? new Date() : null,
       },
     });
-    await syncShoppingItemForPart(tx, part);
+    await syncShoppingItemForPart(tx, part, user.id);
   });
   await pinProjectCurrency(project, payment.base, payment.fields);
   revalidate(pid);
@@ -133,28 +144,28 @@ export async function updatePart(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireAuth();
+  const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(partId);
-  const project = await liveProject(pid);
+  const project = await liveProject(pid, user.id);
   const { t } = getI18n();
   const parsed = schemas(t).part.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
-  const before = await db.buildPart.findFirstOrThrow({ where: { id, projectId: pid, deletedAt: null } });
-  const payment = await paymentFor(parsed.data, project, before, t);
+  const before = await livePart(id, pid, user.id);
+  const payment = await paymentFor(parsed.data, project, before, t, user.id);
   if (!("fields" in payment)) return payment;
 
   const d = parsed.data;
   await db.$transaction(async (tx) => {
     const part = await tx.buildPart.update({
-      where: { id },
+      where: { id: before.id },
       data: {
         ...partData(d),
         ...payment.fields,
         completedAt: d.status === "done" ? (before.completedAt ?? new Date()) : null,
       },
     });
-    await syncShoppingItemForPart(tx, part);
+    await syncShoppingItemForPart(tx, part, user.id);
   });
   await pinProjectCurrency(project, payment.base, payment.fields);
   revalidate(pid);
@@ -163,31 +174,32 @@ export async function updatePart(
 
 /** Quick toggle from the parts list: done ↔ building. Payment details are untouched. */
 export async function togglePartDone(projectId: string, partId: string): Promise<void> {
-  await requireAuth();
+  const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(partId);
   await db.$transaction(async (tx) => {
-    const before = await tx.buildPart.findFirstOrThrow({ where: { id, projectId: pid, deletedAt: null } });
+    const before = await livePart(id, pid, user.id, tx);
     const done = before.status !== "done";
     const part = await tx.buildPart.update({
-      where: { id },
+      where: { id: before.id },
       data: { status: done ? "done" : "building", completedAt: done ? new Date() : null },
     });
-    await syncShoppingItemForPart(tx, part);
+    await syncShoppingItemForPart(tx, part, user.id);
   });
   revalidate(pid);
 }
 
 export async function deletePart(projectId: string, partId: string): Promise<void> {
-  await requireAuth();
+  const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(partId);
   await db.$transaction(async (tx) => {
+    const before = await livePart(id, pid, user.id, tx);
     const part = await tx.buildPart.update({
-      where: { id, projectId: pid },
+      where: { id: before.id },
       data: { deletedAt: new Date() },
     });
-    await syncShoppingItemForPart(tx, part);
+    await syncShoppingItemForPart(tx, part, user.id);
   });
   revalidate(pid);
   redirect(`/projects/${pid}#parts`);

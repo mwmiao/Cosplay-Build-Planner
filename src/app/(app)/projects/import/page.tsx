@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
+import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ImportWizard } from "./ImportWizard";
 
@@ -9,9 +10,10 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function ImportPage() {
+  const user = await requireUser();
   const { t } = getI18n();
   const projects = await db.project.findMany({
-    where: { deletedAt: null },
+    where: { ownerId: user.id, deletedAt: null },
     select: { id: true, characterName: true },
     orderBy: { characterName: "asc" },
   });
