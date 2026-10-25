@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { ThemePicker } from "@/components/ThemePicker";
+import pkg from "../../../../package.json";
 import { db } from "@/lib/db";
 import { authEnabled } from "@/lib/env";
 import { formatDate, rateLabel } from "@/lib/format";
@@ -37,9 +38,9 @@ export default async function SettingsPage() {
   ])) {
     for (const r of rows) if (r.currency && r.currency !== base) used.add(r.currency);
   }
-  // Baked into the Docker image by CI; "dev" when running from source.
-  const version = process.env.APP_VERSION ?? "dev";
-  const isSha = /^[0-9a-f]{40}$/.test(version);
+  // Baked into the Docker image by CI; package.json's version when running from source.
+  const version = process.env.APP_VERSION ?? pkg.version;
+  const commit = /^[0-9a-f]{40}$/.test(process.env.APP_COMMIT ?? "") ? process.env.APP_COMMIT : null;
   const builtAt = process.env.BUILD_DATE ? new Date(process.env.BUILD_DATE) : null;
 
   return (
@@ -134,18 +135,27 @@ export default async function SettingsPage() {
         <dl className="grid grid-cols-2 gap-y-1">
           <dt className="text-zinc-500 dark:text-zinc-400">Version</dt>
           <dd>
-            {isSha ? (
-              <a
-                href={`https://github.com/mwmiao/Cosplay-Build-Planner/commit/${version}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link font-mono"
-              >
-                {version.slice(0, 7)}
-              </a>
-            ) : (
-              <span className="font-mono">{version}</span>
-            )}
+            <a
+              href="https://github.com/mwmiao/Cosplay-Build-Planner/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link font-mono"
+            >
+              {version}
+            </a>
+            {commit ? (
+              <>
+                {" · "}
+                <a
+                  href={`https://github.com/mwmiao/Cosplay-Build-Planner/commit/${commit}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link font-mono"
+                >
+                  {commit.slice(0, 7)}
+                </a>
+              </>
+            ) : null}
           </dd>
           {builtAt && !Number.isNaN(builtAt.getTime()) ? (
             <>

@@ -107,20 +107,40 @@ After changing `prisma/schema.prisma`, run `npx prisma migrate dev --name <chang
 ## How releases work
 
 ```
-push to main ──► GitHub Actions: typecheck + Playwright ──► build image ──► ghcr.io/mwmiao/cosplay-build-planner:latest
-                                                                                   │
-                                          UGREEN NAS (Docker app) sees newer :latest ◄┘ ──► update
+push to main ──► GitHub Actions: typecheck + Playwright ──► image tagged latest + sha-<commit>
+tag v1.2.0   ──► same tests ──► image tagged 1.2.0 + 1.2  ──► GitHub Release with CHANGELOG notes
 ```
 
-- **Every push to `main`** runs the tests, and if they pass, publishes a new image tagged:
-  - `latest`
-  - `sha-<commit>`, e.g. `sha-f053d1f`
-- **Pull requests** only run the tests.
-- **Tags like `v1.2.0`** also publish `1.2.0`. Use one if you ever want to pin the NAS to a fixed version.
-- **Failed tests mean nothing is published,** so a broken change never reaches the NAS.
-- **Settings → About this install** shows the running version (linked to its commit) and when it was built, so you can confirm an update arrived.
+**Where images are published:**
+- **`ghcr.io/mwmiao/cosplay-build-planner`**: always.
+- **`docker.io/<your-docker-hub-user>/cosplay-build-planner`**: also, once Docker Hub is connected (see below). Use this one on the NAS, since the UGOS Docker app offers updates for Docker Hub images.
 
-Watch builds under the repo's **Actions** tab. Published images are listed under **Packages** on the repo page.
+**Tags:**
+
+| Tag | Meaning |
+|---|---|
+| `latest` | Newest commit on `main` that passed the tests. Use this to get every change. |
+| `1.1.0` | Exactly that release, for pinning or rolling back. |
+| `1.1` | Newest `1.1.x` patch release. |
+| `sha-8a81e0e` | One specific commit. |
+
+**Versions** follow `MAJOR.MINOR.PATCH`. The version lives in `package.json`, every release is listed in [CHANGELOG.md](CHANGELOG.md), and the running version is shown in **Settings → About this install**.
+
+**Making a release:**
+1. Bump `version` in `package.json` (and `package-lock.json`).
+2. Add a section to `CHANGELOG.md` and commit.
+3. Run `git tag v1.2.0 && git push origin main v1.2.0`.
+
+The workflow refuses a tag that doesn't match `package.json`. If the tests fail, nothing is published, so a broken change never reaches the NAS.
+
+**Connecting Docker Hub (one time):**
+1. Create a free account at [hub.docker.com](https://hub.docker.com).
+2. Go to **Account settings → Personal access tokens → Generate new token**, with access *Read & Write*.
+3. In this GitHub repo, go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+   - `DOCKERHUB_USERNAME`: your Docker Hub username.
+   - `DOCKERHUB_TOKEN`: the token.
+4. Re-run the latest workflow, or push anything. The image then appears at `docker.io/<username>/cosplay-build-planner`, public by default.
+5. On the NAS, change `image:` in `docker-compose.yml` to `<username>/cosplay-build-planner:latest` and redeploy the project once.
 
 ---
 
@@ -184,7 +204,11 @@ sudo docker compose logs -f     # wait for "Starting Cosplay Build Planner on po
 Open `http://<nas-lan-ip>:1337` on your home network.
 
 ### 3. Updates
-After you push changes and the GitHub workflow finishes (about 3–5 minutes), the UGOS Docker app shows that a newer `ghcr.io/mwmiao/cosplay-build-planner:latest` image is available. Update the image or project from there, and the container is recreated with the new version. Over SSH, the equivalent is:
+After you push changes and the GitHub workflow finishes (about 3–5 minutes), a new `latest` image exists.
+- **Docker Hub image** (`<username>/cosplay-build-planner`): the UGOS Docker app should show an update for it, like it does for other Docker Hub images. Apply it there, and the container is recreated with the new version.
+- **`ghcr.io` image:** UGOS doesn't appear to check GitHub's registry, so pull the image again in the Docker app or update over SSH.
+
+Over SSH, the update command is:
 
 ```bash
 cd /volume1/docker/cosplay-planner && sudo docker compose pull && sudo docker compose up -d

@@ -25,12 +25,15 @@ RUN npx prisma generate \
 
 # ---- runtime ---------------------------------------------------------------
 FROM base AS runner
-# Set by CI (commit SHA or tag + build time); shown in Settings.
+# Set by CI (package.json version, commit SHA, build time); shown in Settings.
 ARG APP_VERSION=dev
+ARG APP_COMMIT=
 ARG BUILD_DATE=
 LABEL org.opencontainers.image.source="https://github.com/mwmiao/Cosplay-Build-Planner" \
-      org.opencontainers.image.title="Cosplay Build Planner"
+      org.opencontainers.image.title="Cosplay Build Planner" \
+      org.opencontainers.image.version=$APP_VERSION
 ENV APP_VERSION=$APP_VERSION \
+    APP_COMMIT=$APP_COMMIT \
     BUILD_DATE=$BUILD_DATE \
     NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

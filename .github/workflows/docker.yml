@@ -1,11 +1,16 @@
-# Tests every push/PR; on main (and version tags) publishes the Docker image to
-# ghcr.io/mwmiao/cosplay-build-planner for the NAS to pull.
+# Tests every push/PR. On main and on version tags (v1.2.3) it publishes the
+# Docker image:
+#   - ghcr.io/mwmiao/cosplay-build-planner          (always)
+#   - docker.io/<DOCKERHUB_USERNAME>/cosplay-build-planner  (when the
+#     DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets are set)
+# Tags: latest (main), sha-<commit>, and 1.2.3 + 1.2 for version tags.
+# Version tags also create a GitHub Release with that version's CHANGELOG notes.
 name: Test and publish image
 
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["v*.*.*"]
   pull_request:
   workflow_dispatch:
 
@@ -14,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/cosplay-build-planner
+  IMAGE_NAME: cosplay-build-planner
 
 jobs:
   test:
@@ -26,6 +31,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pkg="v$(node -p "require('./package.json').version")"
+          if [ "$pkg" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} doesn't match package.json version $pkg"
+            exit 1
+          fi
       - run: npm ci
       - run: npm run typecheck
       - run: npx playwright install --with-deps chromium
@@ -45,25 +58,39 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - uses: actions/checkout@v4
+      - name: Read version
+        id: ver
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        if: env.DOCKERHUB_USERNAME != ''
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE }}
+          images: |
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/{1}', env.DOCKERHUB_USERNAME, env.IMAGE_NAME) || '' }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short,prefix=sha-
             type=semver,pattern={{version}}
-      - name: Build date
-        id: date
-        run: echo "value=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.version=${{ steps.ver.outputs.version }}
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -72,7 +99,30 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            APP_VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
-            BUILD_DATE=${{ steps.date.outputs.value }}
+            APP_VERSION=${{ steps.ver.outputs.version }}
+            APP_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.ver.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '
+            /^## / { if (found) exit; if (index($0, "## " v " ") == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          printf '\n---\nDocker image: `ghcr.io/%s/%s:%s`\n' "${{ github.repository_owner }}" "${{ env.IMAGE_NAME }}" "$v" >> release-notes.md
+          cat release-notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
