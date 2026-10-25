@@ -1,0 +1,107 @@
+// Cosplay Build Planner data model.
+// Money is stored as integer cents. Status/category values are validated by Zod
+// (src/lib/constants.ts) because SQLite has no native enums.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id             String    @id @default(cuid())
+  characterName  String
+  series         String?
+  conventionName String?
+  deadline       DateTime?
+  /// idea | researching | building | finished
+  status         String    @default("idea")
+  budgetCents    Int?
+  /// Manual override; when null, total spent is calculated from parts.
+  spentCents     Int?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  archivedAt     DateTime?
+  deletedAt      DateTime?
+
+  parts         BuildPart[]
+  references    ReferenceImage[]
+  shoppingItems ShoppingListItem[]
+
+  @@index([deletedAt, archivedAt])
+}
+
+model BuildPart {
+  id                 String    @id @default(cuid())
+  projectId          String
+  name               String
+  category           String    @default("other")
+  /// needed | ordered | arrived | building | done
+  status             String    @default("needed")
+  /// Per-item costs; line totals multiply by quantity.
+  estimatedCostCents Int?
+  actualCostCents    Int?
+  quantity           Int       @default(1)
+  supplier           String?
+  url                String?
+  notes              String?
+  completedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shoppingItem ShoppingListItem?
+
+  @@index([projectId, deletedAt])
+}
+
+model ReferenceImage {
+  id           String   @id @default(cuid())
+  projectId    String
+  /// Paths relative to UPLOAD_DIR
+  filePath     String
+  thumbPath    String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  width        Int?
+  height       Int?
+  caption      String?
+  sourceUrl    String?
+  createdAt    DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ShoppingListItem {
+  id                 String    @id @default(cuid())
+  /// Null for general items not tied to a project
+  projectId          String?
+  /// Set when the item is generated from a part that is still "needed"
+  partId             String?   @unique
+  name               String
+  category           String    @default("other")
+  supplier           String?
+  url                String?
+  quantity           Int       @default(1)
+  estimatedCostCents Int?
+  notes              String?
+  purchased          Boolean   @default(false)
+  purchasedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  project Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  part    BuildPart? @relation(fields: [partId], references: [id], onDelete: SetNull)
+
+  @@index([deletedAt, purchased])
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Cosplay Build Planner",
+  "short_name": "Cosplay",
+  "start_url": "/projects",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#db2777",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

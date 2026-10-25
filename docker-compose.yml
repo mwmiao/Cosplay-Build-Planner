@@ -1,0 +1,36 @@
+# Cosplay Build Planner — UGREEN NAS (UGOS Pro Docker app) / any Docker host.
+#
+# 1. Copy .env.example to .env next to this file and set APP_PASSWORD + SESSION_SECRET.
+# 2. Create the data folder on the NAS (see DATA_PATH below).
+# 3. docker compose up -d --build
+#
+# Reach it at http://<nas-lan-ip>:1337 at home, or http://<nas-tailscale-name>:1337
+# via Tailscale. Do NOT forward port 1337 on your router.
+
+services:
+  cosplay-planner:
+    build: .
+    image: cosplay-planner:latest
+    container_name: cosplay-planner
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "1337"
+      DATABASE_URL: file:/app/data/cosplay.db
+      UPLOAD_DIR: /app/data/uploads
+      # Your NAS user's IDs (SSH in and run `id`); files in the data folder get this owner.
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      SEED_EXAMPLE: ${SEED_EXAMPLE:-true}
+    ports:
+      - "1337:1337"
+    volumes:
+      # Everything the app stores: cosplay.db, uploads/, backups/
+      - ${DATA_PATH:-/volume1/docker/cosplay-planner/data}:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
