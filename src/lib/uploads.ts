@@ -19,7 +19,13 @@ export const ACCEPT_ATTR = "image/jpeg,image/png,image/webp,image/gif,image/avif
 const MAX_DIMENSION = 2400;
 const THUMB_SIZE = 480;
 
-export class UploadError extends Error {}
+export type UploadErrorCode = "empty" | "tooLarge" | "unreadable" | "unsupported" | "heic" | "dimensions";
+
+export class UploadError extends Error {
+  constructor(readonly code: UploadErrorCode) {
+    super(code);
+  }
+}
 
 export type StoredImage = {
   filePath: string;
@@ -37,9 +43,9 @@ export type StoredImage = {
  */
 export async function storeImage(projectId: string, file: File): Promise<StoredImage> {
   const maxBytes = env().MAX_UPLOAD_MB * 1024 * 1024;
-  if (file.size === 0) throw new UploadError("That file is empty.");
+  if (file.size === 0) throw new UploadError("empty");
   if (file.size > maxBytes) {
-    throw new UploadError(`That image is larger than ${env().MAX_UPLOAD_MB} MB.`);
+    throw new UploadError("tooLarge");
   }
 
   const input = Buffer.from(await file.arrayBuffer());
@@ -47,16 +53,15 @@ export async function storeImage(projectId: string, file: File): Promise<StoredI
   try {
     meta = await sharp(input).metadata();
   } catch {
-    throw new UploadError("That file isn't an image we can read. Use JPEG, PNG, WebP, GIF or AVIF.");
+    throw new UploadError("unreadable");
   }
   const format = meta.format as string | undefined;
   if (!format || !(format in FORMATS)) {
-    const heic = format === "heif" ? " iPhone HEIC photos: set Camera → Formats → Most Compatible, or share as JPEG." : "";
-    throw new UploadError(`Unsupported image format.${heic} Use JPEG, PNG, WebP, GIF or AVIF.`);
+    throw new UploadError(format === "heif" ? "heic" : "unsupported");
   }
   const fmt = format as Format;
   if ((meta.width ?? 0) * (meta.height ?? 0) > 100_000_000) {
-    throw new UploadError("That image's dimensions are too large.");
+    throw new UploadError("dimensions");
   }
 
   const id = randomUUID();

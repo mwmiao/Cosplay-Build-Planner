@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getI18n } from "@/i18n/server";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getDefaultCurrency } from "@/lib/settings";
@@ -11,7 +12,7 @@ import {
   errorState,
   formToObject,
   idSchema,
-  projectSchema,
+  schemas,
 } from "@/lib/validation";
 
 function revalidateAll() {
@@ -22,8 +23,9 @@ function revalidateAll() {
 
 export async function createProject(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireAuth();
-  const parsed = projectSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return errorState(parsed.error);
+  const { t } = getI18n();
+  const parsed = schemas(t).project.safeParse(formToObject(formData));
+  if (!parsed.success) return errorState(parsed.error, t);
 
   const project = await db.project.create({ data: parsed.data });
   revalidateAll();
@@ -37,8 +39,9 @@ export async function updateProject(
 ): Promise<FormState> {
   await requireAuth();
   const projectId = idSchema.parse(id);
-  const parsed = projectSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return errorState(parsed.error);
+  const { t } = getI18n();
+  const parsed = schemas(t).project.safeParse(formToObject(formData));
+  if (!parsed.success) return errorState(parsed.error, t);
 
   // Paid amounts are stored in the base currency at their payment-date rate, so
   // the base can't change once parts in a specific currency have been paid.
@@ -50,7 +53,7 @@ export async function updateProject(
       where: { projectId, deletedAt: null, paidAt: { not: null }, currency: { not: null } },
     });
     if (converted > 0) {
-      const msg = `${converted} paid part${converted === 1 ? " is" : "s are"} already converted to ${base}. Keep ${base} as the base currency.`;
+      const msg = t.projectForm.currencyChangeRefused(converted, base);
       return { ok: false, message: msg, errors: { currency: [msg] } };
     }
   }

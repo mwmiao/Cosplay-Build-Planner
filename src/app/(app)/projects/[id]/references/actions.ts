@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getI18n } from "@/i18n/server";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { removeStoredFiles } from "@/lib/uploads";
-import { type FormState, formToObject, idSchema, referenceSchema } from "@/lib/validation";
+import { type FormState, formToObject, idSchema, schemas } from "@/lib/validation";
 
 export async function updateReference(
   projectId: string,
@@ -15,7 +16,8 @@ export async function updateReference(
   await requireAuth();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(imageId);
-  const parsed = referenceSchema.safeParse(formToObject(formData));
+  const { t } = getI18n();
+  const parsed = schemas(t).reference.safeParse(formToObject(formData));
   if (!parsed.success) {
     return { ok: false, errors: parsed.error.flatten().fieldErrors };
   }
@@ -24,7 +26,7 @@ export async function updateReference(
     data: { caption: parsed.data.caption ?? null, sourceUrl: parsed.data.sourceUrl ?? null },
   });
   revalidatePath(`/projects/${pid}`, "layout");
-  return { ok: true, message: "Saved." };
+  return { ok: true, message: t.refs.saved };
 }
 
 /** Deletes the image row and its files (originals + thumbnail). */

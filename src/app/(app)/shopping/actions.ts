@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getI18n } from "@/i18n/server";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -8,7 +9,7 @@ import {
   errorState,
   formToObject,
   idSchema,
-  shoppingItemSchema,
+  schemas,
 } from "@/lib/validation";
 
 function revalidate() {
@@ -44,15 +45,16 @@ export async function togglePurchased(itemId: string): Promise<void> {
 
 export async function addShoppingItem(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireAuth();
-  const parsed = shoppingItemSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return errorState(parsed.error);
+  const { t } = getI18n();
+  const parsed = schemas(t).shoppingItem.safeParse(formToObject(formData));
+  if (!parsed.success) return errorState(parsed.error, t);
   if (parsed.data.projectId) {
     const project = await db.project.findFirst({ where: { id: parsed.data.projectId, deletedAt: null } });
-    if (!project) return { ok: false, errors: { projectId: ["Pick a project from the list"] } };
+    if (!project) return { ok: false, errors: { projectId: [t.shopping.pickProject] } };
   }
   await db.shoppingListItem.create({ data: parsed.data });
   revalidate();
-  return { ok: true, message: `Added “${parsed.data.name}”.` };
+  return { ok: true, message: t.shopping.added(parsed.data.name) };
 }
 
 /** Removes a manually added item (part items follow their part instead). */

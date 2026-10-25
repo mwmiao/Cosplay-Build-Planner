@@ -2,27 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/i18n/client";
 import { CartIcon, CogIcon, FolderIcon, PlusIcon } from "./Icons";
 
-const items = [
-  { href: "/projects", label: "Projects", Icon: FolderIcon, match: (p: string) => p.startsWith("/projects") && p !== "/projects/new" },
-  { href: "/shopping", label: "Shopping", Icon: CartIcon, match: (p: string) => p.startsWith("/shopping") },
-  { href: "/projects/new", label: "New", Icon: PlusIcon, match: (p: string) => p === "/projects/new" },
-  { href: "/settings", label: "Settings", Icon: CogIcon, match: (p: string) => p.startsWith("/settings") },
-];
+function useItems() {
+  const { t } = useI18n();
+  return [
+    {
+      href: "/projects",
+      label: t.nav.projects,
+      long: t.nav.projects,
+      Icon: FolderIcon,
+      match: (p: string) => p.startsWith("/projects") && p !== "/projects/new",
+    },
+    { href: "/shopping", label: t.nav.shopping, long: t.nav.shopping, Icon: CartIcon, match: (p: string) => p.startsWith("/shopping") },
+    { href: "/projects/new", label: t.nav.new, long: t.nav.newProject, Icon: PlusIcon, match: (p: string) => p === "/projects/new" },
+    { href: "/settings", label: t.nav.settings, long: t.nav.settings, Icon: CogIcon, match: (p: string) => p.startsWith("/settings") },
+  ];
+}
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { t } = useI18n();
+  const items = useItems();
   return (
     <nav
-      aria-label="Main"
+      aria-label={t.nav.main}
       className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 border-r border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 md:flex"
     >
       <Link href="/projects" className="mb-6 flex items-center gap-2 px-2 text-lg font-bold">
         <img src="/icon.svg" alt="" className="h-8 w-8" />
-        Cosplay Planner
+        {t.app.shortName}
       </Link>
-      {items.map(({ href, label, Icon, match }) => {
+      {items.map(({ href, long, Icon, match }) => {
         const active = match(pathname);
         return (
           <Link
@@ -36,7 +48,7 @@ export function Sidebar() {
             }`}
           >
             <Icon className="h-5 w-5" />
-            {label === "New" ? "New project" : label}
+            {long}
           </Link>
         );
       })}
@@ -46,9 +58,11 @@ export function Sidebar() {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
+  const items = useItems();
   return (
     <nav
-      aria-label="Main"
+      aria-label={t.nav.main}
       className="bottom-safe fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95 md:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-4">

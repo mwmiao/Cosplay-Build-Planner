@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
+import { getI18n } from "@/i18n/server";
 import { categoryLabel, statusLabel } from "@/lib/constants";
 import { centsToDecimal, csvResponse, today } from "@/lib/csv";
 import { db } from "@/lib/db";
@@ -22,32 +23,34 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const { t } = getI18n();
+  const c = t.csv;
   const ctx = await getMoneyContext();
   const stats = projectStats(project, project.parts, ctx);
   const base = stats.base;
 
   const rows: (string | number)[][] = [
     [
-      "Part",
-      "Category",
-      "Status",
-      "Quantity",
-      "Currency",
-      "Est. each",
-      "Est. total",
-      "Actual each",
-      "Actual total",
-      "Paid",
-      "Paid on",
-      `Paid (${base})`,
-      "FX rate",
-      "Rate date",
-      "Rate source",
-      "Conversion",
-      `Planned (${base}, today's rate)`,
-      "Supplier",
-      "Link",
-      "Notes",
+      c.part,
+      c.category,
+      c.status,
+      c.quantity,
+      c.currency,
+      c.estEach,
+      c.estTotal,
+      c.actualEach,
+      c.actualTotal,
+      c.paid,
+      c.paidOn,
+      c.paidIn(base),
+      c.fxRate,
+      c.rateDate,
+      c.rateSource,
+      c.conversion,
+      c.plannedIn(base),
+      c.supplier,
+      c.link,
+      c.notes,
     ],
     ...project.parts.map((p) => {
       const cur = p.currency ?? base;
@@ -57,21 +60,21 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       const planned = !paid && each !== null && rate !== null ? Math.round(each * p.quantity * rate) : null;
       return [
         p.name,
-        categoryLabel(p.category),
-        statusLabel(p.status),
+        categoryLabel(p.category, t),
+        statusLabel(p.status, t),
         p.quantity,
         cur,
         centsToDecimal(p.estimatedCostCents),
         p.estimatedCostCents === null ? "" : centsToDecimal(p.estimatedCostCents * p.quantity),
         centsToDecimal(p.actualCostCents),
         p.actualCostCents === null ? "" : centsToDecimal(p.actualCostCents * p.quantity),
-        paid ? "yes" : "no",
+        paid ? c.yes : c.no,
         p.paidAt ? p.paidAt.toISOString().slice(0, 10) : "",
         paid ? centsToDecimal(p.paidBaseCents) : "",
         paid && p.fxRate !== null ? p.fxRate : "",
         paid ? (p.fxRateDate ?? "") : "",
-        paid ? (p.fxSource ?? "") : "",
-        paid ? (p.fxManual ? "manual" : "automatic") : "",
+        paid ? (p.fxSource ? (t.conversion.sources[p.fxSource] ?? p.fxSource) : "") : "",
+        paid ? (p.fxManual ? t.conversion.manual : t.conversion.automatic) : "",
         centsToDecimal(planned),
         p.supplier ?? "",
         p.url ?? "",
@@ -79,18 +82,18 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       ];
     }),
     [],
-    [`Totals (${base})`],
-    ["Paid", centsToDecimal(stats.paid)],
-    ["Planned (estimate)", centsToDecimal(stats.planned)],
-    ["Projected total", centsToDecimal(stats.projected)],
-    ["Budget", centsToDecimal(stats.budget)],
-    ["Remaining (budget − paid)", centsToDecimal(stats.remaining)],
-    ["Over (−) / under (+) budget", centsToDecimal(stats.overUnder)],
+    [c.totals(base)],
+    [c.paid, centsToDecimal(stats.paid)],
+    [c.plannedEstimate, centsToDecimal(stats.planned)],
+    [c.projected, centsToDecimal(stats.projected)],
+    [c.budget, centsToDecimal(stats.budget)],
+    [c.remaining, centsToDecimal(stats.remaining)],
+    [c.overUnder, centsToDecimal(stats.overUnder)],
     [],
-    ["Today's rates", ctx.rates.source ?? "none cached", ctx.rates.rateDate ?? ""],
-    ...(stats.missingRates.length ? [["Planned costs without a rate (excluded)", stats.missingRates.join(" ")]] : []),
+    [c.todaysRates, ctx.rates.source ?? c.noneCached, ctx.rates.rateDate ?? ""],
+    ...(stats.missingRates.length ? [[c.noRateExcluded, stats.missingRates.join(" ")]] : []),
   ];
 
   const slug = project.characterName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
-  return csvResponse(`${slug}-budget-${today()}.csv`, rows);
+  return csvResponse(`${slug}-${c.budgetFile}-${today()}.csv`, rows);
 }

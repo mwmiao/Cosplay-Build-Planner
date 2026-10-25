@@ -1,4 +1,5 @@
 import "server-only";
+import type { Dict } from "@/i18n";
 import { categoryLabel } from "./constants";
 import { db } from "./db";
 import type { MoneyContext } from "./projects";
@@ -25,25 +26,25 @@ export async function loadShoppingItems(includePurchased: boolean) {
 
 export type ShoppingRow = Awaited<ReturnType<typeof loadShoppingItems>>[number];
 
-export function groupKey(item: ShoppingRow, by: GroupBy): string {
-  if (by === "category") return categoryLabel(item.category);
-  if (by === "project") return item.project?.characterName ?? "General";
-  return item.supplier?.trim() || "No supplier";
+export function groupKey(item: ShoppingRow, by: GroupBy, t: Dict): string {
+  if (by === "category") return categoryLabel(item.category, t);
+  if (by === "project") return item.project?.characterName ?? t.common.general;
+  return item.supplier?.trim() || t.shopping.noSupplier;
 }
 
-export function groupItems(items: ShoppingRow[], by: GroupBy) {
+export function groupItems(items: ShoppingRow[], by: GroupBy, t: Dict) {
   const groups = new Map<string, ShoppingRow[]>();
   for (const item of items) {
-    const key = groupKey(item, by);
+    const key = groupKey(item, by, t);
     const list = groups.get(key) ?? [];
     list.push(item);
     groups.set(key, list);
   }
   // Alphabetical, with the catch-all buckets last.
-  const last = new Set(["No supplier", "General", "Other"]);
+  const last = new Set([t.shopping.noSupplier, t.common.general, t.category.other]);
   return [...groups.entries()].sort(([a], [b]) => {
     if (last.has(a) !== last.has(b)) return last.has(a) ? 1 : -1;
-    return a.localeCompare(b);
+    return a.localeCompare(b, t.intl);
   });
 }
 

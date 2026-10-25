@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ConfirmButton } from "@/components/FormBits";
 import { EmptyState, BackLink } from "@/components/ui";
+import { getI18n } from "@/i18n/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { hostname } from "@/lib/format";
@@ -10,7 +11,9 @@ import { deleteReference, updateReference } from "./actions";
 import { CaptionForm } from "./CaptionForm";
 import { UploadForm } from "./UploadForm";
 
-export const metadata: Metadata = { title: "References" };
+export function generateMetadata(): Metadata {
+  return { title: getI18n().t.refs.title };
+}
 
 export default async function ReferencesPage({
   params,
@@ -20,6 +23,8 @@ export default async function ReferencesPage({
   searchParams: { uploaded?: string; uploadError?: string };
 }) {
   const project = await getProjectOr404(params.id);
+  const { t } = getI18n();
+  const R = t.refs;
   const images = await db.referenceImage.findMany({
     where: { projectId: project.id },
     orderBy: { createdAt: "desc" },
@@ -29,11 +34,11 @@ export default async function ReferencesPage({
   return (
     <>
       <BackLink href={`/projects/${project.id}`}>{project.characterName}</BackLink>
-      <h1 className="page-title mb-4">References</h1>
+      <h1 className="page-title mb-4">{R.title}</h1>
 
       {uploaded > 0 ? (
         <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
-          Uploaded {uploaded} image{uploaded === 1 ? "" : "s"}.
+          {R.uploaded(uploaded)}
         </div>
       ) : null}
       {searchParams.uploadError ? (
@@ -44,15 +49,13 @@ export default async function ReferencesPage({
 
       <section className="card mb-6" aria-labelledby="upload-title">
         <h2 id="upload-title" className="section-title mb-3">
-          Add images
+          {R.addImages}
         </h2>
         <UploadForm projectId={project.id} accept={ACCEPT_ATTR} maxMb={env().MAX_UPLOAD_MB} />
       </section>
 
       {images.length === 0 ? (
-        <EmptyState title="No reference images yet">
-          Add official art, screenshots, other cosplayers&apos; builds (with credit) and your progress photos.
-        </EmptyState>
+        <EmptyState title={R.empty}>{R.emptyText}</EmptyState>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {images.map((img) => (
@@ -70,12 +73,12 @@ export default async function ReferencesPage({
               {img.caption ? <p className="px-1 text-sm font-medium">{img.caption}</p> : null}
               {img.sourceUrl ? (
                 <a href={img.sourceUrl} target="_blank" rel="noopener noreferrer" className="link truncate px-1 text-xs">
-                  Source: {hostname(img.sourceUrl) ?? img.sourceUrl}
+                  {R.source(hostname(img.sourceUrl) ?? img.sourceUrl)}
                 </a>
               ) : null}
               <details className="px-1 text-sm">
                 <summary className="flex min-h-11 cursor-pointer items-center text-zinc-600 dark:text-zinc-400">
-                  Edit
+                  {R.edit}
                 </summary>
                 <div className="space-y-3 pb-2">
                   <CaptionForm
@@ -84,8 +87,8 @@ export default async function ReferencesPage({
                     sourceUrl={img.sourceUrl ?? ""}
                   />
                   <form action={deleteReference.bind(null, project.id, img.id)}>
-                    <ConfirmButton className="btn-danger w-full" message="Delete this image? This can't be undone.">
-                      Delete image
+                    <ConfirmButton className="btn-danger w-full" message={R.deleteConfirm}>
+                      {R.delete}
                     </ConfirmButton>
                   </form>
                 </div>

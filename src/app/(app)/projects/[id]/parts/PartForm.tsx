@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { useFormState } from "react-dom";
 import { Field } from "@/components/Field";
 import { FormMessage, StickyActions, SubmitButton } from "@/components/FormBits";
-import { CATEGORIES, CATEGORY_LABELS, PART_STATUSES, STATUS_LABELS } from "@/lib/constants";
-import { CURRENCY_OPTIONS } from "@/lib/currencies";
+import { currencyOptions } from "@/i18n";
+import { useI18n } from "@/i18n/client";
+import { CATEGORIES, PART_STATUSES } from "@/lib/constants";
+import { CURRENCY_CODES } from "@/lib/currencies";
 import type { FormState } from "@/lib/validation";
 
 export type PartFormValues = {
@@ -26,8 +28,6 @@ export type PartFormValues = {
   chargedBase: string;
 };
 
-const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }));
-const statusOptions = PART_STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 
 function todayLocal(): string {
   const d = new Date();
@@ -58,6 +58,10 @@ export function PartForm({
   /** Read-only summary of the stored conversion, shown under the payment fields */
   conversion?: React.ReactNode;
 }) {
+  const { t } = useI18n();
+  const F = t.partForm;
+  const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: t.category[c] ?? c }));
+  const statusOptions = PART_STATUSES.map((s) => ({ value: s, label: t.status[s] ?? s }));
   const [state, formAction] = useFormState(action, {});
   const formRef = useRef<HTMLFormElement>(null);
   const [paid, setPaid] = useState(initial?.paid ?? false);
@@ -79,34 +83,31 @@ export function PartForm({
   return (
     <form ref={formRef} action={formAction} className="space-y-4" noValidate>
       <FormMessage state={state} />
-      <Field label="Part name" name="name" required defaultValue={initial?.name} errors={e.name} placeholder="e.g. Shoulder armor" autoComplete="off" />
+      <Field label={F.name} name="name" required defaultValue={initial?.name} errors={e.name} placeholder={F.namePlaceholder} autoComplete="off" />
       <div className="grid grid-cols-2 gap-4">
-        <Field as="select" label="Category" name="category" options={categoryOptions} defaultValue={initial?.category ?? "other"} errors={e.category} />
-        <Field as="select" label="Status" name="status" options={statusOptions} defaultValue={initial?.status ?? "needed"} errors={e.status} />
+        <Field as="select" label={F.category} name="category" options={categoryOptions} defaultValue={initial?.category ?? "other"} errors={e.category} />
+        <Field as="select" label={F.status} name="status" options={statusOptions} defaultValue={initial?.status ?? "needed"} errors={e.status} />
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Field
           as="select"
-          label="Currency"
+          label={F.currency}
           name="currency"
-          options={CURRENCY_OPTIONS}
+          options={currencyOptions(t.intl, CURRENCY_CODES)}
           value={currency}
           onChange={(ev) => setCurrency(ev.currentTarget.value)}
           errors={e.currency}
         />
-        <Field label="Qty" name="quantity" type="number" inputMode="numeric" min={1} max={9999} defaultValue={initial?.quantity ?? "1"} errors={e.quantity} />
-        <Field label="Est. cost (each)" name="estimatedCostCents" inputMode="decimal" defaultValue={initial?.estimatedCost} errors={e.estimatedCostCents} placeholder="0.00" />
-        <Field label="Actual (each)" name="actualCostCents" inputMode="decimal" defaultValue={initial?.actualCost} errors={e.actualCostCents} placeholder="0.00" />
+        <Field label={F.qty} name="quantity" type="number" inputMode="numeric" min={1} max={9999} defaultValue={initial?.quantity ?? "1"} errors={e.quantity} />
+        <Field label={F.estimated} name="estimatedCostCents" inputMode="decimal" defaultValue={initial?.estimatedCost} errors={e.estimatedCostCents} placeholder="0.00" />
+        <Field label={F.actual} name="actualCostCents" inputMode="decimal" defaultValue={initial?.actualCost} errors={e.actualCostCents} placeholder="0.00" />
       </div>
       {foreign ? (
-        <p className="hint -mt-2">
-          Amounts in {currency}. Totals are shown in {baseCurrency}: estimates at today&apos;s rate, payments at the rate of the
-          payment date.
-        </p>
+        <p className="hint -mt-2">{F.foreignNote(currency, baseCurrency)}</p>
       ) : null}
 
       <fieldset className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
-        <legend className="px-1 text-sm font-semibold">Payment</legend>
+        <legend className="px-1 text-sm font-semibold">{F.payment}</legend>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
@@ -115,13 +116,13 @@ export function PartForm({
             onChange={(ev) => setPaid(ev.currentTarget.checked)}
             className="h-5 w-5 rounded border-zinc-300 text-brand-600 focus:ring-brand-500"
           />
-          <span className="text-sm font-medium">Paid</span>
+          <span className="text-sm font-medium">{F.paid}</span>
         </label>
         {paid ? (
           <div className="mt-2 space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
-                label="Paid on"
+                label={F.paidOn}
                 name="paidAt"
                 type="date"
                 max={todayLocal()}
@@ -129,45 +130,41 @@ export function PartForm({
                 errors={e.paidAt}
               />
               <Field
-                label={`Amount charged in ${baseCurrency} (total, optional)`}
+                label={F.charged(baseCurrency)}
                 name="chargedBaseCents"
                 inputMode="decimal"
                 defaultValue={initial?.chargedBase}
                 errors={e.chargedBaseCents}
-                placeholder={foreign ? "From your bank/PayPal" : "0.00"}
-                hint={
-                  foreign
-                    ? `Leave blank to convert automatically at the ${currency}→${baseCurrency} rate for the payment date.`
-                    : "Leave blank to use actual × quantity."
-                }
+                placeholder={foreign ? F.chargedPlaceholder : "0.00"}
+                hint={foreign ? F.chargedHintForeign(currency, baseCurrency) : F.chargedHintSame}
               />
             </div>
             {conversion}
           </div>
         ) : (
-          <p className="hint">Tick when paid: the amount is converted to {baseCurrency} once and kept.</p>
+          <p className="hint">{F.tickWhenPaid(baseCurrency)}</p>
         )}
       </fieldset>
 
-      <Field label="Supplier" name="supplier" defaultValue={initial?.supplier} errors={e.supplier} placeholder="e.g. Etsy, local craft store" list="supplier-options" autoComplete="off" />
+      <Field label={F.supplier} name="supplier" defaultValue={initial?.supplier} errors={e.supplier} placeholder={F.supplierPlaceholder} list="supplier-options" autoComplete="off" />
       <datalist id="supplier-options">
         {suppliers.map((s) => (
           <option key={s} value={s} />
         ))}
       </datalist>
-      <Field label="Link" name="url" type="url" inputMode="url" defaultValue={initial?.url} errors={e.url} placeholder="https://" />
-      <Field as="textarea" label="Notes" name="notes" defaultValue={initial?.notes} errors={e.notes} rows={3} />
+      <Field label={F.link} name="url" type="url" inputMode="url" defaultValue={initial?.url} errors={e.url} placeholder="https://" />
+      <Field as="textarea" label={F.notes} name="notes" defaultValue={initial?.notes} errors={e.notes} rows={3} />
       <StickyActions>
         <SubmitButton className="btn-primary flex-1 sm:flex-none" name="intent" value="save">
           {submitLabel}
         </SubmitButton>
         {allowAddAnother ? (
           <SubmitButton className="btn-secondary" name="intent" value="add-another">
-            Save &amp; add another
+            {F.saveAndAdd}
           </SubmitButton>
         ) : null}
-        <Link href={cancelHref} className="btn-ghost">
-          Cancel
+        <Link href={cancelHref} className="btn-ghost hidden sm:inline-flex">
+          {t.common.cancel}
         </Link>
       </StickyActions>
     </form>

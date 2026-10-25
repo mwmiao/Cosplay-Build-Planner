@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/i18n/client";
 
 type Theme = "system" | "light" | "dark";
-const OPTIONS: { value: Theme; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-];
+const OPTIONS: Theme[] = ["system", "light", "dark"];
 
 function apply(theme: Theme) {
   const dark =
@@ -16,6 +13,7 @@ function apply(theme: Theme) {
 }
 
 export function ThemePicker() {
+  const { t } = useI18n();
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
@@ -48,24 +46,24 @@ export function ThemePicker() {
 
   return (
     <fieldset>
-      <legend className="label">Appearance</legend>
+      <legend className="label">{t.settings.appearance}</legend>
       <div className="inline-flex rounded-xl border border-zinc-300 p-1 dark:border-zinc-700">
         {OPTIONS.map((o) => (
           <label
-            key={o.value}
+            key={o}
             className={`flex min-h-10 cursor-pointer items-center rounded-lg px-4 text-sm font-medium has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500 ${
-              theme === o.value ? "bg-brand-600 text-white" : "text-zinc-700 dark:text-zinc-300"
+              theme === o ? "bg-brand-600 text-white" : "text-zinc-700 dark:text-zinc-300"
             }`}
           >
             <input
               type="radio"
               name="theme"
-              value={o.value}
-              checked={theme === o.value}
-              onChange={() => choose(o.value)}
+              value={o}
+              checked={theme === o}
+              onChange={() => choose(o)}
               className="sr-only"
             />
-            {o.label}
+            {t.settings.theme[o]}
           </label>
         ))}
       </div>

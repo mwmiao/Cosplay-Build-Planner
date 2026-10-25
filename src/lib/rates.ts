@@ -33,7 +33,15 @@ export type RateTable = {
 
 export type ConvertedRate = { rate: number; rateDate: string; source: string };
 
-export class RateUnavailableError extends Error {}
+export class RateUnavailableError extends Error {
+  constructor(
+    readonly from: string,
+    readonly to: string,
+    readonly date: string,
+  ) {
+    super(`No exchange rate ${from}→${to} for ${date}`);
+  }
+}
 
 const erApiSchema = z.object({
   result: z.literal("success"),
@@ -182,7 +190,5 @@ export async function historicalRate(from: string, to: string, date: string): Pr
     }
   }
 
-  throw new RateUnavailableError(
-    `No exchange rate ${from}→${to} is available for ${date}. Enter the amount you were charged in ${to}.`,
-  );
+  throw new RateUnavailableError(from, to, date);
 }

@@ -14,6 +14,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **Multiple currencies**: every part keeps its own currency. Totals are shown in the project's base currency, split into *paid*, *planned*, *budget left* and *over/under budget* (see [Currencies and exchange rates](#currencies-and-exchange-rates)).
 - **Budget CSV** export for each project, including the original amount, currency, exchange rate, rate date, source and manual/automatic for every payment.
 - **References**: upload several images at once with a caption and source link. The app makes thumbnails and removes location data from photos.
+- **English and European Portuguese**: switch in **Settings → Language** (saved per device; the first visit follows the browser's language). Dates, numbers and currency names follow the language.
 - **Phone-friendly layout**: works from 360 px wide, with bottom tabs on phones and a sidebar on desktop. Dark mode follows your system setting, with an option to override it. Form fields have proper labels and keyboard focus is visible. It can be added to your home screen like an app.
 
 ---
@@ -282,6 +283,7 @@ src/app/(app)/       logged-in pages: projects, parts, references, shopping, set
 src/app/api/         health, uploads (serve + upload), CSV exports
 src/app/login/       login page and actions
 src/lib/             db, auth, validation (Zod), uploads, shopping-list logic, CSV
+src/i18n/            translations: en.ts, pt-PT.ts (same keys, type-checked)
 src/components/      UI building blocks
 .github/workflows/  CI: tests, then publishes the image to Docker Hub and ghcr.io
 docker/entrypoint.sh container start-up (backup → migrate → seed → run)

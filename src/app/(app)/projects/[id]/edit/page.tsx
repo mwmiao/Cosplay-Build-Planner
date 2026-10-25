@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { BackLink } from "@/components/ui";
+import { getI18n } from "@/i18n/server";
 import { dateInput, moneyInput } from "@/lib/format";
 import { db } from "@/lib/db";
 import { getProjectOr404 } from "@/lib/queries";
@@ -8,10 +9,14 @@ import { getDefaultCurrency } from "@/lib/settings";
 import { deleteProject, setProjectArchived, updateProject } from "../../actions";
 import { ProjectForm } from "../../ProjectForm";
 
-export const metadata: Metadata = { title: "Edit project" };
+export function generateMetadata(): Metadata {
+  return { title: getI18n().t.projectForm.editTitle };
+}
 
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
   const project = await getProjectOr404(params.id);
+  const { t } = getI18n();
+  const F = t.projectForm;
   const archived = project.archivedAt !== null;
   const base = project.currency ?? (await getDefaultCurrency());
   const converted = await db.buildPart.count({
@@ -21,16 +26,16 @@ export default async function EditProjectPage({ params }: { params: { id: string
   return (
     <>
       <BackLink href={`/projects/${project.id}`}>{project.characterName}</BackLink>
-      <h1 className="page-title mb-4">Edit project</h1>
+      <h1 className="page-title mb-4">{F.editTitle}</h1>
       <div className="card">
         <ProjectForm
           action={updateProject.bind(null, project.id)}
           cancelHref={`/projects/${project.id}`}
-          submitLabel="Save changes"
+          submitLabel={F.saveChanges}
           defaultCurrency={base}
           currencyNote={
             converted > 0
-              ? `Locked: ${converted} paid part${converted === 1 ? " is" : "s are"} stored in ${base} at their payment-date rates.`
+              ? F.currencyLocked(converted, base)
               : undefined
           }
           initial={{
@@ -48,25 +53,25 @@ export default async function EditProjectPage({ params }: { params: { id: string
 
       <section className="card mt-6 space-y-4" aria-labelledby="danger-zone">
         <h2 id="danger-zone" className="section-title">
-          Archive or delete
+          {F.archiveTitle}
         </h2>
         <div className="flex flex-col gap-3 sm:flex-row">
           <form action={setProjectArchived.bind(null, project.id, !archived)}>
-            <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText="Working…">
-              {archived ? "Unarchive project" : "Archive project"}
+            <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText={t.common.working}>
+              {archived ? F.unarchive : F.archive}
             </SubmitButton>
           </form>
           <form action={deleteProject.bind(null, project.id)}>
             <ConfirmButton
               className="btn-danger w-full sm:w-auto"
-              message={`Delete “${project.characterName}”? You can restore it from Settings.`}
+              message={F.deleteConfirm(project.characterName)}
             >
-              Delete project
+              {F.delete}
             </ConfirmButton>
           </form>
         </div>
         <p className="hint">
-          Archived projects are hidden from the list and shopping list. Deleted projects can be restored from Settings.
+          {F.archiveHint}
         </p>
       </section>
     </>

@@ -3,6 +3,8 @@
 import type { BuildPart, Project } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { Dict } from "@/i18n";
+import { getI18n } from "@/i18n/server";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UNPAID, type PaymentFields, convertPayment } from "@/lib/payments";
@@ -15,7 +17,7 @@ import {
   errorState,
   formToObject,
   idSchema,
-  partSchema,
+  schemas,
 } from "@/lib/validation";
 
 function revalidate(projectId: string) {
@@ -38,6 +40,7 @@ async function paymentFor(
   d: PartInput,
   project: Project,
   previous: BuildPart | null,
+  t: Dict,
 ): Promise<{ fields: PaymentFields; base: string } | FormState> {
   const base = project.currency ?? (await getDefaultCurrency());
   if (!d.paid || !d.paidAt || d.actualCostCents === undefined) return { fields: UNPAID, base };
@@ -56,13 +59,14 @@ async function paymentFor(
     return { fields, base };
   } catch (err) {
     if (err instanceof RateUnavailableError) {
-      return { ok: false, message: err.message, errors: { chargedBaseCents: [err.message] } };
+      const msg = t.payment.rateUnavailable(err.from, err.to, err.date);
+      return { ok: false, message: msg, errors: { chargedBaseCents: [msg] } };
     }
     console.error("Payment conversion failed", err);
     return {
       ok: false,
-      message: `Couldn't look up the exchange rate right now. Try again, or enter the amount charged in ${base}.`,
-      errors: { chargedBaseCents: ["Enter the amount charged, or try again later"] },
+      message: t.payment.lookupFailed(base),
+      errors: { chargedBaseCents: [t.payment.lookupFailedField] },
     };
   }
 }
@@ -97,9 +101,10 @@ export async function createPart(
   await requireAuth();
   const pid = idSchema.parse(projectId);
   const project = await liveProject(pid);
-  const parsed = partSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return errorState(parsed.error);
-  const payment = await paymentFor(parsed.data, project, null);
+  const { t } = getI18n();
+  const parsed = schemas(t).part.safeParse(formToObject(formData));
+  if (!parsed.success) return errorState(parsed.error, t);
+  const payment = await paymentFor(parsed.data, project, null, t);
   if (!("fields" in payment)) return payment;
 
   await db.$transaction(async (tx) => {
@@ -117,7 +122,7 @@ export async function createPart(
   revalidate(pid);
 
   if (formData.get("intent") === "add-another") {
-    return { ok: true, message: `Added “${parsed.data.name}”. Add another?` };
+    return { ok: true, message: t.partForm.added(parsed.data.name) };
   }
   redirect(`/projects/${pid}#parts`);
 }
@@ -132,10 +137,11 @@ export async function updatePart(
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(partId);
   const project = await liveProject(pid);
-  const parsed = partSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return errorState(parsed.error);
+  const { t } = getI18n();
+  const parsed = schemas(t).part.safeParse(formToObject(formData));
+  if (!parsed.success) return errorState(parsed.error, t);
   const before = await db.buildPart.findFirstOrThrow({ where: { id, projectId: pid, deletedAt: null } });
-  const payment = await paymentFor(parsed.data, project, before);
+  const payment = await paymentFor(parsed.data, project, before, t);
   if (!("fields" in payment)) return payment;
 
   const d = parsed.data;

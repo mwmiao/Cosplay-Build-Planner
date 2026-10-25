@@ -3,17 +3,22 @@ import Link from "next/link";
 import { CalendarIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState, ProgressBar, StatusBadge } from "@/components/ui";
 import { db } from "@/lib/db";
-import { daysLabel, daysUntil, formatDate, money } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
+import { statusLabel } from "@/lib/constants";
+import { daysLabel, daysUntil } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
 import { getMoneyContext } from "@/lib/queries";
 
-export const metadata: Metadata = { title: "Projects" };
+export function generateMetadata(): Metadata {
+  return { title: getI18n().t.projects.title };
+}
 
 export default async function ProjectsPage({
   searchParams,
 }: {
   searchParams: { view?: string };
 }) {
+  const { t, f } = getI18n();
   const archived = searchParams.view === "archived";
   const projects = await db.project.findMany({
     where: { deletedAt: null, archivedAt: archived ? { not: null } : null },
@@ -41,38 +46,38 @@ export default async function ProjectsPage({
   return (
     <>
       <header className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="page-title">{archived ? "Archived projects" : "Projects"}</h1>
+        <h1 className="page-title">{archived ? t.projects.archivedTitle : t.projects.title}</h1>
         <Link href="/projects/new" className="btn-primary hidden md:inline-flex">
-          <PlusIcon className="h-5 w-5" /> New project
+          <PlusIcon className="h-5 w-5" /> {t.nav.newProject}
         </Link>
       </header>
 
-      <div className="mb-4 flex gap-2" role="group" aria-label="Show">
+      <div className="mb-4 flex gap-2" role="group" aria-label={t.projects.show}>
         <Link href="/projects" className={archived ? "chip-off" : "chip-on"} aria-current={!archived ? "page" : undefined}>
-          Active
+          {t.projects.active}
         </Link>
         <Link
           href="/projects?view=archived"
           className={archived ? "chip-on" : "chip-off"}
           aria-current={archived ? "page" : undefined}
         >
-          Archived
+          {t.projects.archived}
         </Link>
       </div>
 
       {projects.length === 0 ? (
         archived ? (
-          <EmptyState title="No archived projects">Archive a finished project to tidy up your list.</EmptyState>
+          <EmptyState title={t.projects.emptyArchived}>{t.projects.emptyArchivedText}</EmptyState>
         ) : (
           <EmptyState
-            title="No projects yet"
+            title={t.projects.empty}
             action={
               <Link href="/projects/new" className="btn-primary">
-                <PlusIcon className="h-5 w-5" /> Start your first build
+                <PlusIcon className="h-5 w-5" /> {t.projects.startFirst}
               </Link>
             }
           >
-            Plan a cosplay: parts, costs, deadline and reference photos.
+            {t.projects.emptyText}
           </EmptyState>
         )
       ) : (
@@ -102,11 +107,11 @@ export default async function ProjectsPage({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <h2 className="min-w-0 truncate font-semibold">{p.characterName}</h2>
-                      <span className="shrink-0"><StatusBadge status={p.status} /></span>
+                      <span className="shrink-0"><StatusBadge status={p.status} label={statusLabel(p.status, t)} /></span>
                     </div>
                     <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">{p.series ?? "—"}</p>
                     <div className="mt-2 flex items-center gap-2">
-                      <ProgressBar value={stats.completion} label={`${p.characterName} completion`} />
+                      <ProgressBar value={stats.completion} label={t.projects.completionOf(p.characterName)} />
                       <span className="text-xs font-semibold tabular-nums">{stats.completion}%</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -114,15 +119,15 @@ export default async function ProjectsPage({
                         <CalendarIcon className="h-3.5 w-3.5" />
                         {p.deadline ? (
                           <span className={days !== null && days < 14 && days >= 0 ? "font-semibold text-amber-600 dark:text-amber-400" : ""}>
-                            {daysLabel(days)} · {formatDate(p.deadline)}
+                            {daysLabel(days, t)} · {f.date(p.deadline)}
                           </span>
                         ) : (
-                          "No deadline"
+                          t.days.none
                         )}
                       </span>
                       <span className="tabular-nums">
-                        {money(stats.paid, stats.base)} paid
-                        {p.budgetCents !== null ? ` / ${money(p.budgetCents, stats.base)}` : ""}
+                        {t.projects.paid(f.money(stats.paid, stats.base))}
+                        {p.budgetCents !== null ? ` / ${f.money(p.budgetCents, stats.base)}` : ""}
                       </span>
                     </div>
                   </div>

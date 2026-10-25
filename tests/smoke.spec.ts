@@ -83,3 +83,35 @@ test("create project, add part, shopping list, pay in another currency", async (
   expect(text).toContain("manual");
   expect(text).toContain("0.924"); // implied rate 23.10 / 25.00
 });
+
+test("switch the interface to European Portuguese and back", async ({ page }) => {
+  await page.goto("/settings");
+  if (page.url().includes("/login")) {
+    await page.getByLabel("Password").fill(TEST_PASSWORD);
+    await page.getByRole("button", { name: "Log in" }).click();
+    await expect(page).toHaveURL(/\/projects$/);
+    await page.goto("/settings");
+  }
+  await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
+
+  // Each language is labelled in its own language.
+  await page.getByText("Português (Portugal)").click();
+  await expect(page.getByRole("heading", { name: "Definições", level: 1 })).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Principal" });
+  await expect(nav.getByRole("link", { name: "Projetos" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Compras" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "pt-PT");
+
+  // The choice is remembered on this device.
+  await page.goto("/shopping");
+  await expect(page.getByRole("heading", { name: "Lista de compras" })).toBeVisible();
+
+  // Validation messages follow the language too.
+  await page.goto("/projects/new");
+  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await expect(page.getByText("Nome da personagem: campo obrigatório")).toBeVisible();
+
+  await page.goto("/settings");
+  await page.getByText("English", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
+});

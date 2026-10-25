@@ -5,7 +5,8 @@ import { CheckIcon, DownloadIcon, ImageIcon, LinkIcon, PencilIcon, PlusIcon } fr
 import { EmptyState, ProgressBar, Stat, StatusBadge } from "@/components/ui";
 import { CATEGORIES, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { daysLabel, daysUntil, formatDate, hostname, money } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
+import { daysLabel, daysUntil, hostname } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
 import { getMoneyContext, getProjectOr404 } from "@/lib/queries";
 import { setProjectArchived } from "../actions";
@@ -35,6 +36,8 @@ export default async function ProjectPage({
   searchParams: Search;
 }) {
   const project = await getProjectOr404(params.id);
+  const { t, f } = getI18n();
+  const P = t.project;
   const [allParts, references] = await Promise.all([
     db.buildPart.findMany({
       where: { projectId: project.id, deletedAt: null },
@@ -65,10 +68,10 @@ export default async function ProjectPage({
     <>
       {project.archivedAt ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          <span>This project is archived.</span>
+          <span>{P.archivedBanner}</span>
           <form action={setProjectArchived.bind(null, project.id, false)}>
             <SubmitButton className="btn-secondary min-h-9" pendingText="…">
-              Unarchive
+              {P.unarchive}
             </SubmitButton>
           </form>
         </div>
@@ -79,80 +82,77 @@ export default async function ProjectPage({
           <div className="min-w-0">
             <h1 className="page-title break-words">{project.characterName}</h1>
             <p className="text-zinc-500 dark:text-zinc-400">
-              {[project.series, project.conventionName].filter(Boolean).join(" · ") || "No series set"}
+              {[project.series, project.conventionName].filter(Boolean).join(" · ") || P.noSeries}
             </p>
           </div>
-          <Link href={`/projects/${project.id}/edit`} className="btn-secondary shrink-0" aria-label="Edit project">
+          <Link href={`/projects/${project.id}/edit`} className="btn-secondary shrink-0" aria-label={P.editProject}>
             <PencilIcon className="h-5 w-5" />
-            <span className="hidden sm:inline">Edit</span>
+            <span className="hidden sm:inline">{t.common.edit}</span>
           </Link>
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <StatusBadge status={project.status} />
+          <StatusBadge status={project.status} label={statusLabel(project.status, t)} />
           <div className="flex flex-1 items-center gap-2">
-            <ProgressBar value={stats.completion} label="Project completion" />
+            <ProgressBar value={stats.completion} label={P.completion} />
             <span className="text-sm font-semibold tabular-nums">{stats.completion}%</span>
           </div>
         </div>
       </header>
 
-      <section aria-label="Summary" className="mb-3 grid grid-cols-2 gap-3">
+      <section aria-label={P.summary} className="mb-3 grid grid-cols-2 gap-3">
         <Stat
-          label="Deadline"
-          value={<span className={days !== null && days < 14 && days >= 0 ? "text-amber-600 dark:text-amber-400" : ""}>{daysLabel(days)}</span>}
-          sub={formatDate(project.deadline)}
+          label={P.deadline}
+          value={<span className={days !== null && days < 14 && days >= 0 ? "text-amber-600 dark:text-amber-400" : ""}>{daysLabel(days, t)}</span>}
+          sub={f.date(project.deadline)}
         />
-        <Stat label="Parts done" value={`${stats.done} / ${stats.count}`} sub={`${stats.completion}% complete`} />
+        <Stat label={P.partsDone} value={`${stats.done} / ${stats.count}`} sub={P.percentComplete(stats.completion)} />
       </section>
 
       <section aria-labelledby="budget-title" className="mb-6">
         <h2 id="budget-title" className="sr-only">
-          Budget in {base}
+          {P.budgetIn(base)}
         </h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Paid" value={money(stats.paid, base)} sub={`${stats.paidCount} payment${stats.paidCount === 1 ? "" : "s"}`} />
+          <Stat label={P.paid} value={f.money(stats.paid, base)} sub={P.payments(stats.paidCount)} />
           <Stat
-            label="Planned"
-            value={`${stats.plannedConverted ? "≈ " : ""}${money(stats.planned, base)}`}
-            sub={stats.plannedConverted ? "Still to pay · today's rates" : "Still to pay"}
+            label={P.planned}
+            value={`${stats.plannedConverted ? "≈ " : ""}${f.money(stats.planned, base)}`}
+            sub={stats.plannedConverted ? P.stillToPayRates : P.stillToPay}
           />
           <Stat
-            label="Budget left"
-            value={stats.remaining === null ? "—" : money(stats.remaining, base)}
-            sub={stats.budget === null ? "No budget set" : `Budget ${money(stats.budget, base)} − paid`}
+            label={P.budgetLeft}
+            value={stats.remaining === null ? "—" : f.money(stats.remaining, base)}
+            sub={stats.budget === null ? P.noBudget : P.budgetMinusPaid(f.money(stats.budget, base))}
           />
           <Stat
-            label={over ? "Over budget" : "Under budget"}
+            label={over ? P.overBudget : P.underBudget}
             value={
               stats.overUnder === null ? (
                 "—"
               ) : (
                 <span className={over ? "text-red-600 dark:text-red-400" : "text-green-700 dark:text-green-400"}>
                   {stats.plannedConverted ? "≈ " : ""}
-                  {money(Math.abs(stats.overUnder), base)}
+                  {f.money(Math.abs(stats.overUnder), base)}
                 </span>
               )
             }
-            sub={`If planned costs hold · total ${money(stats.projected, base)}`}
+            sub={P.ifPlannedHolds(f.money(stats.projected, base))}
           />
         </div>
         <p className="hint mt-2">
-          All totals in {base}. Paid amounts use the rate of each payment date and never change.
-          {stats.plannedConverted && ctx.rates.rateDate
-            ? ` Planned costs use today's rates (${ctx.rates.rateDate}).`
-            : ""}
+          {P.totalsNote(base)}
+          {stats.plannedConverted && ctx.rates.rateDate ? P.plannedRatesNote(ctx.rates.rateDate) : ""}
         </p>
         {stats.missingRates.length ? (
           <p role="alert" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
-            No exchange rate for {stats.missingRates.join(", ")} yet, so those planned costs aren&apos;t included. Rates
-            refresh automatically when the NAS is online.
+            {P.missingRates(stats.missingRates.join(", "))}
           </p>
         ) : null}
       </section>
 
       {project.notes ? (
         <section className="card mb-6">
-          <h2 className="mb-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400">Notes</h2>
+          <h2 className="mb-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400">{P.notes}</h2>
           <p className="whitespace-pre-wrap text-sm">{project.notes}</p>
         </section>
       ) : null}
@@ -160,39 +160,39 @@ export default async function ProjectPage({
       <section id="parts" aria-labelledby="parts-title" className="mb-8 scroll-mt-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id="parts-title" className="section-title">
-            Build parts
+            {P.parts}
           </h2>
           <div className="flex gap-2">
-            <a href={`/api/export/projects/${project.id}/budget`} className="btn-ghost" aria-label="Export budget as CSV">
+            <a href={`/api/export/projects/${project.id}/budget`} className="btn-ghost" aria-label={P.exportBudget}>
               <DownloadIcon className="h-5 w-5" />
-              <span className="hidden sm:inline">CSV</span>
+              <span className="hidden sm:inline">{t.common.csv}</span>
             </a>
             <Link href={`/projects/${project.id}/parts/new`} className="btn-primary">
-              <PlusIcon className="h-5 w-5" /> Add part
+              <PlusIcon className="h-5 w-5" /> {P.addPart}
             </Link>
           </div>
         </div>
 
         {allParts.length > 0 ? (
           <div className="mb-3 space-y-2">
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Filter by status">
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={P.filterStatus}>
               <Link href={filterHref(project.id, filter, { status: undefined })} className={!filter.status ? "chip-on" : "chip-off"}>
-                All statuses
+                {P.allStatuses}
               </Link>
               {PART_STATUSES.map((s) => (
                 <Link key={s} href={filterHref(project.id, filter, { status: s })} className={filter.status === s ? "chip-on" : "chip-off"}>
-                  {statusLabel(s)} ({allParts.filter((p) => p.status === s).length})
+                  {statusLabel(s, t)} ({allParts.filter((p) => p.status === s).length})
                 </Link>
               ))}
             </div>
             {usedCategories.length > 1 ? (
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Filter by category">
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={P.filterCategory}>
                 <Link href={filterHref(project.id, filter, { category: undefined })} className={!filter.category ? "chip-on" : "chip-off"}>
-                  All categories
+                  {P.allCategories}
                 </Link>
                 {usedCategories.map((c) => (
                   <Link key={c} href={filterHref(project.id, filter, { category: c })} className={filter.category === c ? "chip-on" : "chip-off"}>
-                    {categoryLabel(c)}
+                    {categoryLabel(c, t)}
                   </Link>
                 ))}
               </div>
@@ -202,19 +202,19 @@ export default async function ProjectPage({
 
         {allParts.length === 0 ? (
           <EmptyState
-            title="No parts yet"
+            title={P.noParts}
             action={
               <Link href={`/projects/${project.id}/parts/new`} className="btn-primary">
-                <PlusIcon className="h-5 w-5" /> Add the first part
+                <PlusIcon className="h-5 w-5" /> {P.addFirstPart}
               </Link>
             }
           >
-            Break the costume into pieces: wig, armor, props, fabric, shoes…
+            {P.noPartsText}
           </EmptyState>
         ) : parts.length === 0 ? (
-          <EmptyState title="No parts match these filters">
+          <EmptyState title={P.noMatch}>
             <Link href={`/projects/${project.id}#parts`} className="link">
-              Clear filters
+              {P.clearFilters}
             </Link>
           </EmptyState>
         ) : (
@@ -228,7 +228,7 @@ export default async function ProjectPage({
                     <button
                       type="submit"
                       aria-pressed={done}
-                      aria-label={done ? `Mark ${part.name} as not done` : `Mark ${part.name} as done`}
+                      aria-label={done ? P.markNotDone(part.name) : P.markDone(part.name)}
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                         done
                           ? "border-green-600 bg-green-600 text-white"
@@ -244,10 +244,10 @@ export default async function ProjectPage({
                         {part.name}
                         {part.quantity > 1 ? <span className="text-zinc-500"> ×{part.quantity}</span> : null}
                       </span>
-                      <StatusBadge status={part.status} />
+                      <StatusBadge status={part.status} label={statusLabel(part.status, t)} />
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500 dark:text-zinc-400">
-                      <span>{categoryLabel(part.category)}</span>
+                      <span>{categoryLabel(part.category, t)}</span>
                       {part.supplier || site ? <span>{part.supplier ?? site}</span> : null}
                       {(() => {
                         const cur = part.currency ?? base;
@@ -255,16 +255,16 @@ export default async function ProjectPage({
                           const original = part.actualCostCents === null ? null : part.actualCostCents * part.quantity;
                           return (
                             <span className="tabular-nums font-medium text-green-700 dark:text-green-400">
-                              paid {money(part.paidBaseCents, base)}
-                              {cur !== base ? ` (${money(original, cur)})` : ""} · {formatDate(part.paidAt)}
+                              {P.paidAmount(f.money(part.paidBaseCents, base))}
+                              {cur !== base ? ` (${f.money(original, cur)})` : ""} · {f.date(part.paidAt)}
                             </span>
                           );
                         }
                         const each = part.actualCostCents ?? part.estimatedCostCents;
-                        if (each === null) return <span>no cost yet</span>;
+                        if (each === null) return <span>{P.noCost}</span>;
                         return (
                           <span className="tabular-nums">
-                            {part.actualCostCents !== null ? "to pay" : "est"} {money(each * part.quantity, cur)}
+                            {(part.actualCostCents !== null ? P.toPay : P.estimate)(f.money(each * part.quantity, cur))}
                           </span>
                         );
                       })()}
@@ -276,7 +276,7 @@ export default async function ProjectPage({
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn-ghost h-11 w-11 shrink-0 px-0"
-                      aria-label={`Open link for ${part.name}`}
+                      aria-label={P.openLink(part.name)}
                     >
                       <LinkIcon className="h-5 w-5" />
                     </a>
@@ -291,14 +291,14 @@ export default async function ProjectPage({
       <section aria-labelledby="refs-title" className="mb-8">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id="refs-title" className="section-title">
-            References
+            {P.references}
           </h2>
           <Link href={`/projects/${project.id}/references`} className="btn-secondary">
-            <ImageIcon className="h-5 w-5" /> {references.length ? "All photos" : "Add photos"}
+            <ImageIcon className="h-5 w-5" /> {references.length ? P.allPhotos : P.addPhotos}
           </Link>
         </div>
         {references.length === 0 ? (
-          <EmptyState title="No reference images">Upload screenshots, art and progress photos.</EmptyState>
+          <EmptyState title={P.noRefs}>{P.noRefsText}</EmptyState>
         ) : (
           <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {references.map((r) => (
@@ -306,7 +306,7 @@ export default async function ProjectPage({
                 <Link href={`/projects/${project.id}/references#ref-${r.id}`}>
                   <img
                     src={`/api/uploads/${r.thumbPath}`}
-                    alt={r.caption ?? "Reference image"}
+                    alt={r.caption ?? P.refAlt}
                     loading="lazy"
                     className="aspect-square w-full rounded-xl object-cover"
                   />

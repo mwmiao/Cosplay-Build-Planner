@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UploadError, removeStoredFiles, storeImage } from "@/lib/uploads";
-import { idSchema, referenceSchema } from "@/lib/validation";
+import { getI18n } from "@/i18n/server";
+import { env } from "@/lib/env";
+import { idSchema, schemas } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -31,25 +33,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const project = await db.project.findFirst({ where: { id: projectId, deletedAt: null } });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const { t } = getI18n();
+  const E = t.refs.errors;
 
   let form: FormData;
   try {
     form = await req.formData();
   } catch {
-    return back({ uploadError: "The upload didn't come through. Try again." });
+    return back({ uploadError: E.noUpload });
   }
 
-  const meta = referenceSchema.safeParse({
+  const meta = schemas(t).reference.safeParse({
     caption: form.get("caption") ?? undefined,
     sourceUrl: form.get("sourceUrl") ?? undefined,
   });
   if (!meta.success) {
-    return back({ uploadError: meta.error.issues[0]?.message ?? "Check the caption and link." });
+    return back({ uploadError: meta.error.issues[0]?.message ?? E.checkFields });
   }
 
   const files = form.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length === 0) return back({ uploadError: "Choose at least one image." });
-  if (files.length > 20) return back({ uploadError: "Upload up to 20 images at a time." });
+  if (files.length === 0) return back({ uploadError: t.refs.chooseOne });
+  if (files.length > 20) return back({ uploadError: E.tooMany });
 
   let saved = 0;
   const errors: string[] = [];
@@ -73,10 +77,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       saved += 1;
     } catch (err) {
       if (err instanceof UploadError) {
-        errors.push(`${file.name}: ${err.message}`);
+        errors.push(`${file.name}: ${err.code === "tooLarge" ? E.tooLarge(env().MAX_UPLOAD_MB) : E[err.code]}`);
       } else {
         console.error("Reference upload failed", err);
-        errors.push(`${file.name}: couldn't be saved.`);
+        errors.push(`${file.name}: ${E.notSaved}`);
       }
     }
   }

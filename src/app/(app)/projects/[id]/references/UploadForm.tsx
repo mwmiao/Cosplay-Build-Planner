@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Field } from "@/components/Field";
+import { useI18n } from "@/i18n/client";
 
 /**
  * Plain multipart form posting to the upload route (works without JS too).
  * The client side only pre-checks file sizes and shows a busy state.
  */
 export function UploadForm({ projectId, accept, maxMb }: { projectId: string; accept: string; maxMb: number }) {
+  const { t } = useI18n();
+  const R = t.refs;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,10 +26,10 @@ export function UploadForm({ projectId, accept, maxMb }: { projectId: string; ac
         const tooBig = files.filter((f) => f.size > maxMb * 1024 * 1024);
         if (files.length === 0) {
           e.preventDefault();
-          setError("Choose at least one image.");
+          setError(R.chooseOne);
         } else if (tooBig.length) {
           e.preventDefault();
-          setError(`Too large (max ${maxMb} MB): ${tooBig.map((f) => f.name).join(", ")}`);
+          setError(R.tooBig(maxMb, tooBig.map((f) => f.name).join(", ")));
         } else {
           setError(null);
           setBusy(true);
@@ -35,7 +38,7 @@ export function UploadForm({ projectId, accept, maxMb }: { projectId: string; ac
     >
       <div>
         <label htmlFor="ref-images" className="label">
-          Images <span className="text-brand-600">*</span>
+          {R.images} <span className="text-brand-600">*</span>
         </label>
         <input
           id="ref-images"
@@ -48,16 +51,16 @@ export function UploadForm({ projectId, accept, maxMb }: { projectId: string; ac
           className="block w-full text-sm file:mr-3 file:min-h-11 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:font-semibold file:text-brand-700 dark:file:bg-brand-900/40 dark:file:text-brand-200"
         />
         <p id="ref-images-hint" className="hint">
-          JPEG, PNG, WebP, GIF or AVIF · up to {maxMb} MB each · location data is removed.
+          {R.imagesHint(maxMb)}
         </p>
         {error ? <p className="field-error">{error}</p> : null}
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Caption" name="caption" placeholder="e.g. Back of the armor" />
-        <Field label="Source link" name="sourceUrl" type="url" inputMode="url" placeholder="https://" />
+        <Field label={R.caption} name="caption" placeholder={R.captionPlaceholder} />
+        <Field label={R.sourceLink} name="sourceUrl" type="url" inputMode="url" placeholder="https://" />
       </div>
       <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
-        {busy ? "Uploading…" : "Upload"}
+        {busy ? R.uploading : R.upload}
       </button>
     </form>
   );

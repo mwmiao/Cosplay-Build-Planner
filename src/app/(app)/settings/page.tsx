@@ -4,16 +4,20 @@ import { ThemePicker } from "@/components/ThemePicker";
 import pkg from "../../../../package.json";
 import { db } from "@/lib/db";
 import { authEnabled } from "@/lib/env";
-import { formatDate, rateLabel } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 import { getMoneyContext } from "@/lib/queries";
 import { crossRate } from "@/lib/rates";
-import { DefaultCurrencyForm, RefreshRatesButton } from "./CurrencySettings";
+import { DefaultCurrencyForm, LanguagePicker, RefreshRatesButton } from "./CurrencySettings";
 import { logout } from "../../login/actions";
 import { purgeProject, restoreProject } from "../projects/actions";
 
-export const metadata: Metadata = { title: "Settings" };
+export function generateMetadata(): Metadata {
+  return { title: getI18n().t.settings.title };
+}
 
 export default async function SettingsPage() {
+  const { t, f } = getI18n();
+  const S = t.settings;
   const [deleted, counts] = await Promise.all([
     db.project.findMany({
       where: { deletedAt: { not: null } },
@@ -45,49 +49,45 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <h1 className="page-title mb-4">Settings</h1>
+      <h1 className="page-title mb-4">{S.title}</h1>
 
-      <section className="card mb-6 space-y-4">
+      <section className="card mb-6 space-y-6">
+        <LanguagePicker />
         <ThemePicker />
       </section>
 
       <section className="card mb-6 space-y-4" aria-labelledby="currency-title">
         <h2 id="currency-title" className="section-title">
-          Currency
+          {S.currency}
         </h2>
         <DefaultCurrencyForm current={base} />
         <div className="border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
-          <h3 className="mb-1 font-semibold">Exchange rates</h3>
-          <p className="hint mb-3">
-            Today&apos;s rates estimate planned costs and refresh every 6 hours. Payments are converted once, at the rate for
-            their payment date (European Central Bank), and never change afterwards.
-          </p>
+          <h3 className="mb-1 font-semibold">{S.rates}</h3>
+          <p className="hint mb-3">{S.ratesHint}</p>
           {ctx.rates.fetchedAt ? (
             <dl className="mb-3 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
-              <dt className="text-zinc-500 dark:text-zinc-400">Source</dt>
+              <dt className="text-zinc-500 dark:text-zinc-400">{S.source}</dt>
               <dd>{ctx.rates.source}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">Rates for</dt>
+              <dt className="text-zinc-500 dark:text-zinc-400">{S.ratesFor}</dt>
               <dd>{ctx.rates.rateDate}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">Checked</dt>
-              <dd>{ctx.rates.fetchedAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</dd>
+              <dt className="text-zinc-500 dark:text-zinc-400">{S.checked}</dt>
+              <dd>{f.dateTime(ctx.rates.fetchedAt)}</dd>
               {[...used].sort().map((c) => (
                 <div key={c} className="contents">
                   <dt className="text-zinc-500 dark:text-zinc-400">{c}</dt>
-                  <dd className="tabular-nums">{rateLabel(crossRate(ctx.rates, c, base), c, base)}</dd>
+                  <dd className="tabular-nums">{f.rate(crossRate(ctx.rates, c, base), c, base)}</dd>
                 </div>
               ))}
             </dl>
           ) : (
-            <p className="mb-3 text-amber-700 dark:text-amber-400">
-              No rates downloaded yet. The app needs internet access once to get them.
-            </p>
+            <p className="mb-3 text-amber-700 dark:text-amber-400">{S.noRates}</p>
           )}
           <RefreshRatesButton />
           <p className="hint mt-3">
             <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer" className="link">
-              Rates By Exchange Rate API
+              {S.ratesCredit}
             </a>{" "}
-            · ECB reference rates via{" "}
+            · {S.ecbVia}{" "}
             <a href="https://frankfurter.dev" target="_blank" rel="noopener noreferrer" className="link">
               Frankfurter
             </a>
@@ -97,11 +97,11 @@ export default async function SettingsPage() {
 
       <section className="card mb-6" aria-labelledby="deleted-title">
         <h2 id="deleted-title" className="section-title mb-1">
-          Deleted projects
+          {S.deleted}
         </h2>
-        <p className="hint mb-3">Restore a project, or delete it for good (its photos are removed too).</p>
+        <p className="hint mb-3">{S.deletedHint}</p>
         {deleted.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Nothing here.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{S.nothing}</p>
         ) : (
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {deleted.map((p) => (
@@ -109,17 +109,17 @@ export default async function SettingsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{p.characterName}</div>
                   <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {p.series ? `${p.series} · ` : ""}deleted {formatDate(p.deletedAt)}
+                    {p.series ? `${p.series} · ` : ""}{S.deletedOn(f.date(p.deletedAt))}
                   </div>
                 </div>
                 <form action={restoreProject.bind(null, p.id)}>
                   <SubmitButton className="btn-secondary" pendingText="…">
-                    Restore
+                    {S.restore}
                   </SubmitButton>
                 </form>
                 <form action={purgeProject.bind(null, p.id)}>
-                  <ConfirmButton message={`Permanently delete “${p.characterName}” and all its parts and photos?`}>
-                    Delete forever
+                  <ConfirmButton message={S.purgeConfirm(p.characterName)}>
+                    {S.deleteForever}
                   </ConfirmButton>
                 </form>
               </li>
@@ -130,10 +130,10 @@ export default async function SettingsPage() {
 
       <section className="card mb-6 text-sm" aria-labelledby="about-title">
         <h2 id="about-title" className="section-title mb-2">
-          About this install
+          {S.about}
         </h2>
         <dl className="grid grid-cols-2 gap-y-1">
-          <dt className="text-zinc-500 dark:text-zinc-400">Version</dt>
+          <dt className="text-zinc-500 dark:text-zinc-400">{S.version}</dt>
           <dd>
             <a
               href="https://github.com/mwmiao/Cosplay-Build-Planner/releases"
@@ -159,33 +159,28 @@ export default async function SettingsPage() {
           </dd>
           {builtAt && !Number.isNaN(builtAt.getTime()) ? (
             <>
-              <dt className="text-zinc-500 dark:text-zinc-400">Built</dt>
-              <dd>
-                {builtAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
-              </dd>
+              <dt className="text-zinc-500 dark:text-zinc-400">{S.built}</dt>
+              <dd>{f.dateTime(builtAt)}</dd>
             </>
           ) : null}
-          <dt className="text-zinc-500 dark:text-zinc-400">Projects</dt>
+          <dt className="text-zinc-500 dark:text-zinc-400">{S.projects}</dt>
           <dd className="tabular-nums">{projectCount}</dd>
-          <dt className="text-zinc-500 dark:text-zinc-400">Parts</dt>
+          <dt className="text-zinc-500 dark:text-zinc-400">{S.parts}</dt>
           <dd className="tabular-nums">{partCount}</dd>
-          <dt className="text-zinc-500 dark:text-zinc-400">Reference images</dt>
+          <dt className="text-zinc-500 dark:text-zinc-400">{S.images}</dt>
           <dd className="tabular-nums">{imageCount}</dd>
         </dl>
-        <p className="hint mt-3">
-          Everything lives in the data folder (database, uploads and automatic backups). Back up that folder to keep your
-          plans safe.
-        </p>
+        <p className="hint mt-3">{S.dataHint}</p>
       </section>
 
       {authEnabled() ? (
         <form action={logout}>
-          <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText="Logging out…">
-            Log out
+          <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText={t.login.loggingOut}>
+            {t.login.logout}
           </SubmitButton>
         </form>
       ) : (
-        <p className="hint">Login is off (no APP_PASSWORD set). Anyone who can reach this address can use the app.</p>
+        <p className="hint">{S.loginOff}</p>
       )}
     </>
   );

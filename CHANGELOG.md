@@ -4,6 +4,21 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.2.0 — 2026-10-25
+
+### Added
+- European Portuguese (pt-PT) interface, alongside English. Switch in
+  **Settings → Language**; the choice is saved per device, and the first visit
+  follows the browser's language.
+- Numbers, dates and currency names follow the chosen language (e.g. `23,10 €`,
+  "iene japonês"). Form validation messages and CSV export headers are
+  translated too.
+
+### Changed
+- On phones, the sticky form bar no longer shows Cancel (the back link at the
+  top does the same), so the main buttons fit on one row.
+- English dates and numbers use the British format (e.g. `25 Oct 2026`).
+
 ## 1.1.1 — 2026-10-25
 
 ### Changed

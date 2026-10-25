@@ -1,14 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import { I18nProvider } from "@/i18n/client";
+import { getI18n } from "@/i18n/server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: { default: "Cosplay Build Planner", template: "%s · Cosplay Planner" },
-  description: "Plan cosplay builds: parts, costs, deadlines and references.",
-  manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
-  appleWebApp: { capable: true, title: "Cosplay", statusBarStyle: "default" },
-  robots: { index: false, follow: false },
-};
+export function generateMetadata(): Metadata {
+  const { t } = getI18n();
+  return {
+    title: { default: t.app.name, template: `%s · ${t.app.shortName}` },
+    description: t.app.description,
+    manifest: "/manifest.webmanifest",
+    icons: { icon: "/icon.svg", apple: "/icon.svg" },
+    appleWebApp: { capable: true, title: "Cosplay", statusBarStyle: "default" },
+    robots: { index: false, follow: false },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -24,12 +29,15 @@ export const viewport: Viewport = {
 const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||((!t||t==='system')&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const { locale } = getI18n();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <I18nProvider locale={locale}>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

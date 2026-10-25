@@ -12,6 +12,8 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
+    // Tests read English text; the app picks its language from the browser.
+    locale: "en-GB",
     trace: "retain-on-failure",
   },
   projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],

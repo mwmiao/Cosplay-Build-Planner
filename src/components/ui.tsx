@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { statusLabel } from "@/lib/constants";
 import { ChevronLeftIcon } from "./Icons";
 
 const statusColors: Record<string, string> = {
@@ -13,14 +12,14 @@ const statusColors: Record<string, string> = {
   done: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, label }: { status: string; label: string }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
         statusColors[status] ?? statusColors.idea
       }`}
     >
-      {statusLabel(status)}
+      {label}
     </span>
   );
 }

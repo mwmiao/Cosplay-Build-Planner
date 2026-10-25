@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
 import { BackLink } from "@/components/ui";
+import { getI18n } from "@/i18n/server";
 import { getProjectOr404, knownSuppliers } from "@/lib/queries";
 import { getDefaultCurrency } from "@/lib/settings";
 import { createPart } from "../actions";
 import { PartForm } from "../PartForm";
 
-export const metadata: Metadata = { title: "Add part" };
+export function generateMetadata(): Metadata {
+  return { title: getI18n().t.partForm.newTitle };
+}
 
 export default async function NewPartPage({ params }: { params: { id: string } }) {
   const project = await getProjectOr404(params.id);
   const base = project.currency ?? (await getDefaultCurrency());
+  const { t } = getI18n();
   return (
     <>
       <BackLink href={`/projects/${project.id}`}>{project.characterName}</BackLink>
-      <h1 className="page-title mb-4">Add part</h1>
+      <h1 className="page-title mb-4">{t.partForm.newTitle}</h1>
       <div className="card">
         <PartForm
           action={createPart.bind(null, project.id)}
           defaultCurrency={base}
           baseCurrency={base}
           cancelHref={`/projects/${project.id}#parts`}
-          submitLabel="Add part"
+          submitLabel={t.partForm.add}
           allowAddAnother
           suppliers={await knownSuppliers()}
         />
