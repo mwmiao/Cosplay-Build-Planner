@@ -46,8 +46,8 @@ test("create project, add part, shopping list, pay in another currency", async (
   await expect(page.getByRole("heading", { name: "Shopping list" })).toBeVisible();
   const group = page.getByRole("region", { name: "Test Foam Co" });
   await expect(group.getByText(partName)).toBeVisible();
-  // Decimal separator follows the server's locale (25.00 or 25,00).
-  await expect(group.getByText(/est 25[.,]00/)).toBeVisible();
+  // Formatting follows the server's locale: "est $25.00", "est 25,00 US$"…
+  await expect(group.getByText(/est \D*25[.,]00/)).toBeVisible();
 
   // Ticking it off moves the part to "ordered".
   await group.getByRole("checkbox", { name: `${partName}: purchased` }).click();
