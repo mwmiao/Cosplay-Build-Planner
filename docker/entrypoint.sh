@@ -13,9 +13,12 @@ else
   RUN_AS=""
 fi
 
-if [ -z "$APP_PASSWORD" ] || [ -z "$SESSION_SECRET" ]; then
-  echo "ERROR: APP_PASSWORD and SESSION_SECRET must be set (see .env.example)." >&2
+if [ -n "$APP_PASSWORD" ] && [ -z "$SESSION_SECRET" ]; then
+  echo "ERROR: SESSION_SECRET must be set when APP_PASSWORD is set (see .env.example)." >&2
   exit 1
+fi
+if [ -z "$APP_PASSWORD" ]; then
+  echo "Login is off (no APP_PASSWORD set): anyone who can reach port ${PORT} can use the app."
 fi
 
 # Snapshot the existing database before migrating; seed only on the very first run.

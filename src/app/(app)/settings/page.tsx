@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { ThemePicker } from "@/components/ThemePicker";
 import { db } from "@/lib/db";
+import { authEnabled } from "@/lib/env";
 import { formatDate } from "@/lib/format";
 import { logout } from "../../login/actions";
 import { purgeProject, restoreProject } from "../projects/actions";
@@ -109,11 +110,15 @@ export default async function SettingsPage() {
         </p>
       </section>
 
-      <form action={logout}>
-        <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText="Logging out…">
-          Log out
-        </SubmitButton>
-      </form>
+      {authEnabled() ? (
+        <form action={logout}>
+          <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText="Logging out…">
+            Log out
+          </SubmitButton>
+        </form>
+      ) : (
+        <p className="hint">Login is off (no APP_PASSWORD set). Anyone who can reach this address can use the app.</p>
+      )}
     </>
   );
 }

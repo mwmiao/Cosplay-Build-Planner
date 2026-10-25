@@ -1,16 +1,28 @@
 import path from "node:path";
 import { z } from "zod";
 
-const schema = z.object({
-  APP_PASSWORD: z.string().min(8, "APP_PASSWORD must be at least 8 characters"),
-  SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
-  UPLOAD_DIR: z.string().default("./data/uploads"),
-  MAX_UPLOAD_MB: z.coerce.number().positive().max(100).default(15),
-  COOKIE_SECURE: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((v) => v === "true"),
-});
+/** Blank variables (e.g. `APP_PASSWORD=` or an unset compose `${VAR:-}`) count as unset. */
+const optional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema);
+
+const schema = z
+  .object({
+    // Login is off unless a password is set.
+    APP_PASSWORD: optional(z.string().min(8, "APP_PASSWORD must be at least 8 characters").optional()),
+    SESSION_SECRET: optional(z.string().min(32, "SESSION_SECRET must be at least 32 characters").optional()),
+    UPLOAD_DIR: optional(z.string().default("./data/uploads")),
+    MAX_UPLOAD_MB: optional(z.coerce.number().positive().max(100).default(15)),
+    COOKIE_SECURE: optional(
+      z
+        .enum(["true", "false"])
+        .default("false")
+        .transform((v) => v === "true"),
+    ),
+  })
+  .refine((e) => !e.APP_PASSWORD || e.SESSION_SECRET, {
+    message: "SESSION_SECRET is required when APP_PASSWORD is set",
+    path: ["SESSION_SECRET"],
+  });
 
 let cached: z.infer<typeof schema> | null = null;
 
@@ -29,4 +41,9 @@ export function env() {
 
 export function uploadRoot(): string {
   return path.resolve(env().UPLOAD_DIR);
+}
+
+/** True when APP_PASSWORD is set; otherwise the app is open to anyone who can reach it. */
+export function authEnabled(): boolean {
+  return Boolean(env().APP_PASSWORD);
 }

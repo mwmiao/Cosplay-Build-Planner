@@ -3,16 +3,19 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "./constants";
-import { env } from "./env";
+import { authEnabled, env } from "./env";
 import { SESSION_MAX_AGE_SECONDS, createSessionToken, verifySessionToken } from "./session";
 
 export function passwordMatches(candidate: string): boolean {
+  const password = env().APP_PASSWORD;
+  if (!password) return false;
   const a = createHash("sha256").update(candidate).digest();
-  const b = createHash("sha256").update(env().APP_PASSWORD).digest();
+  const b = createHash("sha256").update(password).digest();
   return timingSafeEqual(a, b);
 }
 
 export async function isAuthenticated(): Promise<boolean> {
+  if (!authEnabled()) return true;
   return verifySessionToken(cookies().get(SESSION_COOKIE)?.value, env().SESSION_SECRET);
 }
 
@@ -25,7 +28,9 @@ export async function requireAuth(): Promise<void> {
 }
 
 export async function startSession(): Promise<void> {
-  const token = await createSessionToken(env().SESSION_SECRET);
+  const secret = env().SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is not set");
+  const token = await createSessionToken(secret);
   cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",

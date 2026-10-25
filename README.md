@@ -1,6 +1,6 @@
 # Cosplay Build Planner
 
-A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Single-user, password-protected, no cloud services. It's meant to run on a home NAS and be reached through Tailscale.
+A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Single-user, no login by default (an optional password is available), no cloud services. It's meant to run on a home NAS and be reached through Tailscale.
 
 **Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** `ghcr.io/mwmiao/cosplay-build-planner`
 
@@ -21,8 +21,8 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `APP_PASSWORD` | yes | — | Login password (8+ characters). |
-| `SESSION_SECRET` | yes | — | Signs the login cookie (32+ characters). Changing it logs you out everywhere. |
+| `APP_PASSWORD` | no | empty | Leave empty for no login (the default). Set it (8+ characters) to require a password. |
+| `SESSION_SECRET` | only with a password | empty | Signs the login cookie (32+ characters). Changing it logs you out everywhere. |
 | `DATABASE_URL` | yes | `file:./dev.db` locally, `file:/app/data/cosplay.db` in Docker | SQLite database location. |
 | `UPLOAD_DIR` | no | `./data/uploads`, `/app/data/uploads` in Docker | Where images are stored. |
 | `MAX_UPLOAD_MB` | no | `15` | Maximum size per image. |
@@ -47,7 +47,7 @@ Requires **Node.js 20 or newer** (22 LTS recommended).
 
 ```bash
 npm install
-cp .env.example .env          # then edit APP_PASSWORD and SESSION_SECRET
+cp .env.example .env          # defaults work as-is (no login)
 npx prisma migrate dev        # creates prisma/dev.db and applies migrations
 npm run db:seed               # optional example project
 npm run dev                   # http://localhost:1337
@@ -111,8 +111,7 @@ Because of this, updating is just replacing the container with a newer image. Yo
 Run the published image anywhere:
 
 ```bash
-cp .env.example .env    # set APP_PASSWORD and SESSION_SECRET
-docker compose up -d
+docker compose up -d    # no .env needed; add one only to change defaults
 ```
 
 To build from source instead (e.g. to try local changes in Docker):
@@ -126,25 +125,15 @@ docker compose up -d
 
 ## Setting it up on a UGREEN NAS (DXP2800, UGOS Pro)
 
-The NAS doesn't build anything. It downloads the ready-made image from GitHub's registry, which is built for x86-64, the same CPU type as the DXP2800's Intel N100. The NAS only needs a compose file, a `.env` and a data folder. No source code.
+The NAS doesn't build anything. It downloads the ready-made image from GitHub's registry, which is built for x86-64, the same CPU type as the DXP2800's Intel N100. The NAS only needs `docker-compose.yml` and a data folder: no source code and no `.env`.
 
-### 1. Make the image public (one time)
-The first time the workflow runs, GitHub creates the package as **private**, even for a public repo. Make it public so the NAS can download it without logging in:
-1. Open **github.com/mwmiao → Packages → cosplay-build-planner → Package settings**.
-2. Under **Danger Zone → Change visibility**, choose **Public**.
+### 1. Prepare the folders on the NAS
+1. In **File Manager**, create `docker/cosplay-planner` with a `data` folder inside it. On the NAS that's `/volume1/docker/cosplay-planner/data`. If your storage pool isn't volume 1, set `DATA_PATH` (see step 3).
+2. Put `docker-compose.yml` from this repo in `docker/cosplay-planner`. It works as-is.
+3. Optional: to change a default, create a `.env` next to it with just the lines you need, for example `TZ=Europe/Lisbon` (default `Europe/London`) or `DATA_PATH=/volume2/...`. See `.env.example` for all of them. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
+4. Optional but recommended: turn on SSH in **Control Panel → Terminal**, run `id`, and if your user and group IDs aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user.
 
-The image contains only the app's code. Your password, secret and data live only on the NAS.
-
-### 2. Prepare the folders on the NAS
-1. In **File Manager**, create `docker/cosplay-planner` with a `data` folder inside it. On the NAS that's `/volume1/docker/cosplay-planner/data`. If your storage pool isn't volume 1, set `DATA_PATH` in `.env`.
-2. Put `docker-compose.yml` and `.env.example` from this repo in `docker/cosplay-planner`. Then copy `.env.example` to `.env` and set:
-   - `APP_PASSWORD`: your login password.
-   - `SESSION_SECRET`: a long random string.
-   - `TZ`: your time zone.
-   - Leave `DATABASE_URL` and `UPLOAD_DIR` as they are; the compose file sets the Docker paths.
-3. Optional but recommended: turn on SSH in **Control Panel → Terminal**, run `id`, and if your user and group IDs aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user.
-
-### 3. Create the project
+### 2. Create the project
 **Docker → Project → Create**. Name it `cosplay-planner`, set the path to `/volume1/docker/cosplay-planner`, and let it use the `docker-compose.yml` there. Then deploy. It downloads the image and starts.
 
 Alternatively, over SSH:
@@ -156,7 +145,7 @@ sudo docker compose logs -f     # wait for "Starting Cosplay Build Planner on po
 
 Open `http://<nas-lan-ip>:1337` on your home network.
 
-### 4. Updates
+### 3. Updates
 After you push changes and the GitHub workflow finishes (about 3–5 minutes), the UGOS Docker app shows that a newer `ghcr.io/mwmiao/cosplay-build-planner:latest` image is available. Update the image or project from there, and the container is recreated with the new version. Over SSH, the equivalent is:
 
 ```bash
@@ -178,10 +167,10 @@ Tailscale is already on the NAS, so the app is reachable from any device on your
 
 **Keep it private:**
 - **Do not** forward port 1337 on your router, and don't use Tailscale *Funnel*.
-- The app has a password, but it isn't designed to be on the public internet.
+- Login is off by default, so anyone who can reach port 1337 can see and change your plans. On your home network and tailnet that's only you and your devices, which is the intended setup.
 - For extra protection, a Tailscale ACL can limit which of your devices can reach the NAS on port 1337.
 
-**Optional HTTPS.** If the NAS's Tailscale install gives you the `tailscale` command, run `tailscale serve --bg 1337`. You can then use `https://<nas-name>.<tailnet>.ts.net`. Set `COOKIE_SECURE=true` in `.env` afterwards and restart the container. Do this only if you'll always use the HTTPS address, otherwise logging in over plain `http://` will fail.
+**Optional HTTPS.** If the NAS's Tailscale install gives you the `tailscale` command, run `tailscale serve --bg 1337`. You can then use `https://<nas-name>.<tailnet>.ts.net`. If you've turned on the optional login, also set `COOKIE_SECURE=true` in `.env` and restart the container. Do that only if you'll always use the HTTPS address, otherwise logging in over plain `http://` will fail.
 
 ---
 
@@ -214,17 +203,15 @@ Back up the whole **data folder**. It contains the database, uploads and snapsho
 To get back to the state just before an update, use the newest snapshot taken before the update time (the container makes one on every start).
 
 ### Moving to a new machine
-Copy the data folder, `docker-compose.yml` and your `.env`, then run `docker compose up -d` on the new host.
+Copy the data folder, `docker-compose.yml` and your `.env` (if you made one), then run `docker compose up -d` on the new host.
 
 ---
 
 ## Security notes
 
-- There is one password, set in `APP_PASSWORD`. The login cookie is signed, `HttpOnly` and `SameSite=Lax`, and lasts 30 days.
-- After 10 wrong attempts within 15 minutes, logins from that address are refused for a while.
-- Every page, API route and server action checks the login cookie itself, not only the middleware.
-- `/api/health` is the only unauthenticated endpoint, and it reveals nothing beyond "ok/error".
-- Uploads are checked by actually reading the image, not by trusting the file name. They're re-encoded with metadata (including GPS) stripped, saved under random file names, and served only to logged-in sessions.
+- **No login by default.** The app trusts its network: anyone who can reach port 1337 can use it. Keep it on your home network and Tailscale; never expose it to the internet.
+- **Optional login.** Set `APP_PASSWORD` and `SESSION_SECRET` (in a `.env` next to `docker-compose.yml`) and restart to require a password. The login cookie is signed, `HttpOnly` and `SameSite=Lax`, and lasts 30 days. After 10 wrong attempts within 15 minutes, logins from that address are refused for a while. Every page, API route and server action then checks the cookie itself, not only the middleware.
+- Uploads are checked by actually reading the image, not by trusting the file name. They're re-encoded with metadata (including GPS) stripped and saved under random file names. Requests for files outside the upload folder are refused.
 - CSV exports neutralise spreadsheet formulas, so a cell can't run code when opened in Excel.
 
 ## Project layout

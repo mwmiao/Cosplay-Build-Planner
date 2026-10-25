@@ -3,6 +3,8 @@ import { SESSION_COOKIE } from "@/lib/constants";
 import { verifySessionToken } from "@/lib/session";
 
 export async function middleware(req: NextRequest) {
+  // No password configured: login is turned off.
+  if (!process.env.APP_PASSWORD?.trim()) return NextResponse.next();
   const ok = await verifySessionToken(
     req.cookies.get(SESSION_COOKIE)?.value,
     process.env.SESSION_SECRET,

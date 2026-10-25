@@ -3,31 +3,36 @@
 # Uses the image GitHub Actions publishes on every push to main, so the NAS
 # never builds anything. UGOS's Docker app shows when a newer :latest exists.
 #
-# 1. Put this file and a .env (copied from .env.example) in one folder on the NAS.
-# 2. Create the data folder (see DATA_PATH below).
-# 3. Create a Project from this file in the Docker app (or: docker compose up -d).
+# Works as-is: no .env file needed. Login is off; the app is meant for your
+# home network and Tailscale only. Do NOT forward port 1337 on your router.
 #
-# Reach it at http://<nas-lan-ip>:1337 at home, or http://<nas-tailscale-name>:1337
-# via Tailscale. Do NOT forward port 1337 on your router.
+# 1. Create the data folder (DATA_PATH below).
+# 2. Create a Project from this file in the Docker app (or: docker compose up -d).
+# 3. Open http://<nas-lan-ip>:1337, or http://<nas-tailscale-name>:1337 via Tailscale.
 #
-# To run a local source build instead: docker build -t ghcr.io/mwmiao/cosplay-build-planner:latest .
+# Optional overrides go in a .env file next to this one (see .env.example).
 
 services:
   cosplay-planner:
     image: ghcr.io/mwmiao/cosplay-build-planner:latest
     container_name: cosplay-planner
     restart: unless-stopped
-    env_file: .env
     environment:
       PORT: "1337"
       DATABASE_URL: file:/app/data/cosplay.db
       UPLOAD_DIR: /app/data/uploads
+      TZ: ${TZ:-Europe/London}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-15}
       # Your NAS user's IDs (SSH in and run `id`); files in the data folder get this owner.
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
       SEED_EXAMPLE: ${SEED_EXAMPLE:-true}
+      # Optional login: set both in .env to require a password.
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "1337:1337"
     volumes:

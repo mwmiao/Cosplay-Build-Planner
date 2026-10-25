@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth";
+import { authEnabled } from "@/lib/env";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = { title: "Log in" };
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-  if (await isAuthenticated()) redirect("/projects");
+  if (!authEnabled() || (await isAuthenticated())) redirect("/projects");
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="card w-full max-w-sm p-6">
