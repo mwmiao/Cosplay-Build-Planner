@@ -3,7 +3,12 @@
   "short_name": "Cosplay",
   "start_url": "/projects",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#db2777",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "background_color": "#110e19",
+  "theme_color": "#7a35e0",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }

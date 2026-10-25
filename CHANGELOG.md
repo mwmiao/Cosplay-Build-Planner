@@ -4,6 +4,15 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.4.1 — 2026-10-27
+
+### Changed
+- New app icon: a "C" monogram with a sparkle on a violet-to-pink gradient,
+  plus PNG home-screen icons (Android maskable, iOS apple-touch-icon).
+- New colour theme: grape-violet accent and plum-tinted neutrals in light and
+  dark mode, over a soft glow-and-dot background. Translucent cards, sidebar
+  and bottom bar.
+
 ## 1.4.0 — 2026-10-27
 
 ### Changed

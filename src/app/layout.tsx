@@ -9,7 +9,7 @@ export function generateMetadata(): Metadata {
     title: { default: t.app.name, template: `%s · ${t.app.shortName}` },
     description: t.app.description,
     manifest: "/manifest.webmanifest",
-    icons: { icon: "/icon.svg", apple: "/icon.svg" },
+    icons: { icon: "/icon.svg", apple: "/icons/apple-touch-icon.png" },
     appleWebApp: { capable: true, title: "Cosplay", statusBarStyle: "default" },
     robots: { index: false, follow: false },
   };
@@ -20,8 +20,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: light)", color: "#faf8fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#110e19" },
   ],
 };
 

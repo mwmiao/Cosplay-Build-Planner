@@ -38,7 +38,7 @@ export function Sidebar({
   return (
     <nav
       aria-label={t.nav.main}
-      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 border-r border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 md:flex"
+      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 border-r border-zinc-200/80 bg-white/75 p-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/75 md:flex"
     >
       <Link href="/projects" className="mb-6 flex items-center gap-2 px-2 text-lg font-bold">
         <img src="/icon.svg" alt="" className="h-8 w-8" />
@@ -102,7 +102,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t.nav.main}
-      className="bottom-safe fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95 md:hidden"
+      className="bottom-safe fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/90 md:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-5">
         {items.map(({ href, label, Icon, match }) => {

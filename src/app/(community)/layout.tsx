@@ -26,7 +26,7 @@ export default async function CommunityLayout({ children }: { children: React.Re
   }
   return (
     <div className="min-h-dvh">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <header className="border-b border-zinc-200/80 bg-white/75 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/75">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 md:px-8">
           <Link href="/community" className="flex items-center gap-2 font-bold">
             <img src="/icon.svg" alt="" className="h-7 w-7" />
