@@ -61,10 +61,19 @@ export default async function ProjectPage({
     (p) => (!filter.status || p.status === filter.status) && (!filter.category || p.category === filter.category),
   );
   const usedCategories = CATEGORIES.filter((c) => allParts.some((p) => p.category === c));
-  const publication = await db.publication.findFirst({
-    where: { projectId: project.id, ownerId: user.id },
-    select: { id: true, versionAt: true },
-  });
+  const [publication, moderation] = await Promise.all([
+    db.publication.findFirst({
+      where: { projectId: project.id, ownerId: user.id },
+      select: { id: true, versionAt: true },
+    }),
+    db.moderationAction.findFirst({
+      where: { projectId: project.id, ownerId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: { reason: true, createdAt: true },
+    }),
+  ]);
+  // Show the latest removal unless the owner has published again since.
+  const removedNotice = moderation && (!publication || publication.versionAt < moderation.createdAt) ? moderation : null;
   const ctx = await getMoneyContext(user.id);
   const stats = projectStats(project, allParts, ctx);
   const base = stats.base;
@@ -334,6 +343,11 @@ export default async function ProjectPage({
         <p className="hint mb-3">
           {publication ? `${C.cardPublished} ${C.snapshotNote(f.date(publication.versionAt))}` : C.cardPrivate}
         </p>
+        {removedNotice ? (
+          <p role="alert" data-testid="moderation-notice" className="mb-3 whitespace-pre-wrap break-words rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            {t.admin.ownerNotice(f.date(removedNotice.createdAt), removedNotice.reason)}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Link href={`/projects/${project.id}/publish`} className={publication ? "btn-secondary" : "btn-primary"}>
             {publication ? C.manage : C.publishTitle}

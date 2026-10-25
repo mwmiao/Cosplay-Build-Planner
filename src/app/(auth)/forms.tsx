@@ -57,7 +57,6 @@ export function RegisterForm() {
         hint={A.passwordHint(PASSWORD_MIN)}
       />
       <Field label={A.confirmPassword} name="confirm" type="password" required autoComplete="new-password" errors={e.confirm} />
-      <Field label={A.inviteCode} name="invite" required autoComplete="off" errors={e.invite} hint={A.inviteHint} />
       <SubmitButton className="btn-primary w-full" pendingText={t.common.working}>
         {A.submitRegister}
       </SubmitButton>

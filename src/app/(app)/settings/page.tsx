@@ -180,7 +180,12 @@ export default async function SettingsPage() {
           <div className="font-semibold">{t.auth.signedInAs(user.name)}</div>
           <div className="truncate text-zinc-500 dark:text-zinc-400">{user.email}</div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {user.isAdmin ? (
+            <Link href="/admin" className="btn-secondary">
+              {t.admin.title}
+            </Link>
+          ) : null}
           <Link href="/account" className="btn-secondary">
             {t.auth.account}
           </Link>

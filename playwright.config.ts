@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
-export const INVITE_CODE = "playwright-invite";
 export const OUTBOX_DIR = "./prisma/playwright-outbox";
 
 // Runs against a throwaway database and upload folder, never your real data.
@@ -28,7 +27,6 @@ export default defineConfig({
       DATABASE_URL: "file:./playwright.db",
       UPLOAD_DIR: "./data/playwright-uploads",
       APP_URL: `http://127.0.0.1:${PORT}`,
-      REGISTRATION_CODE: INVITE_CODE,
       AUTH_SECRET: "playwright-auth-secret-0123456789abcdef0123456789",
       // Test-only: reset emails are written here instead of being sent.
       EMAIL_OUTBOX_DIR: OUTBOX_DIR,

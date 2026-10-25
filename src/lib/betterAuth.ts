@@ -33,6 +33,13 @@ function create() {
         });
       },
     },
+    user: {
+      additionalFields: {
+        // Read-only for the app: input:false means sign-up/update requests can't set it.
+        // Granted only with scripts/admin/set-admin on the server.
+        role: { type: "string", required: false, defaultValue: "user", input: false },
+      },
+    },
     session: {
       expiresIn: SESSION_DAYS * 24 * 60 * 60,
       updateAge: 24 * 60 * 60, // sliding expiry, refreshed at most daily
@@ -43,7 +50,7 @@ function create() {
     advanced: {
       cookiePrefix: "cbp",
       useSecureCookies: secureCookies(),
-      ipAddress: { ipAddressHeaders: ["x-forwarded-for", "x-real-ip"] },
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for", "x-real-ip"] },
     },
     plugins: [nextCookies()],
   });

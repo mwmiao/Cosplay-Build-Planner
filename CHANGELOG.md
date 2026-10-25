@@ -4,6 +4,27 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.4.0 — 2026-10-27
+
+### Changed
+- **Open registration:** the invite code (`REGISTRATION_CODE`) is gone. Anyone
+  who can reach the app can register; registration stays rate-limited per
+  address. `REGISTRATION_CODE` in `.env` is now ignored.
+- Per-address rate limits use Cloudflare's `CF-Connecting-IP` when present
+  (Cloudflare Tunnel), then `X-Forwarded-For`.
+
+### Added
+- **Admin role and moderation:** grant with
+  `node scripts/set-admin.js --email ...` (`--remove` to revoke). Admins get a
+  Moderation page listing published projects and can remove one from the
+  Community with a reason. Removal deletes the public snapshot and image
+  copies only; the owner's private project is untouched, they see the reason,
+  and they can publish again. Removals are logged.
+
+### Upgrading
+- Additive migration (user role column, moderation log). Existing accounts,
+  sessions and projects are kept.
+
 ## 1.3.0 — 2026-10-26
 
 ### Added

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { type Browser, type Page, expect } from "@playwright/test";
-import { INVITE_CODE, OUTBOX_DIR } from "../playwright.config";
+import { OUTBOX_DIR } from "../playwright.config";
 
 export type TestUser = { name: string; email: string; password: string };
 
@@ -19,7 +19,6 @@ export async function register(page: Page, user: TestUser) {
   await page.getByLabel("Email").fill(user.email);
   await page.locator("input[name=password]").fill(user.password);
   await page.getByLabel("Confirm password").fill(user.password);
-  await page.getByLabel("Invite code").fill(INVITE_CODE);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/projects$/);
 }
@@ -69,3 +68,13 @@ export const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64",
 );
+
+/** Grants admin with the real server command (as the NAS owner would), against the test database. */
+export function makeAdmin(email: string) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
+  execFileSync(process.execPath, ["node_modules/tsx/dist/cli.mjs", "scripts/admin/set-admin.ts", "--email", email], {
+    env: { ...process.env, DATABASE_URL: "file:./playwright.db" },
+    stdio: "pipe",
+  });
+}

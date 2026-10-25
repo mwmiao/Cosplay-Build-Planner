@@ -15,7 +15,6 @@ const STATE_DIR = process.env.STATE_DIR ?? "container-state";
 const STATE = path.join(STATE_DIR, "state.json");
 const SESSION = path.join(STATE_DIR, "session.json");
 const OWNER = { name: "CI Owner", email: "ci-owner@example.test", password: "ci-owner-password-123" };
-const INVITE = process.env.REGISTRATION_CODE ?? "ci-invite-code";
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64",
@@ -67,7 +66,6 @@ test.describe("register", () => {
     await page.getByLabel("Email").fill(OWNER.email);
     await page.locator("input[name=password]").fill(OWNER.password);
     await page.getByLabel("Confirm password").fill(OWNER.password);
-    await page.getByLabel("Invite code").fill(INVITE);
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page).toHaveURL(/\/projects$/);
     // Unclaimed projects are invisible, even to the future owner.

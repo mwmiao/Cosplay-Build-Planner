@@ -4,8 +4,8 @@
 # so the NAS never builds anything and UGOS's Docker app can offer updates.
 # Pin a release instead of following main with e.g. eazyeight/cosplay-build-planner:1.1
 #
-# Accounts: set REGISTRATION_CODE (invite code) and APP_URL in a .env file next
-# to this one (see .env.example). The app is meant for your home network and
+# Set APP_URL (the address you open the app at) in a .env file next to this
+# one (see .env.example). The app is meant for your home network and
 # Tailscale only. Do NOT forward port 1337 on your router.
 #
 # 1. Create a `data` folder next to this file.
@@ -35,7 +35,6 @@ services:
       # Accounts (see README → Accounts). The session-signing secret is created once
       # in the data folder (data/secrets/auth-secret) unless AUTH_SECRET is set.
       APP_URL: ${APP_URL:-}
-      REGISTRATION_CODE: ${REGISTRATION_CODE:-}
       AUTH_SECRET: ${AUTH_SECRET:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-}
       # Optional email for password-reset links; without it, use the reset-password command.

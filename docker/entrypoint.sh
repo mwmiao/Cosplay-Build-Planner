@@ -14,9 +14,6 @@ else
   RUN_AS=""
 fi
 
-if [ -z "$REGISTRATION_CODE" ]; then
-  echo "Registration is closed (no REGISTRATION_CODE set). Existing accounts can still log in."
-fi
 if [ -z "$APP_URL" ]; then
   echo "APP_URL is not set: password-reset links and secure cookies need it (see README)."
 fi

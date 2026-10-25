@@ -3,18 +3,8 @@ import { PNG, asNewPerson, createProject, lastEmailTo, login, newUser, register 
 
 test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.3.1" } });
 
-test("register, log out, log in (generic errors, safe redirect), wrong invite", async ({ page }) => {
+test("register, log out, log in (generic errors, safe redirect)", async ({ page }) => {
   const user = newUser("Auth");
-
-  // Wrong invite code is refused.
-  await page.goto("/register");
-  await page.getByLabel("Display name").fill(user.name);
-  await page.getByLabel("Email").fill(user.email);
-  await page.locator("input[name=password]").fill(user.password);
-  await page.getByLabel("Confirm password").fill(user.password);
-  await page.getByLabel("Invite code").fill("not-the-code");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("That invite code isn't right.")).toBeVisible();
 
   await register(page, user);
   await page.goto("/account");

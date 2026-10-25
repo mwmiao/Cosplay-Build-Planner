@@ -1,6 +1,6 @@
 # Cosplay Build Planner
 
-A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Each person has their own account and private projects, and can choose to share a project in the Community tab. No cloud services are required. It's meant to run on a home NAS and be reached through Tailscale.
+A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Each person has their own account and private projects, and can choose to share a project in the Community tab. No cloud services are required. It's meant to run on a home NAS and be reached through a Cloudflare Tunnel or Tailscale.
 
 **Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** [`eazyeight/cosplay-build-planner`](https://hub.docker.com/r/eazyeight/cosplay-build-planner) (also `ghcr.io/mwmiao/cosplay-build-planner`)
 
@@ -8,8 +8,9 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 ## Features
 
-- **Accounts**: register with an invite code, log in and out, change your display name and password. Password reset uses a single-use email link when email is configured. Every project is private to its owner (see [Accounts](#accounts)).
+- **Accounts**: register with email and password, log in and out, change your display name and password. Password reset uses a single-use email link when email is configured. Every project is private to its owner (see [Accounts](#accounts)).
 - **Community**: publish a project on purpose, choosing exactly what becomes public, and browse what others shared. Others can copy a published project into their own projects as a private template (see [Community](#community)).
+- **Moderation**: an admin account can remove Community projects that break the rules, with a reason the owner sees (see [Admin and moderation](#admin-and-moderation)).
 - **Projects**: character, series, convention, deadline, status, base currency, budget, notes. The dashboard shows completion %, days left, and paid / planned / budget left / over-or-under budget. Projects can be archived, deleted (restorable from Settings) or deleted permanently.
 - **Build parts**: category, status (needed → ordered → arrived → building → done), estimated and actual cost per item, quantity, supplier, link and notes. Filter parts by status or category, and tick them done with one tap.
 - **Shopping list**: parts marked *Needed* in active projects appear automatically. You can also add items by hand. Group by supplier, category or project. Ticking an item marks its part *Ordered*. Exports to CSV.
@@ -26,8 +27,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `APP_URL` | recommended | `http://localhost:1337` | The address you open the app at, e.g. `https://nas.your-tailnet.ts.net`. Password-reset links use it, and an `https://` value makes login cookies *Secure*. |
-| `REGISTRATION_CODE` | to register | empty | Invite code needed to create an account (6+ characters). Empty means registration is closed; existing accounts can still log in. |
+| `APP_URL` | recommended | `http://localhost:1337` | The address you open the app at, e.g. `https://cosplay-planner.example.com`. Password-reset links use it, and an `https://` value makes login cookies *Secure*. |
 | `AUTH_SECRET` | no | generated | Signs session cookies (32+ characters). If empty, one is generated **once** into `data/secrets/auth-secret` and reused across container updates. Changing it logs everyone out. |
 | `COOKIE_SECURE` | no | from `APP_URL` | Override the *Secure* cookie flag. Leave empty unless you know you need it. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `EMAIL_FROM` | no | empty | Outgoing email for password-reset links. Without `SMTP_HOST`, "Forgot password" says it's unavailable (see [Accounts](#accounts)). |
@@ -41,13 +41,13 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 | `BACKUP_KEEP` | no | `14` | How many automatic database backups to keep. |
 | `EMAIL_OUTBOX_DIR` | **testing only** | empty | Writes emails to files instead of sending them (used by the automated tests). Never set this in production. |
 
-`APP_PASSWORD`, `SESSION_SECRET` and `SEED_EXAMPLE` from 1.2 are no longer used.
+`APP_PASSWORD`, `SESSION_SECRET` and `SEED_EXAMPLE` from 1.2, and `REGISTRATION_CODE` from 1.3, are no longer used.
 
 ---
 
 ## Accounts
 
-- **Registration** needs the invite code from `REGISTRATION_CODE`. Share it only with people you want on your NAS. To close registration, empty the setting and restart.
+- **Registration** is open: anyone who can reach the app can create an account with a name, email and a password of at least 8 characters. Registration is rate-limited per address. New accounts only see their own projects and the Community.
 - **Login** uses email and password. Passwords are hashed with scrypt by [Better Auth](https://www.better-auth.com) and never stored in readable form. Sessions are stored in the database, checked on every request, and expire after 30 days of not using the app.
 - **Rate limits:** too many login, registration or password-reset attempts are refused for a while, per address and per account. Error messages don't reveal whether an email is registered.
 - **Account page:** change your display name (the only thing shown publicly, and only if you publish) and your password. Changing the password signs out your other devices.
@@ -59,6 +59,24 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
   This prints a new random password once and signs that user out everywhere.
 
 **Privacy:** every project, part, image, shopping item, export and import belongs to one account. The server checks the owner on every page, action and download. Another user's project looks exactly like one that doesn't exist, and knowing an image's address isn't enough to open it.
+
+---
+
+## Admin and moderation
+
+There is no admin email setting and no way to become admin from the web page. The NAS owner grants it on the server:
+
+```bash
+sudo docker exec cosplay-planner node scripts/set-admin.js --email you@example.com
+sudo docker exec cosplay-planner node scripts/set-admin.js --email you@example.com --remove   # take it away
+```
+
+The account must already be registered. The command signs that user out, so log in again; a **Moderation** link then appears in the menu and on the Account page.
+
+- **Moderation page** (`/admin`) lists every published project with its owner's display name. Open one, give a reason (3 to 500 characters, for example "copyrighted images") and press **Remove from Community**. Admins also see the same form at the bottom of each public Community page.
+- **What removal does:** the same as the owner unpublishing. The public page, its data and its image copies stop working immediately.
+- **What it never does:** change or delete the owner's private project. The owner sees a notice on the project with the date and reason, and can fix it and publish again (which clears the notice).
+- **Log:** the last 20 removals are listed on the Moderation page. Admins can't see other users' private projects or emails.
 
 ---
 
@@ -74,7 +92,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **Never public:** private notes, payments (dates, actual amounts, exchange-rate details), receipts, delivery details and anything about your account. Your display name is shown; your email never is.
 - **It's a snapshot:** the public page shows the version you published. Changes you make afterwards stay private until you press **Update published version**.
 - **Unpublish** at any time. The public page, its data and its image addresses stop working immediately. Anything someone already downloaded or saved can't be recalled.
-- **Browsing:** the **Community** tab can be read without logging in, with search, newest/recently-updated sorting and pages. Anyone who can reach the app can see published projects, which on a private NAS means your home network and tailnet.
+- **Browsing:** the **Community** tab can be read without logging in, with search, newest/recently-updated sorting and pages. Anyone who can reach the app can see published projects. Behind a public Cloudflare Tunnel that's the whole internet, unless you add Cloudflare Access (see [Cloudflare Tunnel](#access-via-cloudflare-tunnel-public-https)).
 - **Copy to My Projects:** logged-in users can copy a published project. The copy:
   - is private and theirs, with new IDs
   - contains only what was published
@@ -93,10 +111,9 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
    - Copy the whole `docker/cosplay-planner/data` folder somewhere safe.
 2. **Add the new settings.** Create `docker/cosplay-planner/.env` next to `docker-compose.yml` with at least:
    ```bash
-   REGISTRATION_CODE=pick-a-long-invite-code
-   APP_URL=https://<nas-name>.<tailnet>.ts.net
+   APP_URL=https://cosplay-planner.example.com
    ```
-   See [HTTPS with tailscale serve](#https-with-tailscale-serve). Use your real address and a code only you know.
+   Use the https address you actually open the app at (your Cloudflare Tunnel hostname, or the `tailscale serve` address).
 3. **Update** to the 1.3 image: set `image:` back to `eazyeight/cosplay-build-planner:latest` (or `:1.3`) and redeploy. On start it backs up the database and applies the migrations. These only add tables and columns, so nothing is changed or deleted.
 4. **Register** your account in the app. Your old projects won't be visible yet.
 5. **Claim them** over SSH, first as a dry run that only lists what it would do:
@@ -189,11 +206,12 @@ Requires **Node.js 20 or newer** (22 LTS recommended).
 
 ```bash
 npm install
-cp .env.example .env          # set REGISTRATION_CODE and APP_URL=http://localhost:1337
+cp .env.example .env          # APP_URL=http://localhost:1337
 npx prisma migrate dev        # creates prisma/dev.db and applies migrations
 npm run db:seed               # optional example project (unclaimed)
-npm run dev                   # http://localhost:1337 → register with your REGISTRATION_CODE
+npm run dev                   # http://localhost:1337 → register an account
 npm run claim-projects -- --email you@example.com   # take ownership of the example project
+npm run set-admin -- --email you@example.com        # make yourself admin, then log in again
 ```
 
 Useful scripts:
@@ -277,7 +295,7 @@ Because of this, updating is just replacing the container with a newer image. Yo
 Run the published image anywhere:
 
 ```bash
-docker compose up -d    # with a .env containing at least REGISTRATION_CODE and APP_URL
+docker compose up -d    # with a .env containing at least APP_URL
 ```
 
 To build from source instead (e.g. to try local changes in Docker):
@@ -297,7 +315,7 @@ The NAS doesn't build anything. It downloads the ready-made image from GitHub's 
 1. In **File Manager**, create `docker/cosplay-planner` with an empty `data` folder inside it. The compose file refers to it as `./data` (relative to its own folder), so it works whichever volume your `docker` shared folder is on.
    - Don't change this to an absolute path like `/volume1/docker/...`. UGOS treats that as creating a shared folder, and fails with *"A shared folder with the same name already exists in other volumes"* when `docker` lives on another volume.
 2. Put `docker-compose.yml` from this repo in `docker/cosplay-planner`. It works as-is.
-3. Create a `.env` next to it with at least `REGISTRATION_CODE` and `APP_URL` (see [Accounts](#accounts)). Add `TZ=…` and any other settings from `.env.example` you want. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
+3. Create a `.env` next to it with at least `APP_URL` (the https address you open the app at). Add `TZ=…` and any other settings from `.env.example` you want. Leave `DATABASE_URL` and `UPLOAD_DIR` out; the compose file sets the Docker paths.
 4. Optional but recommended: turn on SSH in **Control Panel → Terminal**, run `id`, and if your user and group IDs aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user.
 
 ### 2. Create the project
@@ -310,7 +328,7 @@ sudo docker compose up -d
 sudo docker compose logs -f     # wait for "Starting Cosplay Build Planner on port 1337"
 ```
 
-Then set up [HTTPS with tailscale serve](#https-with-tailscale-serve), open that address and register.
+Then set up a [Cloudflare Tunnel](#access-via-cloudflare-tunnel-public-https) or [HTTPS with tailscale serve](#https-with-tailscale-serve), open that address, register, and [make yourself admin](#admin-and-moderation).
 
 ### 3. Updates
 After you push changes and the GitHub workflow finishes (about 3–5 minutes), a new `latest` image exists.
@@ -326,6 +344,18 @@ cd /volume1/docker/cosplay-planner && sudo docker compose pull && sudo docker co
 Before the new version starts, it backs up the database and applies any migrations. Check **Settings → About this install** to confirm the new version is running.
 
 **Rolling back:** in `docker-compose.yml`, change `:latest` to an earlier `:sha-xxxxxxx` tag (see the package page), then redeploy. An older version usually works with the newer database. If it doesn't (a migration changed something it relies on), also restore the database backup made just before the update (see below).
+
+---
+
+## Access via Cloudflare Tunnel (public HTTPS)
+
+A Cloudflare Tunnel publishes the app at a normal https address without opening router ports.
+
+1. In the Cloudflare Zero Trust dashboard, add a public hostname (e.g. `cosplay-planner.example.com`) pointing to `http://<nas-ip>:1337` (or `http://cosplay-planner:1337` if `cloudflared` runs in the same Docker network).
+2. Set `APP_URL=https://cosplay-planner.example.com` in `.env` and redeploy. This makes login cookies *Secure*; always open the app at that address.
+3. The app reads the visitor's real address from Cloudflare's `CF-Connecting-IP` header for per-address rate limits.
+
+**This makes the app reachable by anyone on the internet**, so anyone can register and read the Community tab. That's fine for a small group: projects are private, passwords are hashed, and attempts are rate-limited. To restrict who can even reach it, add a **Cloudflare Access** application for the hostname (for example, a one-time PIN sent to allowed emails).
 
 ---
 
@@ -396,8 +426,9 @@ Copy the data folder (including `secrets/`), `docker-compose.yml` and your `.env
   - database sessions checked on every request
   - `HttpOnly`, `SameSite=Lax` cookies, *Secure* over HTTPS
   - 30-day sliding expiry
-  - rate-limited login, registration and reset, with messages that don't reveal whether an email is registered
+  - rate-limited login, registration and reset (per address, using `CF-Connecting-IP` / `X-Forwarded-For`, and per account), with messages that don't reveal whether an email is registered
   - single-use, 60-minute reset links
+- **Admin** is a role set only by the server command `set-admin.js`; the browser can't set it. Admin pages return "not found" to everyone else, and admin actions check the role again on the server.
 - **Authorization** happens on the server for every page, server action, API route, export, import and image. Ownership always comes from the session, never from an ID sent by the browser. Tests include a user tampering with a form submission to target someone else's project.
 - **CSRF:** server actions use Next.js's built-in origin check; the image-upload route rejects cross-site requests.
 - **Public vs private data:** published projects are separate snapshots built from an allow-list and checked against a strict schema. Published images are separate copies served by a separate route. Private image URLs always require ownership.

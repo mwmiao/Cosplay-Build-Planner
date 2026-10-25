@@ -28,8 +28,19 @@ export async function rateLimit(key: string, max: number, windowSeconds: number)
   });
 }
 
-/** Client address as seen by the app (tailscale serve / reverse proxies set X-Forwarded-For). */
+/**
+ * Client address for rate limiting.
+ * - Behind a Cloudflare Tunnel, CF-Connecting-IP is set by Cloudflare and a
+ *   visitor can't fake it, so it wins.
+ * - Otherwise X-Forwarded-For (tailscale serve / other proxies), then X-Real-IP.
+ * Per-account limits apply regardless of the address.
+ */
 export function clientIp(): string {
   const h = headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
+  return (
+    h.get("cf-connecting-ip")?.trim() ||
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    h.get("x-real-ip")?.trim() ||
+    "local"
+  );
 }

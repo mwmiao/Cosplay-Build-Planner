@@ -1,7 +1,7 @@
 import path from "node:path";
 import { z } from "zod";
 
-/** Blank variables (e.g. `REGISTRATION_CODE=` or an unset compose `${VAR:-}`) count as unset. */
+/** Blank variables (e.g. `APP_URL=` or an unset compose `${VAR:-}`) count as unset. */
 const optional = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema);
 
@@ -10,8 +10,6 @@ const schema = z.object({
   MAX_UPLOAD_MB: optional(z.coerce.number().positive().max(100).default(15)),
   /** Public address of the app, e.g. https://nas.tailnet.ts.net — used in reset links and for secure cookies. */
   APP_URL: optional(z.string().url().optional()),
-  /** Invite code required to register. Unset = registration closed. */
-  REGISTRATION_CODE: optional(z.string().min(6, "REGISTRATION_CODE must be at least 6 characters").optional()),
   /** Override the Secure cookie flag (defaults to true when APP_URL is https). */
   COOKIE_SECURE: optional(z.enum(["true", "false"]).optional()),
 });
@@ -44,8 +42,4 @@ export function secureCookies(): boolean {
   const e = env();
   if (e.COOKIE_SECURE) return e.COOKIE_SECURE === "true";
   return appUrl().startsWith("https://");
-}
-
-export function registrationOpen(): boolean {
-  return Boolean(env().REGISTRATION_CODE);
 }

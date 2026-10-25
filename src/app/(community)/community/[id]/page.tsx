@@ -7,6 +7,7 @@ import { getI18n } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPublicProject } from "@/lib/community/view";
 import { idSchema } from "@/lib/validation";
+import { RemoveForm } from "../../../(app)/admin/RemoveForm";
 import { copyToMyProjects } from "./actions";
 
 async function load(id: string) {
@@ -61,13 +62,22 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
               </SubmitButton>
               <p className="hint">{C.copyHint}</p>
             </form>
-          ) : (
+          ) : null
+        }
+      />
+      {user?.isAdmin ? (
+        <section className="card mt-8 space-y-2 border-red-200 dark:border-red-900" aria-label={t.admin.adminTools}>
+          <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">{t.admin.adminTools}</h2>
+          <RemoveForm publicationId={project.id} />
+        </section>
+      ) : null}
+      {user ? null : (
+        <p className="mt-4">
             <Link href={`/login?next=${encodeURIComponent(`/community/${project.id}`)}`} className="link text-sm">
               {C.logInToCopy}
             </Link>
-          )
-        }
-      />
+        </p>
+      )}
     </>
   );
 }

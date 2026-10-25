@@ -42,6 +42,7 @@ model Project {
 
   owner         User?              @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   publication   Publication?
+  moderation    ModerationAction[]
   parts         BuildPart[]
   references    ReferenceImage[]
   shoppingItems ShoppingListItem[]
@@ -177,6 +178,9 @@ model User {
   image           String?
   /// Base currency for new projects and shopping-list totals
   defaultCurrency String?
+  /// "user" or "admin". Admins can remove Community publications. Only set
+  /// with the set-admin command on the server, never through the app.
+  role            String    @default("user")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -296,4 +300,20 @@ model PublicImage {
   publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([publicationId])
+}
+
+/// Admin removals of Community publications (the owner sees the reason).
+model ModerationAction {
+  id               String   @id @default(cuid())
+  /// The owner's project (kept private and untouched)
+  projectId        String
+  ownerId          String
+  adminId          String
+  publicationTitle String
+  reason           String
+  createdAt        DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
 }

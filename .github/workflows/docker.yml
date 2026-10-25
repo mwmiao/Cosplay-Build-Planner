@@ -62,7 +62,6 @@ jobs:
     timeout-minutes: 30
     env:
       DATA: ${{ github.workspace }}/ci-data
-      REGISTRATION_CODE: ci-invite-code
       STATE_DIR: ${{ github.workspace }}/container-state
     steps:
       - uses: actions/checkout@v4
@@ -102,7 +101,7 @@ jobs:
       - name: Replace with this build (same volume)
         run: |
           docker rm -f app
-          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e REGISTRATION_CODE -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
           "$RUNNER_TEMP/wait.sh"
       - run: npx playwright test -c playwright.container.config.ts
         env: { CONTAINER_PHASE: register }
@@ -117,7 +116,7 @@ jobs:
         run: |
           before=$(sha256sum "$DATA/secrets/auth-secret" | cut -c1-64)
           docker rm -f app
-          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e REGISTRATION_CODE -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
           "$RUNNER_TEMP/wait.sh"
           after=$(sha256sum "$DATA/secrets/auth-secret" | cut -c1-64)
           test "$before" = "$after" && echo "auth secret unchanged"
@@ -126,6 +125,8 @@ jobs:
         env: { CONTAINER_PHASE: verify-replaced }
       - name: Admin password reset works
         run: docker exec app node scripts/reset-password.js --email ci-owner@example.test | grep "Password reset for"
+      - name: Admin role command works
+        run: docker exec app node scripts/set-admin.js --email ci-owner@example.test | grep "now an admin"
       - name: Container logs
         if: always()
         run: docker logs app || true

@@ -1,5 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
-import { PNG, asNewPerson, createProject, newUser, register } from "./helpers";
+import { PNG, asNewPerson, createProject, login, makeAdmin, newUser, register } from "./helpers";
 
 test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.4.1" } });
 
@@ -240,4 +240,63 @@ test("Copy to My Projects makes an independent private template from published d
   await b.page.goto(`/projects/${original}`);
   await expect(b.page.getByRole("heading", { name: "Not found" })).toBeVisible();
   await b.context.close();
+});
+
+test("admin can remove a Community project with a reason; others can't; owner's project stays", async ({ page, browser }) => {
+  // Owner publishes.
+  await register(page, newUser("Owner"));
+  const title = `Rule breaker ${Date.now()}`;
+  const projectId = await setUpPrivateProject(page, title);
+  const pubId = await publish(page, projectId, { image: true });
+  const visitor = await asNewPerson(browser, "10.0.4.90");
+  const before = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
+
+  // A regular user has no moderation page and no admin tools.
+  const regular = await asNewPerson(browser, "10.0.4.91");
+  await register(regular.page, newUser("Regular"));
+  await regular.page.goto("/admin");
+  await expect(regular.page.getByRole("heading", { name: "Not found" })).toBeVisible();
+  await regular.page.goto(`/community/${pubId}`);
+  await expect(regular.page.getByRole("button", { name: "Remove from Community" })).toHaveCount(0);
+
+  // An admin (granted with the server command) removes it with a reason.
+  const adminUser = newUser("Admin");
+  const admin = await asNewPerson(browser, "10.0.4.92");
+  await register(admin.page, adminUser);
+  makeAdmin(adminUser.email);
+  await admin.page.goto("/admin");
+  await expect(admin.page).toHaveURL(/\/login/); // role change signs the user out
+  await login(admin.page, adminUser, "/admin");
+  await expect(admin.page.getByRole("heading", { name: "Moderation", level: 1 })).toBeVisible();
+  const item = admin.page.getByTestId("moderation-item").filter({ hasText: title });
+  await item.locator("summary").click();
+  admin.page.on("dialog", (d) => d.accept());
+  await item.getByRole("button", { name: "Remove from Community" }).click();
+  await expect(item.getByText("Give a reason")).toBeVisible();
+  await item.getByLabel("Reason (shown to the owner)").fill("Uses copyrighted official art.");
+  await item.getByRole("button", { name: "Remove from Community" }).click();
+  await expect(admin.page).toHaveURL(/\/admin\?removed=1$/);
+  await expect(admin.page.getByRole("status")).toContainText("Removed from the Community.");
+  await expect(item).toHaveCount(0);
+  await expect(admin.page.getByText("Uses copyrighted official art.")).toBeVisible(); // in the log
+
+  // Gone publicly: detail, list and image URLs.
+  expect((await visitor.page.request.get(`/api/community/${pubId}`)).status()).toBe(404);
+  expect((await visitor.page.request.get(before.images[0].thumbUrl)).status()).toBe(404);
+  const list = await (await visitor.page.request.get(`/api/community?q=${encodeURIComponent(title)}`)).json();
+  expect(list.total).toBe(0);
+
+  // The owner sees why; their private project is untouched; they can publish again.
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByTestId("moderation-notice")).toContainText("Uses copyrighted official art.");
+  await expect(page.getByTestId("community-card")).toContainText("Private");
+  await expect(page.getByText("Foam helmet")).toBeVisible();
+  const exported = await (await page.request.get(`/api/export/projects/${projectId}/json`)).json();
+  expect(exported.project.notes).toBe("SECRET-NOTE-do-not-publish");
+  await publish(page, projectId);
+  await expect(page.getByTestId("moderation-notice")).toHaveCount(0);
+
+  await visitor.context.close();
+  await regular.context.close();
+  await admin.context.close();
 });

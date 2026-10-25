@@ -1,6 +1,5 @@
 "use server";
 
-import { timingSafeEqual } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -8,7 +7,6 @@ import { getI18n } from "@/i18n/server";
 import { safeNext } from "@/lib/auth";
 import { getAuth } from "@/lib/betterAuth";
 import { EmailUnavailableError, emailConfigured } from "@/lib/email";
-import { env } from "@/lib/env";
 import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/passwordRules";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import type { FormState } from "@/lib/validation";
@@ -17,12 +15,6 @@ import type { FormState } from "@/lib/validation";
 function field(formData: FormData, name: string): string {
   const v = formData.get(name);
   return typeof v === "string" ? v : "";
-}
-
-function sameSecret(a: string, b: string): boolean {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -48,8 +40,6 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
   const { t } = getI18n();
   const A = t.auth;
-  const code = env().REGISTRATION_CODE;
-  if (!code) return { ok: false, message: A.registrationClosed };
   if (!(await rateLimit(`register-ip:${clientIp()}`, 10, 60 * 60))) return { ok: false, message: A.tooMany };
 
   const parsed = z
@@ -58,7 +48,6 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
       email: z.string().trim().toLowerCase().email(A.emailInvalid).max(254),
       password: z.string().min(PASSWORD_MIN, A.passwordTooShort(PASSWORD_MIN)).max(PASSWORD_MAX, A.passwordTooLong),
       confirm: z.string(),
-      invite: z.string(),
     })
     .refine((d) => d.password === d.confirm, { path: ["confirm"], message: A.passwordsDiffer })
     .safeParse({
@@ -66,13 +55,9 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
       email: field(formData, "email"),
       password: field(formData, "password"),
       confirm: field(formData, "confirm"),
-      invite: field(formData, "invite"),
     });
   if (!parsed.success) {
     return { ok: false, message: t.common.fixFields, errors: parsed.error.flatten().fieldErrors };
-  }
-  if (!sameSecret(parsed.data.invite.trim(), code)) {
-    return { ok: false, errors: { invite: [A.wrongInvite] } };
   }
   try {
     await getAuth().api.signUpEmail({

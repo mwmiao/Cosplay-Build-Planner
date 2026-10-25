@@ -23,7 +23,15 @@ function useItems() {
 }
 
 /** Desktop sidebar with an account menu (name, Account page, log out) at the bottom. */
-export function Sidebar({ userName, signOut }: { userName: string; signOut: () => Promise<void> }) {
+export function Sidebar({
+  userName,
+  isAdmin = false,
+  signOut,
+}: {
+  userName: string;
+  isAdmin?: boolean;
+  signOut: () => Promise<void>;
+}) {
   const pathname = usePathname();
   const { t } = useI18n();
   const items = useItems();
@@ -55,6 +63,15 @@ export function Sidebar({ userName, signOut }: { userName: string; signOut: () =
         );
       })}
       <div className="mt-auto border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        {isAdmin ? (
+          <Link
+            href="/admin"
+            aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+            className="mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-red-700 hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
+          >
+            {t.admin.title}
+          </Link>
+        ) : null}
         <Link
           href="/account"
           aria-current={pathname.startsWith("/account") ? "page" : undefined}

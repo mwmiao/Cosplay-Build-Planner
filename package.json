@@ -1,6 +1,6 @@
 {
   "name": "cosplay-build-planner",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -17,6 +17,7 @@
     "backup": "node scripts/backup.mjs",
     "claim-projects": "tsx scripts/admin/claim-projects.ts",
     "reset-password": "tsx scripts/admin/reset-password.ts",
+    "set-admin": "tsx scripts/admin/set-admin.ts",
     "test:e2e": "playwright test",
     "postinstall": "prisma generate"
   },

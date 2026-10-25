@@ -20,7 +20,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate \
  && npm run build \
- && npx esbuild scripts/admin/claim-projects.ts scripts/admin/reset-password.ts \
+ && npx esbuild scripts/admin/claim-projects.ts scripts/admin/reset-password.ts scripts/admin/set-admin.ts \
       --bundle --platform=node --format=cjs --external:@prisma/client --outdir=dist/admin
 
 # ---- runtime ---------------------------------------------------------------
