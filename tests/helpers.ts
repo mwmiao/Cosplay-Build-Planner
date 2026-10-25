@@ -12,8 +12,14 @@ export function newUser(label: string): TestUser {
   return { name: `${label} ${id}`, email: `${label.toLowerCase()}-${id}@example.test`, password: `pw-${id}-long-enough` };
 }
 
-/** Registers (and is thereby signed in). */
+/**
+ * Registers (and is thereby signed in). Each registration comes from its own
+ * address, like separate real visitors, so retries and repeated runs don't hit
+ * the per-address registration limit.
+ */
 export async function register(page: Page, user: TestUser) {
+  const octet = () => Math.floor(Math.random() * 254) + 1;
+  await page.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.${octet()}.${octet()}.${octet()}` });
   await page.goto("/register");
   await page.getByLabel("Display name").fill(user.name);
   await page.getByLabel("Email").fill(user.email);

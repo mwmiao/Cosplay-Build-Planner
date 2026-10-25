@@ -273,12 +273,12 @@ test("admin can remove a Community project with a reason; others can't; owner's 
   admin.page.on("dialog", (d) => d.accept());
   await item.getByRole("button", { name: "Remove from Community" }).click();
   await expect(item.getByText("Give a reason")).toBeVisible();
-  await item.getByLabel("Reason (shown to the owner)").fill("Uses copyrighted official art.");
+  await item.getByLabel("Reason (shown to the owner)").fill(`Uses copyrighted official art (${title}).`);
   await item.getByRole("button", { name: "Remove from Community" }).click();
   await expect(admin.page).toHaveURL(/\/admin\?removed=1$/);
   await expect(admin.page.getByRole("status")).toContainText("Removed from the Community.");
   await expect(item).toHaveCount(0);
-  await expect(admin.page.getByText("Uses copyrighted official art.")).toBeVisible(); // in the log
+  await expect(admin.page.getByText(`Uses copyrighted official art (${title}).`)).toBeVisible(); // in the log
 
   // Gone publicly: detail, list and image URLs.
   expect((await visitor.page.request.get(`/api/community/${pubId}`)).status()).toBe(404);
@@ -288,7 +288,7 @@ test("admin can remove a Community project with a reason; others can't; owner's 
 
   // The owner sees why; their private project is untouched; they can publish again.
   await page.goto(`/projects/${projectId}`);
-  await expect(page.getByTestId("moderation-notice")).toContainText("Uses copyrighted official art.");
+  await expect(page.getByTestId("moderation-notice")).toContainText(`Uses copyrighted official art (${title}).`);
   await expect(page.getByTestId("community-card")).toContainText("Private");
   await expect(page.getByText("Foam helmet")).toBeVisible();
   const exported = await (await page.request.get(`/api/export/projects/${projectId}/json`)).json();
