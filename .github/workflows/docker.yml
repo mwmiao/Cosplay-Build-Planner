@@ -1,8 +1,8 @@
 # Tests every push/PR. On main and on version tags (v1.2.3) it publishes the
 # Docker image:
 #   - ghcr.io/mwmiao/cosplay-build-planner          (always)
-#   - docker.io/<DOCKERHUB_USERNAME>/cosplay-build-planner  (when the
-#     DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets are set)
+#   - docker.io/eazyeight/cosplay-build-planner      (when the DOCKERHUB_TOKEN
+#     repository secret is set)
 # Tags: latest (main), sha-<commit>, and 1.2.3 + 1.2 for version tags.
 # Version tags also create a GitHub Release with that version's CHANGELOG notes.
 name: Test and publish image
@@ -20,6 +20,8 @@ concurrency:
 
 env:
   IMAGE_NAME: cosplay-build-planner
+  # Docker Hub account the image is published under (not secret).
+  DOCKERHUB_USER: eazyeight
 
 jobs:
   test:
@@ -59,7 +61,7 @@ jobs:
       contents: read
       packages: write
     env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      HAS_DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Read version
@@ -74,16 +76,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/login-action@v3
-        if: env.DOCKERHUB_USERNAME != ''
+        if: env.HAS_DOCKERHUB_TOKEN == 'true'
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
-            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/{1}', env.DOCKERHUB_USERNAME, env.IMAGE_NAME) || '' }}
+            ${{ env.HAS_DOCKERHUB_TOKEN == 'true' && format('docker.io/{0}/{1}', env.DOCKERHUB_USER, env.IMAGE_NAME) || '' }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short,prefix=sha-

@@ -136,9 +136,7 @@ The workflow refuses a tag that doesn't match `package.json`. If the tests fail,
 **Connecting Docker Hub** (already done for `eazyeight`; only needed again with a new account or token):
 1. Create a free account at [hub.docker.com](https://hub.docker.com).
 2. Go to **Account settings → Personal access tokens → Generate new token**, with access *Read & Write*.
-3. In this GitHub repo, go to **Settings → Secrets and variables → Actions → New repository secret** and add:
-   - `DOCKERHUB_USERNAME`: your Docker Hub username.
-   - `DOCKERHUB_TOKEN`: the token.
+3. In this GitHub repo, go to **Settings → Secrets and variables → Actions → New repository secret**. Set **Name** to `DOCKERHUB_TOKEN` and **Secret** to the token (`dckr_pat_…`). The Docker Hub username (`eazyeight`) is set in the workflow file (`DOCKERHUB_USER`).
 4. Re-run the latest workflow, or push anything. The image then appears at `docker.io/<username>/cosplay-build-planner`, public by default.
 5. On the NAS, change `image:` in `docker-compose.yml` to `<username>/cosplay-build-planner:latest` and redeploy the project once.
 

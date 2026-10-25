@@ -4,6 +4,13 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.1.1 — 2026-10-25
+
+### Changed
+- Images are also published to Docker Hub as `eazyeight/cosplay-build-planner`
+  (alongside `ghcr.io`), and `docker-compose.yml` now uses the Docker Hub image
+  so the UGOS Docker app can detect updates. No app changes.
+
 ## 1.1.0 — 2026-10-25
 
 ### Added
