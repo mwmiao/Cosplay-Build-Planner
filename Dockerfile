@@ -25,7 +25,14 @@ RUN npx prisma generate \
 
 # ---- runtime ---------------------------------------------------------------
 FROM base AS runner
-ENV NODE_ENV=production \
+# Set by CI (commit SHA or tag + build time); shown in Settings.
+ARG APP_VERSION=dev
+ARG BUILD_DATE=
+LABEL org.opencontainers.image.source="https://github.com/mwmiao/Cosplay-Build-Planner" \
+      org.opencontainers.image.title="Cosplay Build Planner"
+ENV APP_VERSION=$APP_VERSION \
+    BUILD_DATE=$BUILD_DATE \
+    NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=1337 \
     HOSTNAME=0.0.0.0 \

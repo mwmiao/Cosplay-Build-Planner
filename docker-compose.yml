@@ -1,16 +1,20 @@
 # Cosplay Build Planner — UGREEN NAS (UGOS Pro Docker app) / any Docker host.
 #
-# 1. Copy .env.example to .env next to this file and set APP_PASSWORD + SESSION_SECRET.
-# 2. Create the data folder on the NAS (see DATA_PATH below).
-# 3. docker compose up -d --build
+# Uses the image GitHub Actions publishes on every push to main, so the NAS
+# never builds anything. UGOS's Docker app shows when a newer :latest exists.
+#
+# 1. Put this file and a .env (copied from .env.example) in one folder on the NAS.
+# 2. Create the data folder (see DATA_PATH below).
+# 3. Create a Project from this file in the Docker app (or: docker compose up -d).
 #
 # Reach it at http://<nas-lan-ip>:1337 at home, or http://<nas-tailscale-name>:1337
 # via Tailscale. Do NOT forward port 1337 on your router.
+#
+# To run a local source build instead: docker build -t ghcr.io/mwmiao/cosplay-build-planner:latest .
 
 services:
   cosplay-planner:
-    build: .
-    image: cosplay-planner:latest
+    image: ghcr.io/mwmiao/cosplay-build-planner:latest
     container_name: cosplay-planner
     restart: unless-stopped
     env_file: .env

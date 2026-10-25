@@ -2,6 +2,8 @@
 
 A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Single-user, password-protected, no cloud services. It's meant to run on a home NAS and be reached through Tailscale.
 
+**Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** `ghcr.io/mwmiao/cosplay-build-planner`
+
 **Stack:** Next.js 14 (App Router) · TypeScript (strict) · Tailwind CSS · Prisma + SQLite · Zod · sharp · Playwright
 
 ## Features
@@ -65,15 +67,29 @@ After changing `prisma/schema.prisma`, run `npx prisma migrate dev --name <chang
 
 ---
 
-## Docker
+## How releases work
 
-```bash
-cp .env.example .env    # set APP_PASSWORD and SESSION_SECRET
-docker compose up -d --build
-docker compose logs -f
+```
+push to main ──► GitHub Actions: typecheck + Playwright ──► build image ──► ghcr.io/mwmiao/cosplay-build-planner:latest
+                                                                                   │
+                                          UGREEN NAS (Docker app) sees newer :latest ◄┘ ──► update
 ```
 
-The app listens on **port 1337**. Everything it stores lives in one folder mounted at `/app/data`:
+- **Every push to `main`** runs the tests, and if they pass, publishes a new image tagged:
+  - `latest`
+  - `sha-<commit>`, e.g. `sha-f053d1f`
+- **Pull requests** only run the tests.
+- **Tags like `v1.2.0`** also publish `1.2.0`. Use one if you ever want to pin the NAS to a fixed version.
+- **Failed tests mean nothing is published,** so a broken change never reaches the NAS.
+- **Settings → About this install** shows the running version (linked to its commit) and when it was built, so you can confirm an update arrived.
+
+Watch builds under the repo's **Actions** tab. Published images are listed under **Packages** on the repo page.
+
+---
+
+## Docker
+
+The image listens on **port 1337**. Everything it stores lives in one folder mounted at `/app/data`:
 
 ```
 data/
@@ -88,48 +104,68 @@ Each time the container starts, it:
 3. On the first run only, adds the example project.
 4. Starts the app as `PUID:PGID`, then keeps making database backups every `BACKUP_INTERVAL_HOURS`.
 
+Because of this, updating is just replacing the container with a newer image. Your data and a fresh backup are already in place.
+
 `/api/health` is the health check: it returns `200` with `{"status":"ok"}` when the database and upload folder are working. Docker uses it too (`docker ps` shows the container as *healthy*).
 
-Without Compose:
+Run the published image anywhere:
 
 ```bash
-docker build -t cosplay-planner .
-docker run -d --name cosplay-planner -p 1337:1337 --env-file .env -v /path/to/data:/app/data --restart unless-stopped cosplay-planner
+cp .env.example .env    # set APP_PASSWORD and SESSION_SECRET
+docker compose up -d
+```
+
+To build from source instead (e.g. to try local changes in Docker):
+
+```bash
+docker build -t ghcr.io/mwmiao/cosplay-build-planner:latest .
+docker compose up -d
 ```
 
 ---
 
 ## Setting it up on a UGREEN NAS (DXP2800, UGOS Pro)
 
-The DXP2800 has an Intel N100 (x86-64), so the image builds directly on the NAS. Expect the first build to take about 5–10 minutes.
+The NAS doesn't build anything. It downloads the ready-made image from GitHub's registry, which is built for x86-64, the same CPU type as the DXP2800's Intel N100. The NAS only needs a compose file, a `.env` and a data folder. No source code.
 
-### 1. Copy the project to the NAS
-1. Make sure a `docker` shared folder exists. The Docker app usually creates it; otherwise create it in **File Manager**.
-2. Copy this whole project folder to `docker/cosplay-planner/app` over SMB from your PC. You can skip `node_modules`, `.next` and `data`.
-3. Create an empty folder `docker/cosplay-planner/data`. On the NAS this is `/volume1/docker/cosplay-planner/data`. If your storage pool isn't volume 1, set `DATA_PATH` in `.env`.
-4. In `docker/cosplay-planner/app`, copy `.env.example` to `.env` and set:
+### 1. Make the image public (one time)
+The first time the workflow runs, GitHub creates the package as **private**, even for a public repo. Make it public so the NAS can download it without logging in:
+1. Open **github.com/mwmiao → Packages → cosplay-build-planner → Package settings**.
+2. Under **Danger Zone → Change visibility**, choose **Public**.
+
+The image contains only the app's code. Your password, secret and data live only on the NAS.
+
+### 2. Prepare the folders on the NAS
+1. In **File Manager**, create `docker/cosplay-planner` with a `data` folder inside it. On the NAS that's `/volume1/docker/cosplay-planner/data`. If your storage pool isn't volume 1, set `DATA_PATH` in `.env`.
+2. Put `docker-compose.yml` and `.env.example` from this repo in `docker/cosplay-planner`. Then copy `.env.example` to `.env` and set:
    - `APP_PASSWORD`: your login password.
    - `SESSION_SECRET`: a long random string.
-   - `TZ`: your time zone, e.g. `Europe/London`.
+   - `TZ`: your time zone.
    - Leave `DATABASE_URL` and `UPLOAD_DIR` as they are; the compose file sets the Docker paths.
+3. Optional but recommended: turn on SSH in **Control Panel → Terminal**, run `id`, and if your user and group IDs aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user.
 
-### 2. Find your user and group IDs (optional but recommended)
-Turn on SSH in **Control Panel → Terminal**, connect with `ssh <your-user>@<nas-ip>` and run `id`. If the numbers aren't `1000`, add `PUID=…` and `PGID=…` to `.env`. This makes the files in the data folder owned by your NAS user, so you can open and back them up normally.
+### 3. Create the project
+**Docker → Project → Create**. Name it `cosplay-planner`, set the path to `/volume1/docker/cosplay-planner`, and let it use the `docker-compose.yml` there. Then deploy. It downloads the image and starts.
 
-### 3. Start it
-**Option A: UGOS Docker app.** Open **Docker → Project → Create**. Name it `cosplay-planner`, set the path to `/volume1/docker/cosplay-planner/app`, and let it use the `docker-compose.yml` already there. Then deploy. Building the image is part of deploying.
-
-**Option B: SSH.**
+Alternatively, over SSH:
 ```bash
-cd /volume1/docker/cosplay-planner/app
-sudo docker compose up -d --build
+cd /volume1/docker/cosplay-planner
+sudo docker compose up -d
 sudo docker compose logs -f     # wait for "Starting Cosplay Build Planner on port 1337"
 ```
 
 Open `http://<nas-lan-ip>:1337` on your home network.
 
-### 4. Updating to a new version
-Copy the new source files over the `app` folder (keep your `.env`), then rebuild: **Docker → Project → cosplay-planner → Rebuild**, or `sudo docker compose up -d --build`. Your data folder is untouched, and the app applies database migrations automatically after a pre-update backup.
+### 4. Updates
+After you push changes and the GitHub workflow finishes (about 3–5 minutes), the UGOS Docker app shows that a newer `ghcr.io/mwmiao/cosplay-build-planner:latest` image is available. Update the image or project from there, and the container is recreated with the new version. Over SSH, the equivalent is:
+
+```bash
+cd /volume1/docker/cosplay-planner && sudo docker compose pull && sudo docker compose up -d
+```
+
+Before the new version starts, it backs up the database and applies any migrations. Check **Settings → About this install** to confirm the new version is running.
+
+**Rolling back:** in `docker-compose.yml`, change `:latest` to an earlier `:sha-xxxxxxx` tag (see the package page), then redeploy. An older version usually works with the newer database. If it doesn't (a migration changed something it relies on), also restore the database backup made just before the update (see below).
 
 ---
 
@@ -175,8 +211,10 @@ Back up the whole **data folder**. It contains the database, uploads and snapsho
 3. If you also lost images, restore the `uploads/` folder from your off-NAS copy. Images that the database lists but that are missing on disk show as broken thumbnails, and nothing else breaks.
 4. Start it again: `sudo docker compose start`. Any newer migrations are applied automatically.
 
+To get back to the state just before an update, use the newest snapshot taken before the update time (the container makes one on every start).
+
 ### Moving to a new machine
-Copy the data folder and your `.env`, then run `docker compose up -d --build` on the new host.
+Copy the data folder, `docker-compose.yml` and your `.env`, then run `docker compose up -d` on the new host.
 
 ---
 
@@ -198,6 +236,7 @@ src/app/api/         health, uploads (serve + upload), CSV exports
 src/app/login/       login page and actions
 src/lib/             db, auth, validation (Zod), uploads, shopping-list logic, CSV
 src/components/      UI building blocks
+.github/workflows/  CI: tests, then publishes the image to ghcr.io
 docker/entrypoint.sh container start-up (backup → migrate → seed → run)
 scripts/backup.mjs   SQLite snapshot script
 tests/               Playwright smoke test

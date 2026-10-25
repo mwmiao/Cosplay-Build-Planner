@@ -22,6 +22,10 @@ export default async function SettingsPage() {
     ]),
   ]);
   const [projectCount, partCount, imageCount] = counts;
+  // Baked into the Docker image by CI; "dev" when running from source.
+  const version = process.env.APP_VERSION ?? "dev";
+  const isSha = /^[0-9a-f]{40}$/.test(version);
+  const builtAt = process.env.BUILD_DATE ? new Date(process.env.BUILD_DATE) : null;
 
   return (
     <>
@@ -69,6 +73,29 @@ export default async function SettingsPage() {
           About this install
         </h2>
         <dl className="grid grid-cols-2 gap-y-1">
+          <dt className="text-zinc-500 dark:text-zinc-400">Version</dt>
+          <dd>
+            {isSha ? (
+              <a
+                href={`https://github.com/mwmiao/Cosplay-Build-Planner/commit/${version}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link font-mono"
+              >
+                {version.slice(0, 7)}
+              </a>
+            ) : (
+              <span className="font-mono">{version}</span>
+            )}
+          </dd>
+          {builtAt && !Number.isNaN(builtAt.getTime()) ? (
+            <>
+              <dt className="text-zinc-500 dark:text-zinc-400">Built</dt>
+              <dd>
+                {builtAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+              </dd>
+            </>
+          ) : null}
           <dt className="text-zinc-500 dark:text-zinc-400">Projects</dt>
           <dd className="tabular-nums">{projectCount}</dd>
           <dt className="text-zinc-500 dark:text-zinc-400">Parts</dt>
