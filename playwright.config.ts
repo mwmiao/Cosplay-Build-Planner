@@ -9,7 +9,7 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,
-  reporter: [["list"]],
+  reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     // Tests read English text; the app picks its language from the browser.
