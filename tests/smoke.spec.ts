@@ -7,7 +7,7 @@ test("health endpoint responds without login", async ({ request }) => {
   expect(await res.json()).toMatchObject({ status: "ok" });
 });
 
-test("create project, add part, see it on the shopping list", async ({ page }) => {
+test("create project, add part, shopping list, pay in another currency", async ({ page }) => {
   const character = `Test Character ${Date.now()}`;
   const partName = `Foam pauldron ${Date.now()}`;
 
@@ -24,6 +24,7 @@ test("create project, add part, see it on the shopping list", async ({ page }) =
   await expect(page.getByText("Character name is required")).toBeVisible();
   await page.getByLabel("Character name").fill(character);
   await page.getByLabel("Series / game").fill("Playwright Saga");
+  await page.getByLabel("Base currency").selectOption("EUR");
   await page.getByLabel("Budget").fill("200");
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByRole("heading", { name: character, level: 1 })).toBeVisible();
@@ -32,6 +33,7 @@ test("create project, add part, see it on the shopping list", async ({ page }) =
   await page.getByRole("link", { name: "Add part" }).first().click();
   await page.getByLabel("Part name").fill(partName);
   await page.getByLabel("Category").selectOption("armor");
+  await page.getByLabel("Currency", { exact: true }).selectOption("USD");
   await page.getByLabel("Est. cost (each)").fill("12.50");
   await page.getByLabel("Qty").fill("2");
   await page.getByLabel("Supplier").fill("Test Foam Co");
@@ -55,4 +57,29 @@ test("create project, add part, see it on the shopping list", async ({ page }) =
   const csv = await page.request.get("/api/export/shopping?show=all");
   expect(csv.headers()["content-type"]).toContain("text/csv");
   expect(await csv.text()).toContain(partName);
+
+  // Pay for it in USD, entering what the bank charged in EUR (no rate lookup needed).
+  await page.goto("/projects");
+  await page.getByRole("link", { name: new RegExp(character) }).click();
+  await page.getByRole("link", { name: new RegExp(partName) }).click();
+  await expect(page.getByRole("heading", { name: "Edit part" })).toBeVisible();
+  await page.getByLabel("Paid", { exact: true }).check();
+  await page.getByLabel("Actual (each)").fill("12.50");
+  await page.getByLabel(/Amount charged in EUR/).fill("23.10");
+  await page.getByRole("button", { name: "Save part" }).click();
+  await expect(page.getByRole("heading", { name: character, level: 1 })).toBeVisible();
+
+  // Paid total is the stored EUR amount; nothing is left as planned.
+  const summary = page.getByRole("region", { name: "Budget in EUR" });
+  await expect(summary.getByText(/23[.,]10/).first()).toBeVisible();
+  await expect(page.getByText(/paid .*23[.,]10/)).toBeVisible();
+
+  // The budget CSV keeps the original amount, currency, rate and that it was manual.
+  const projectUrl = new URL(page.url());
+  const budget = await page.request.get(`/api/export${projectUrl.pathname}/budget`);
+  const text = await budget.text();
+  expect(text).toContain("USD");
+  expect(text).toContain("23.10");
+  expect(text).toContain("manual");
+  expect(text).toContain("0.924"); // implied rate 23.10 / 25.00
 });

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ConversionDetails } from "@/components/Conversion";
 import { ConfirmButton } from "@/components/FormBits";
 import { BackLink } from "@/components/ui";
 import { db } from "@/lib/db";
-import { formatDate, moneyInput } from "@/lib/format";
+import { dateInput, formatDate, moneyInput } from "@/lib/format";
 import { getProjectOr404, knownSuppliers } from "@/lib/queries";
+import { getDefaultCurrency } from "@/lib/settings";
 import { idSchema } from "@/lib/validation";
 import { deletePart, updatePart } from "../../actions";
 import { PartForm } from "../../PartForm";
@@ -19,6 +21,7 @@ export default async function EditPartPage({ params }: { params: { id: string; p
     where: { id: partId.data, projectId: project.id, deletedAt: null },
   });
   if (!part) notFound();
+  const base = project.currency ?? (await getDefaultCurrency());
 
   return (
     <>
@@ -31,19 +34,26 @@ export default async function EditPartPage({ params }: { params: { id: string; p
       <div className="card">
         <PartForm
           action={updatePart.bind(null, project.id, part.id)}
+          defaultCurrency={base}
+          baseCurrency={base}
           cancelHref={`/projects/${project.id}#parts`}
           submitLabel="Save part"
           suppliers={await knownSuppliers()}
+          conversion={<ConversionDetails part={part} base={base} />}
           initial={{
             name: part.name,
             category: part.category,
             status: part.status,
+            currency: part.currency ?? base,
             estimatedCost: moneyInput(part.estimatedCostCents),
             actualCost: moneyInput(part.actualCostCents),
             quantity: String(part.quantity),
             supplier: part.supplier ?? "",
             url: part.url ?? "",
             notes: part.notes ?? "",
+            paid: part.paidAt !== null,
+            paidAt: dateInput(part.paidAt),
+            chargedBase: part.fxManual ? moneyInput(part.paidBaseCents) : "",
           }}
         />
       </div>

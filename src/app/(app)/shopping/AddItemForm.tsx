@@ -5,11 +5,18 @@ import { useFormState } from "react-dom";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { CATEGORIES, CATEGORY_LABELS } from "@/lib/constants";
+import { CURRENCY_OPTIONS } from "@/lib/currencies";
 import { addShoppingItem } from "./actions";
 
 const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }));
 
-export function AddItemForm({ projects }: { projects: { id: string; characterName: string }[] }) {
+export function AddItemForm({
+  projects,
+  defaultCurrency,
+}: {
+  projects: { id: string; characterName: string }[];
+  defaultCurrency: string;
+}) {
   const [state, action] = useFormState(addShoppingItem, {});
   const ref = useRef<HTMLFormElement>(null);
   const e = state.errors ?? {};
@@ -31,9 +38,10 @@ export function AddItemForm({ projects }: { projects: { id: string; characterNam
         <Field as="select" label="Category" name="category" options={categoryOptions} defaultValue="materials" errors={e.category} />
         <Field as="select" label="Project" name="projectId" options={projectOptions} defaultValue="" errors={e.projectId} />
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Field label="Supplier" name="supplier" errors={e.supplier} className="col-span-3 sm:col-span-1" />
-        <Field label="Est. cost (each)" name="estimatedCostCents" inputMode="decimal" placeholder="0.00" errors={e.estimatedCostCents} className="col-span-2 sm:col-span-1" />
+      <Field label="Supplier" name="supplier" errors={e.supplier} />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <Field as="select" label="Currency" name="currency" options={CURRENCY_OPTIONS} defaultValue={defaultCurrency} errors={e.currency} />
+        <Field label="Est. cost (each)" name="estimatedCostCents" inputMode="decimal" placeholder="0.00" errors={e.estimatedCostCents} />
         <Field label="Qty" name="quantity" type="number" inputMode="numeric" min={1} defaultValue="1" errors={e.quantity} />
       </div>
       <Field label="Link" name="url" type="url" inputMode="url" placeholder="https://" errors={e.url} />

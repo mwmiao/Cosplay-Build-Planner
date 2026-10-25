@@ -1,6 +1,9 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { db } from "./db";
+import type { MoneyContext } from "./projects";
+import { getLatestRates } from "./rates";
+import { getDefaultCurrency } from "./settings";
 import { idSchema } from "./validation";
 
 /** Loads a non-deleted project or renders the 404 page. */
@@ -22,4 +25,10 @@ export async function knownSuppliers(): Promise<string[]> {
     take: 50,
   });
   return rows.map((r) => r.supplier).filter((s): s is string => Boolean(s));
+}
+
+/** Base currency + current rates, for showing converted totals. */
+export async function getMoneyContext(): Promise<MoneyContext> {
+  const [defaultCurrency, rates] = await Promise.all([getDefaultCurrency(), getLatestRates()]);
+  return { defaultCurrency, rates };
 }

@@ -1,6 +1,8 @@
 // Cosplay Build Planner data model.
-// Money is stored as integer cents. Status/category values are validated by Zod
-// (src/lib/constants.ts) because SQLite has no native enums.
+// Money is stored as integer minor units ("cents") plus an ISO 4217 currency
+// code. A null currency inherits: part/item → project → app base currency.
+// Status/category values are validated by Zod (src/lib/constants.ts) because
+// SQLite has no native enums.
 
 generator client {
   provider      = "prisma-client-js"
@@ -20,8 +22,10 @@ model Project {
   deadline       DateTime?
   /// idea | researching | building | finished
   status         String    @default("idea")
+  /// Currency for budget, manual spent and the project's totals; null = base currency
+  currency       String?
   budgetCents    Int?
-  /// Manual override; when null, total spent is calculated from parts.
+  /// Unused since multi-currency (totals are always calculated from paid parts); kept for old data.
   spentCents     Int?
   notes          String?
   createdAt      DateTime  @default(now())
@@ -43,6 +47,8 @@ model BuildPart {
   category           String    @default("other")
   /// needed | ordered | arrived | building | done
   status             String    @default("needed")
+  /// Currency of both costs below; null = the project's currency
+  currency           String?
   /// Per-item costs; line totals multiply by quantity.
   estimatedCostCents Int?
   actualCostCents    Int?
@@ -51,6 +57,18 @@ model BuildPart {
   url                String?
   notes              String?
   completedAt        DateTime?
+
+  /// Payment: set once the part is paid and never re-converted at today's rate.
+  /// paidBaseCents is the line total (actual × quantity) in the project's base currency.
+  paidAt             DateTime?
+  paidBaseCents      Int?
+  /// base = original × fxRate; for manual entries the implied rate
+  fxRate             Float?
+  /// Date the rate applies to (may be the previous business day of paidAt)
+  fxRateDate         String?
+  fxSource           String?
+  /// true when the base amount was typed in (bank/PayPal charge), not looked up
+  fxManual           Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
@@ -92,6 +110,8 @@ model ShoppingListItem {
   supplier           String?
   url                String?
   quantity           Int       @default(1)
+  /// null = the project's currency (or the base currency for general items)
+  currency           String?
   estimatedCostCents Int?
   notes              String?
   purchased          Boolean   @default(false)
@@ -104,4 +124,21 @@ model ShoppingListItem {
   part    BuildPart? @relation(fields: [partId], references: [id], onDelete: SetNull)
 
   @@index([deletedAt, purchased])
+}
+
+/// App-wide settings (e.g. baseCurrency).
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Cached exchange rates: 1 EUR = ratePerEur units of currency.
+model ExchangeRate {
+  currency   String   @id
+  ratePerEur Float
+  /// Provider name and the date the provider says the rate is for
+  source     String
+  rateDate   String
+  fetchedAt  DateTime
 }

@@ -5,8 +5,8 @@ type Tx = Prisma.TransactionClient;
 
 /**
  * Keeps a part's shopping-list item in step with the part:
- * - status "needed"  → item exists, not purchased, copies the part's details
- * - any later status → item is marked purchased
+ * - status "needed" and not paid → item exists, not purchased, copies the part's details
+ * - any later status, or paid      → item is marked purchased
  * - part deleted     → item is soft-deleted
  */
 export async function syncShoppingItemForPart(tx: Tx, part: BuildPart): Promise<void> {
@@ -18,6 +18,7 @@ export async function syncShoppingItemForPart(tx: Tx, part: BuildPart): Promise<
     supplier: part.supplier,
     url: part.url,
     quantity: part.quantity,
+    currency: part.currency,
     estimatedCostCents: part.estimatedCostCents,
   };
 
@@ -28,7 +29,7 @@ export async function syncShoppingItemForPart(tx: Tx, part: BuildPart): Promise<
     return;
   }
 
-  if (part.status === "needed") {
+  if (part.status === "needed" && !part.paidAt) {
     if (existing) {
       await tx.shoppingListItem.update({
         where: { id: existing.id },

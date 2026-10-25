@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getDefaultCurrency } from "@/lib/settings";
 import { removeProjectFiles } from "@/lib/uploads";
 import {
   type FormState,
@@ -39,8 +40,22 @@ export async function updateProject(
   const parsed = projectSchema.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error);
 
-  // Optional fields left blank are cleared rather than kept.
+  // Paid amounts are stored in the base currency at their payment-date rate, so
+  // the base can't change once parts in a specific currency have been paid.
   const d = parsed.data;
+  const current = await db.project.findFirstOrThrow({ where: { id: projectId, deletedAt: null } });
+  const base = current.currency ?? (await getDefaultCurrency());
+  if (d.currency !== base) {
+    const converted = await db.buildPart.count({
+      where: { projectId, deletedAt: null, paidAt: { not: null }, currency: { not: null } },
+    });
+    if (converted > 0) {
+      const msg = `${converted} paid part${converted === 1 ? " is" : "s are"} already converted to ${base}. Keep ${base} as the base currency.`;
+      return { ok: false, message: msg, errors: { currency: [msg] } };
+    }
+  }
+
+  // Optional fields left blank are cleared rather than kept.
   await db.project.update({
     where: { id: projectId, deletedAt: null },
     data: {
@@ -49,8 +64,8 @@ export async function updateProject(
       conventionName: d.conventionName ?? null,
       deadline: d.deadline ?? null,
       status: d.status,
+      currency: d.currency,
       budgetCents: d.budgetCents ?? null,
-      spentCents: d.spentCents ?? null,
       notes: d.notes ?? null,
     },
   });

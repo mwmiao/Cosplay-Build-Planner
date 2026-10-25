@@ -1,34 +1,86 @@
 import type { BuildPart, Project } from "@prisma/client";
+import { type RateTable, crossRate } from "./rates";
 
-type PartCosts = Pick<
+export type MoneyContext = {
+  /** App-wide base currency (projects without their own, shopping list) */
+  defaultCurrency: string;
+  /** Current rates, used only for estimates of unpaid costs */
+  rates: RateTable;
+};
+
+type PartMoney = Pick<
   BuildPart,
-  "status" | "estimatedCostCents" | "actualCostCents" | "quantity"
+  "status" | "currency" | "estimatedCostCents" | "actualCostCents" | "quantity" | "paidAt" | "paidBaseCents"
 >;
 
-export function partTotals(parts: PartCosts[]) {
-  let estimated = 0;
-  let actual = 0;
-  let done = 0;
-  for (const p of parts) {
-    estimated += (p.estimatedCostCents ?? 0) * p.quantity;
-    actual += (p.actualCostCents ?? 0) * p.quantity;
-    if (p.status === "done") done += 1;
-  }
-  return { estimated, actual, done, count: parts.length };
+export function projectCurrency(project: Pick<Project, "currency">, ctx: MoneyContext): string {
+  return project.currency ?? ctx.defaultCurrency;
 }
 
-export function projectStats(project: Pick<Project, "status" | "spentCents" | "budgetCents">, parts: PartCosts[]) {
-  const totals = partTotals(parts);
+/**
+ * Budget figures in the project's base currency.
+ *
+ * - paid: sum of stored conversions (rate of each payment date; never redone)
+ * - planned: unpaid parts (actual if entered, else estimate) at today's rate, an estimate
+ * - remaining: budget − paid
+ * - overUnder: budget − (paid + planned); negative means over budget
+ */
+export function projectStats(
+  project: Pick<Project, "status" | "budgetCents" | "currency">,
+  parts: PartMoney[],
+  ctx: MoneyContext,
+) {
+  const base = projectCurrency(project, ctx);
+  let paid = 0;
+  let paidCount = 0;
+  let planned = 0;
+  let plannedConverted = false;
+  const missingRates = new Set<string>();
+  let done = 0;
+
+  for (const p of parts) {
+    if (p.status === "done") done += 1;
+    if (p.paidAt && p.paidBaseCents !== null) {
+      paid += p.paidBaseCents;
+      paidCount += 1;
+      continue;
+    }
+    const each = p.actualCostCents ?? p.estimatedCostCents;
+    if (each === null) continue;
+    const cur = p.currency ?? base;
+    const rate = crossRate(ctx.rates, cur, base);
+    if (rate === null) {
+      missingRates.add(cur);
+      continue;
+    }
+    if (cur !== base) plannedConverted = true;
+    planned += Math.round(each * p.quantity * rate);
+  }
+
+  const count = parts.length;
   const completion =
-    project.status === "finished"
-      ? 100
-      : totals.count === 0
-        ? 0
-        : Math.round((totals.done / totals.count) * 100);
-  const spent = project.spentCents ?? totals.actual;
-  const remainingBudget = project.budgetCents === null ? null : project.budgetCents - spent;
-  return { ...totals, completion, spent, spentIsManual: project.spentCents !== null, remainingBudget };
+    project.status === "finished" ? 100 : count === 0 ? 0 : Math.round((done / count) * 100);
+  const projected = paid + planned;
+  const budget = project.budgetCents;
+
+  return {
+    base,
+    paid,
+    paidCount,
+    planned,
+    plannedConverted,
+    missingRates: [...missingRates],
+    projected,
+    budget,
+    remaining: budget === null ? null : budget - paid,
+    overUnder: budget === null ? null : budget - projected,
+    done,
+    count,
+    completion,
+  };
 }
+
+export type ProjectStats = ReturnType<typeof projectStats>;
 
 /** Prisma filter for projects that are neither archived nor deleted. */
 export const activeProjectWhere = { deletedAt: null, archivedAt: null } as const;

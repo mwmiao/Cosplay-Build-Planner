@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { BackLink } from "@/components/ui";
 import { dateInput, moneyInput } from "@/lib/format";
+import { db } from "@/lib/db";
 import { getProjectOr404 } from "@/lib/queries";
+import { getDefaultCurrency } from "@/lib/settings";
 import { deleteProject, setProjectArchived, updateProject } from "../../actions";
 import { ProjectForm } from "../../ProjectForm";
 
@@ -11,6 +13,10 @@ export const metadata: Metadata = { title: "Edit project" };
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
   const project = await getProjectOr404(params.id);
   const archived = project.archivedAt !== null;
+  const base = project.currency ?? (await getDefaultCurrency());
+  const converted = await db.buildPart.count({
+    where: { projectId: project.id, deletedAt: null, paidAt: { not: null }, currency: { not: null } },
+  });
 
   return (
     <>
@@ -21,14 +27,20 @@ export default async function EditProjectPage({ params }: { params: { id: string
           action={updateProject.bind(null, project.id)}
           cancelHref={`/projects/${project.id}`}
           submitLabel="Save changes"
+          defaultCurrency={base}
+          currencyNote={
+            converted > 0
+              ? `Locked: ${converted} paid part${converted === 1 ? " is" : "s are"} stored in ${base} at their payment-date rates.`
+              : undefined
+          }
           initial={{
             characterName: project.characterName,
             series: project.series ?? "",
             conventionName: project.conventionName ?? "",
             deadline: dateInput(project.deadline),
             status: project.status,
+            currency: base,
             budget: moneyInput(project.budgetCents),
-            spent: moneyInput(project.spentCents),
             notes: project.notes ?? "",
           }}
         />

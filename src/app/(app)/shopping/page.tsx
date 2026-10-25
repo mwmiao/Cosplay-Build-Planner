@@ -7,7 +7,16 @@ import { categoryLabel } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { money } from "@/lib/format";
 import { activeProjectWhere } from "@/lib/projects";
-import { type GroupBy, groupItems, itemTotal, loadShoppingItems, parseGroup } from "@/lib/shoppingList";
+import { getMoneyContext } from "@/lib/queries";
+import {
+  type GroupBy,
+  convertedTotal,
+  groupItems,
+  itemCurrency,
+  itemTotal,
+  loadShoppingItems,
+  parseGroup,
+} from "@/lib/shoppingList";
 import { clearPurchased, deleteShoppingItem, togglePurchased } from "./actions";
 import { AddItemForm } from "./AddItemForm";
 
@@ -26,17 +35,19 @@ export default async function ShoppingPage({
 }) {
   const group = parseGroup(searchParams.group);
   const showPurchased = searchParams.show === "all";
-  const [items, projects] = await Promise.all([
+  const [items, projects, ctx] = await Promise.all([
     loadShoppingItems(showPurchased),
     db.project.findMany({
       where: activeProjectWhere,
       select: { id: true, characterName: true },
       orderBy: { characterName: "asc" },
     }),
+    getMoneyContext(),
   ]);
+  const cur = ctx.defaultCurrency;
   const groups = groupItems(items, group);
   const open = items.filter((i) => !i.purchased);
-  const openTotal = open.reduce((sum, i) => sum + itemTotal(i), 0);
+  const openTotal = convertedTotal(open, ctx);
   const purchasedManual = items.some((i) => i.purchased && !i.partId);
 
   const href = (change: { group?: GroupBy; show?: string | undefined }) => {
@@ -56,7 +67,8 @@ export default async function ShoppingPage({
         <div>
           <h1 className="page-title">Shopping list</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {open.length} item{open.length === 1 ? "" : "s"} to buy · est. {money(openTotal)}
+            {open.length} item{open.length === 1 ? "" : "s"} to buy · est. {openTotal.converted ? "≈ " : ""}
+            {money(openTotal.total, cur)}
           </p>
         </div>
         <a href={exportHref} className="btn-secondary shrink-0" download>
@@ -83,7 +95,7 @@ export default async function ShoppingPage({
       <details className="card mb-6">
         <summary className="flex min-h-11 cursor-pointer items-center font-semibold">+ Add an item</summary>
         <div className="pt-3">
-          <AddItemForm projects={projects} />
+          <AddItemForm projects={projects} defaultCurrency={cur} />
         </div>
       </details>
 
@@ -98,7 +110,13 @@ export default async function ShoppingPage({
               <h2 className="mb-2 flex items-baseline justify-between text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 <span>{name}</span>
                 <span className="tabular-nums normal-case">
-                  {money(list.filter((i) => !i.purchased).reduce((s, i) => s + itemTotal(i), 0))}
+                  {(() => {
+                    const t = convertedTotal(
+                      list.filter((i) => !i.purchased),
+                      ctx,
+                    );
+                    return `${t.converted ? "≈ " : ""}${money(t.total, cur)}`;
+                  })()}
                 </span>
               </h2>
               <ul className="space-y-2">
@@ -134,7 +152,9 @@ export default async function ShoppingPage({
                         )}
                         {group !== "category" ? <span>{categoryLabel(item.category)}</span> : null}
                         {group !== "supplier" && item.supplier ? <span>{item.supplier}</span> : null}
-                        {item.estimatedCostCents !== null ? <span className="tabular-nums">est {money(itemTotal(item))}</span> : null}
+                        {item.estimatedCostCents !== null ? (
+                          <span className="tabular-nums">est {money(itemTotal(item), itemCurrency(item, ctx))}</span>
+                        ) : null}
                       </div>
                     </div>
                     {item.url ? (
@@ -166,6 +186,13 @@ export default async function ShoppingPage({
           ))}
         </div>
       )}
+
+      {openTotal.converted || openTotal.missing.length ? (
+        <p className="hint mt-4">
+          Totals in {cur} at today&apos;s rates{ctx.rates.rateDate ? ` (${ctx.rates.rateDate})` : ""}.
+          {openTotal.missing.length ? ` No rate yet for ${openTotal.missing.join(", ")}; those items aren't included.` : ""}
+        </p>
+      ) : null}
 
       {purchasedManual ? (
         <form action={clearPurchased} className="mt-6">

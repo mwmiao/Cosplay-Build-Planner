@@ -5,6 +5,7 @@ import { EmptyState, ProgressBar, StatusBadge } from "@/components/ui";
 import { db } from "@/lib/db";
 import { daysLabel, daysUntil, formatDate, money } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
+import { getMoneyContext } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Projects" };
 
@@ -19,13 +20,23 @@ export default async function ProjectsPage({
     include: {
       parts: {
         where: { deletedAt: null },
-        select: { status: true, estimatedCostCents: true, actualCostCents: true, quantity: true },
+        select: {
+          status: true,
+          currency: true,
+          estimatedCostCents: true,
+          actualCostCents: true,
+          quantity: true,
+          paidAt: true,
+          paidBaseCents: true,
+        },
       },
       references: { take: 1, orderBy: { createdAt: "asc" }, select: { thumbPath: true } },
     },
     // Soonest deadline first; projects without one go last.
     orderBy: [{ deadline: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }],
   });
+
+  const ctx = await getMoneyContext();
 
   return (
     <>
@@ -67,7 +78,7 @@ export default async function ProjectsPage({
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {projects.map((p) => {
-            const stats = projectStats(p, p.parts);
+            const stats = projectStats(p, p.parts, ctx);
             const days = daysUntil(p.deadline);
             const thumb = p.references[0]?.thumbPath;
             return (
@@ -110,8 +121,8 @@ export default async function ProjectsPage({
                         )}
                       </span>
                       <span className="tabular-nums">
-                        {money(stats.spent)}
-                        {p.budgetCents !== null ? ` / ${money(p.budgetCents)}` : ""}
+                        {money(stats.paid, stats.base)} paid
+                        {p.budgetCents !== null ? ` / ${money(p.budgetCents, stats.base)}` : ""}
                       </span>
                     </div>
                   </div>

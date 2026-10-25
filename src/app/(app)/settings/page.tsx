@@ -3,7 +3,10 @@ import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { ThemePicker } from "@/components/ThemePicker";
 import { db } from "@/lib/db";
 import { authEnabled } from "@/lib/env";
-import { formatDate } from "@/lib/format";
+import { formatDate, rateLabel } from "@/lib/format";
+import { getMoneyContext } from "@/lib/queries";
+import { crossRate } from "@/lib/rates";
+import { DefaultCurrencyForm, RefreshRatesButton } from "./CurrencySettings";
 import { logout } from "../../login/actions";
 import { purgeProject, restoreProject } from "../projects/actions";
 
@@ -23,6 +26,17 @@ export default async function SettingsPage() {
     ]),
   ]);
   const [projectCount, partCount, imageCount] = counts;
+  const ctx = await getMoneyContext();
+  const base = ctx.defaultCurrency;
+  // Currencies actually used anywhere, to show their current rates.
+  const used = new Set<string>();
+  for (const rows of await Promise.all([
+    db.project.findMany({ where: { deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
+    db.buildPart.findMany({ where: { deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
+    db.shoppingListItem.findMany({ where: { deletedAt: null, currency: { not: null } }, select: { currency: true }, distinct: ["currency"] }),
+  ])) {
+    for (const r of rows) if (r.currency && r.currency !== base) used.add(r.currency);
+  }
   // Baked into the Docker image by CI; "dev" when running from source.
   const version = process.env.APP_VERSION ?? "dev";
   const isSha = /^[0-9a-f]{40}$/.test(version);
@@ -34,6 +48,50 @@ export default async function SettingsPage() {
 
       <section className="card mb-6 space-y-4">
         <ThemePicker />
+      </section>
+
+      <section className="card mb-6 space-y-4" aria-labelledby="currency-title">
+        <h2 id="currency-title" className="section-title">
+          Currency
+        </h2>
+        <DefaultCurrencyForm current={base} />
+        <div className="border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
+          <h3 className="mb-1 font-semibold">Exchange rates</h3>
+          <p className="hint mb-3">
+            Today&apos;s rates estimate planned costs and refresh every 6 hours. Payments are converted once, at the rate for
+            their payment date (European Central Bank), and never change afterwards.
+          </p>
+          {ctx.rates.fetchedAt ? (
+            <dl className="mb-3 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
+              <dt className="text-zinc-500 dark:text-zinc-400">Source</dt>
+              <dd>{ctx.rates.source}</dd>
+              <dt className="text-zinc-500 dark:text-zinc-400">Rates for</dt>
+              <dd>{ctx.rates.rateDate}</dd>
+              <dt className="text-zinc-500 dark:text-zinc-400">Checked</dt>
+              <dd>{ctx.rates.fetchedAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</dd>
+              {[...used].sort().map((c) => (
+                <div key={c} className="contents">
+                  <dt className="text-zinc-500 dark:text-zinc-400">{c}</dt>
+                  <dd className="tabular-nums">{rateLabel(crossRate(ctx.rates, c, base), c, base)}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="mb-3 text-amber-700 dark:text-amber-400">
+              No rates downloaded yet. The app needs internet access once to get them.
+            </p>
+          )}
+          <RefreshRatesButton />
+          <p className="hint mt-3">
+            <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer" className="link">
+              Rates By Exchange Rate API
+            </a>{" "}
+            · ECB reference rates via{" "}
+            <a href="https://frankfurter.dev" target="_blank" rel="noopener noreferrer" className="link">
+              Frankfurter
+            </a>
+          </p>
+        </div>
       </section>
 
       <section className="card mb-6" aria-labelledby="deleted-title">

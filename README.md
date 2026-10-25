@@ -8,10 +8,11 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 ## Features
 
-- **Projects**: character, series, convention, deadline, status, budget, notes. The dashboard shows completion %, days left, spent vs budget, and estimated vs actual cost. Projects can be archived, deleted (restorable from Settings) or deleted permanently.
+- **Projects**: character, series, convention, deadline, status, base currency, budget, notes. The dashboard shows completion %, days left, and paid / planned / budget left / over-or-under budget. Projects can be archived, deleted (restorable from Settings) or deleted permanently.
 - **Build parts**: category, status (needed → ordered → arrived → building → done), estimated and actual cost per item, quantity, supplier, link and notes. Filter parts by status or category, and tick them done with one tap.
 - **Shopping list**: parts marked *Needed* in active projects appear automatically. You can also add items by hand. Group by supplier, category or project. Ticking an item marks its part *Ordered*. Exports to CSV.
-- **Budget CSV** export for each project.
+- **Multiple currencies**: every part keeps its own currency. Totals are shown in the project's base currency, split into *paid*, *planned*, *budget left* and *over/under budget* (see [Currencies and exchange rates](#currencies-and-exchange-rates)).
+- **Budget CSV** export for each project, including the original amount, currency, exchange rate, rate date, source and manual/automatic for every payment.
 - **References**: upload several images at once with a caption and source link. The app makes thumbnails and removes location data from photos.
 - **Phone-friendly layout**: works from 360 px wide, with bottom tabs on phones and a sidebar on desktop. Dark mode follows your system setting, with an option to override it. Form fields have proper labels and keyboard focus is visible. It can be added to your home screen like an app.
 
@@ -27,6 +28,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 | `UPLOAD_DIR` | no | `./data/uploads`, `/app/data/uploads` in Docker | Where images are stored. |
 | `MAX_UPLOAD_MB` | no | `15` | Maximum size per image. |
 | `COOKIE_SECURE` | no | `false` | Set `true` **only** if you use the app over HTTPS. On plain `http://`, a `true` here means you can't stay logged in. |
+| `DEFAULT_CURRENCY` | no | `EUR` | Starting default currency (e.g. `GBP`). Once you pick one in Settings, that choice wins. |
 | `TZ` | no | container default | Time zone used to count "days left". |
 | `PUID` / `PGID` | no | `1000` / `1000` | (Docker) The user and group that will own the files in the data folder. |
 | `BACKUP_INTERVAL_HOURS` | no | `24` | (Docker) How often to back up the database automatically. `0` turns it off. |
@@ -38,6 +40,41 @@ To generate a secret:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+---
+
+## Currencies and exchange rates
+
+**Each project has a base currency**, which the budget and all totals use. Each part has its own currency (for example a wig bought in USD, fabric in GBP, a prop from Japan in JPY). The default currency for new projects and the shopping list is set in **Settings → Currency**.
+
+**Paying for a part.** Tick **Paid** on the part, enter what you paid (each, in the part's currency) and the payment date. Then either:
+- **Leave "Amount charged" blank.** The app converts the payment at the exchange rate for the payment date: the European Central Bank reference rate for that day, or the last business day before it.
+- **Enter the amount your bank or PayPal actually charged** in the base currency. That exact amount is used, and the implied rate (charged ÷ original) is stored.
+
+**Payments are converted once and kept.** For every paid part the app stores:
+- the original amount and currency
+- the payment date
+- the converted base amount and the rate used
+- the rate's date and source
+- whether the conversion was manual or automatic
+
+Editing the part later (notes, status…) never redoes the conversion at today's rate. Only changing the amount, currency, quantity, payment date or charged amount converts it again, and then still at the rate for the payment date. Once a project holds converted payments, its base currency is locked.
+
+**Totals** on the project page, all in the base currency:
+
+| Figure | Meaning |
+|---|---|
+| **Paid** | Sum of the stored converted payments |
+| **Planned** | Parts not yet paid (actual cost if entered, else estimate), converted at **today's** rate. Marked ≈ when another currency is involved |
+| **Budget left** | Budget − paid |
+| **Over / under budget** | Budget − (paid + planned) |
+
+**Where the rates come from:**
+- **Today's rates** (for planned costs and shopping-list totals) come from [ExchangeRate-API's open endpoint](https://www.exchangerate-api.com/docs/free), which is updated daily and covers 160+ currencies. If it's unavailable, the app falls back to ECB rates via [Frankfurter](https://frankfurter.dev). Rates are cached in the database and refreshed at most every 6 hours, or with **Settings → Update rates now**. Offline, the last cached rates are used.
+- **Payment-date rates** come from the ECB via Frankfurter, which has history back to 1999 for about 30 major currencies (EUR, USD, GBP, JPY, CNY, KRW, AUD, CAD, CHF…). For other currencies (e.g. TWD, ARS), payments from the last 3 days use today's rate. For older payments the app asks you to enter the amount charged.
+- These are the only outside services the app contacts. Neither needs an account or API key, and only the currency codes are sent.
+
+**Parts entered before currencies existed** were migrated as paid in their project's base currency (rate 1, source *"Entered before multi-currency"*). Pick your currency in **Settings** first, so those amounts are read in the right one.
 
 ---
 

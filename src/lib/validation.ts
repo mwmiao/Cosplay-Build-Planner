@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES, PART_STATUSES, PROJECT_STATUSES } from "./constants";
+import { CURRENCY_CODES } from "./currencies";
 
 /** Turns blank form strings into undefined so optional fields stay optional. */
 const blankToUndefined = (v: unknown) =>
@@ -56,6 +57,11 @@ const optionalDate = z.preprocess(
     .optional(),
 );
 
+const currency = z.enum(CURRENCY_CODES, { errorMap: () => ({ message: "Pick a currency" }) });
+
+/** HTML checkbox: "on" when ticked, missing when not. */
+const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean());
+
 const quantity = z.preprocess(
   (v) => blankToUndefined(v) ?? "1",
   z.coerce
@@ -71,23 +77,40 @@ export const projectSchema = z.object({
   conventionName: optionalText(120),
   deadline: optionalDate,
   status: z.enum(PROJECT_STATUSES, { errorMap: () => ({ message: "Pick a status" }) }),
+  currency,
   budgetCents: optionalMoney,
-  spentCents: optionalMoney,
   notes: optionalText(5000),
 });
 export type ProjectInput = z.infer<typeof projectSchema>;
 
-export const partSchema = z.object({
-  name: requiredText(120, "Part name"),
-  category: z.enum(CATEGORIES, { errorMap: () => ({ message: "Pick a category" }) }),
-  status: z.enum(PART_STATUSES, { errorMap: () => ({ message: "Pick a status" }) }),
-  estimatedCostCents: optionalMoney,
-  actualCostCents: optionalMoney,
-  quantity,
-  supplier: optionalText(120),
-  url: optionalUrl,
-  notes: optionalText(5000),
-});
+export const partSchema = z
+  .object({
+    name: requiredText(120, "Part name"),
+    category: z.enum(CATEGORIES, { errorMap: () => ({ message: "Pick a category" }) }),
+    status: z.enum(PART_STATUSES, { errorMap: () => ({ message: "Pick a status" }) }),
+    currency,
+    estimatedCostCents: optionalMoney,
+    actualCostCents: optionalMoney,
+    quantity,
+    supplier: optionalText(120),
+    url: optionalUrl,
+    notes: optionalText(5000),
+    paid: checkbox,
+    paidAt: optionalDate,
+    /** Optional: total actually charged in the project's base currency (bank/PayPal). */
+    chargedBaseCents: optionalMoney,
+  })
+  .superRefine((d, ctx) => {
+    if (!d.paid) return;
+    if (d.actualCostCents === undefined) {
+      ctx.addIssue({ code: "custom", path: ["actualCostCents"], message: "Enter what you paid (each)" });
+    }
+    if (!d.paidAt) {
+      ctx.addIssue({ code: "custom", path: ["paidAt"], message: "When did you pay?" });
+    } else if (d.paidAt.getTime() > Date.now() + 86_400_000) {
+      ctx.addIssue({ code: "custom", path: ["paidAt"], message: "The payment date can't be in the future" });
+    }
+  });
 export type PartInput = z.infer<typeof partSchema>;
 
 export const shoppingItemSchema = z.object({
@@ -97,6 +120,7 @@ export const shoppingItemSchema = z.object({
   supplier: optionalText(120),
   url: optionalUrl,
   quantity,
+  currency,
   estimatedCostCents: optionalMoney,
   notes: optionalText(2000),
 });

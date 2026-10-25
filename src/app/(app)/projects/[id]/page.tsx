@@ -7,7 +7,7 @@ import { CATEGORIES, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/con
 import { db } from "@/lib/db";
 import { daysLabel, daysUntil, formatDate, hostname, money } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
-import { getProjectOr404 } from "@/lib/queries";
+import { getMoneyContext, getProjectOr404 } from "@/lib/queries";
 import { setProjectArchived } from "../actions";
 import { togglePartDone } from "./parts/actions";
 
@@ -55,9 +55,11 @@ export default async function ProjectPage({
     (p) => (!filter.status || p.status === filter.status) && (!filter.category || p.category === filter.category),
   );
   const usedCategories = CATEGORIES.filter((c) => allParts.some((p) => p.category === c));
-  const stats = projectStats(project, allParts);
+  const ctx = await getMoneyContext();
+  const stats = projectStats(project, allParts, ctx);
+  const base = stats.base;
   const days = daysUntil(project.deadline);
-  const overBudget = stats.remainingBudget !== null && stats.remainingBudget < 0;
+  const over = stats.overUnder !== null && stats.overUnder < 0;
 
   return (
     <>
@@ -94,25 +96,58 @@ export default async function ProjectPage({
         </div>
       </header>
 
-      <section aria-label="Summary" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Summary" className="mb-3 grid grid-cols-2 gap-3">
         <Stat
           label="Deadline"
           value={<span className={days !== null && days < 14 && days >= 0 ? "text-amber-600 dark:text-amber-400" : ""}>{daysLabel(days)}</span>}
           sub={formatDate(project.deadline)}
         />
         <Stat label="Parts done" value={`${stats.done} / ${stats.count}`} sub={`${stats.completion}% complete`} />
-        <Stat
-          label="Spent"
-          value={<span className={overBudget ? "text-red-600 dark:text-red-400" : ""}>{money(stats.spent)}</span>}
-          sub={
-            project.budgetCents !== null
-              ? `${overBudget ? "Over" : "Left"}: ${money(Math.abs(stats.remainingBudget ?? 0))} of ${money(project.budgetCents)}`
-              : stats.spentIsManual
-                ? "Entered manually"
-                : "No budget set"
-          }
-        />
-        <Stat label="Estimated" value={money(stats.estimated)} sub={`Actual so far ${money(stats.actual)}`} />
+      </section>
+
+      <section aria-labelledby="budget-title" className="mb-6">
+        <h2 id="budget-title" className="sr-only">
+          Budget in {base}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Paid" value={money(stats.paid, base)} sub={`${stats.paidCount} payment${stats.paidCount === 1 ? "" : "s"}`} />
+          <Stat
+            label="Planned"
+            value={`${stats.plannedConverted ? "≈ " : ""}${money(stats.planned, base)}`}
+            sub={stats.plannedConverted ? "Still to pay · today's rates" : "Still to pay"}
+          />
+          <Stat
+            label="Budget left"
+            value={stats.remaining === null ? "—" : money(stats.remaining, base)}
+            sub={stats.budget === null ? "No budget set" : `Budget ${money(stats.budget, base)} − paid`}
+          />
+          <Stat
+            label={over ? "Over budget" : "Under budget"}
+            value={
+              stats.overUnder === null ? (
+                "—"
+              ) : (
+                <span className={over ? "text-red-600 dark:text-red-400" : "text-green-700 dark:text-green-400"}>
+                  {stats.plannedConverted ? "≈ " : ""}
+                  {money(Math.abs(stats.overUnder), base)}
+                </span>
+              )
+            }
+            sub={`If planned costs hold · total ${money(stats.projected, base)}`}
+          />
+        </div>
+        <p className="hint mt-2">
+          All totals in {base}. Paid amounts use the rate of each payment date and never change.
+          {stats.plannedConverted && ctx.rates.rateDate
+            ? ` Planned costs use today's rates (${ctx.rates.rateDate}).`
+            : ""}
+        </p>
+        {stats.missingRates.length ? (
+          <p role="alert" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+            No exchange rate for {stats.missingRates.join(", ")} yet, so those planned costs aren&apos;t included. Rates
+            refresh automatically when the NAS is online.
+          </p>
+        ) : null}
       </section>
 
       {project.notes ? (
@@ -214,10 +249,25 @@ export default async function ProjectPage({
                     <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500 dark:text-zinc-400">
                       <span>{categoryLabel(part.category)}</span>
                       {part.supplier || site ? <span>{part.supplier ?? site}</span> : null}
-                      <span className="tabular-nums">
-                        est {money(part.estimatedCostCents === null ? null : part.estimatedCostCents * part.quantity)}
-                        {part.actualCostCents !== null ? ` · paid ${money(part.actualCostCents * part.quantity)}` : ""}
-                      </span>
+                      {(() => {
+                        const cur = part.currency ?? base;
+                        if (part.paidAt && part.paidBaseCents !== null) {
+                          const original = part.actualCostCents === null ? null : part.actualCostCents * part.quantity;
+                          return (
+                            <span className="tabular-nums font-medium text-green-700 dark:text-green-400">
+                              paid {money(part.paidBaseCents, base)}
+                              {cur !== base ? ` (${money(original, cur)})` : ""} · {formatDate(part.paidAt)}
+                            </span>
+                          );
+                        }
+                        const each = part.actualCostCents ?? part.estimatedCostCents;
+                        if (each === null) return <span>no cost yet</span>;
+                        return (
+                          <span className="tabular-nums">
+                            {part.actualCostCents !== null ? "to pay" : "est"} {money(each * part.quantity, cur)}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </Link>
                   {part.url ? (
