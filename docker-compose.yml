@@ -1,7 +1,8 @@
 # Cosplay Build Planner — UGREEN NAS (UGOS Pro Docker app) / any Docker host.
 #
-# Uses the image GitHub Actions publishes on every push to main, so the NAS
-# never builds anything. UGOS's Docker app shows when a newer :latest exists.
+# Uses the image GitHub Actions publishes to Docker Hub on every push to main,
+# so the NAS never builds anything and UGOS's Docker app can offer updates.
+# Pin a release instead of following main with e.g. eazyeight/cosplay-build-planner:1.1
 #
 # Works as-is: no .env file needed. Login is off; the app is meant for your
 # home network and Tailscale only. Do NOT forward port 1337 on your router.
@@ -14,7 +15,7 @@
 
 services:
   cosplay-planner:
-    image: ghcr.io/mwmiao/cosplay-build-planner:latest
+    image: eazyeight/cosplay-build-planner:latest
     container_name: cosplay-planner
     restart: unless-stopped
     environment:

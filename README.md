@@ -2,7 +2,7 @@
 
 A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a combined shopping list and reference photos. Single-user, no login by default (an optional password is available), no cloud services. It's meant to run on a home NAS and be reached through Tailscale.
 
-**Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** `ghcr.io/mwmiao/cosplay-build-planner`
+**Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** [`eazyeight/cosplay-build-planner`](https://hub.docker.com/r/eazyeight/cosplay-build-planner) (also `ghcr.io/mwmiao/cosplay-build-planner`)
 
 **Stack:** Next.js 14 (App Router) · TypeScript (strict) · Tailwind CSS · Prisma + SQLite · Zod · sharp · Playwright
 
@@ -113,7 +113,7 @@ tag v1.2.0   ──► same tests ──► image tagged 1.2.0 + 1.2  ──► 
 
 **Where images are published:**
 - **`ghcr.io/mwmiao/cosplay-build-planner`**: always.
-- **`docker.io/<your-docker-hub-user>/cosplay-build-planner`**: also, once Docker Hub is connected (see below). Use this one on the NAS, since the UGOS Docker app offers updates for Docker Hub images.
+- **`eazyeight/cosplay-build-planner` on Docker Hub**: the one the NAS uses, since the UGOS Docker app offers updates for Docker Hub images.
 
 **Tags:**
 
@@ -133,7 +133,7 @@ tag v1.2.0   ──► same tests ──► image tagged 1.2.0 + 1.2  ──► 
 
 The workflow refuses a tag that doesn't match `package.json`. If the tests fail, nothing is published, so a broken change never reaches the NAS.
 
-**Connecting Docker Hub (one time):**
+**Connecting Docker Hub** (already done for `eazyeight`; only needed again with a new account or token):
 1. Create a free account at [hub.docker.com](https://hub.docker.com).
 2. Go to **Account settings → Personal access tokens → Generate new token**, with access *Read & Write*.
 3. In this GitHub repo, go to **Settings → Secrets and variables → Actions → New repository secret** and add:
@@ -174,7 +174,7 @@ docker compose up -d    # no .env needed; add one only to change defaults
 To build from source instead (e.g. to try local changes in Docker):
 
 ```bash
-docker build -t ghcr.io/mwmiao/cosplay-build-planner:latest .
+docker build -t eazyeight/cosplay-build-planner:latest .
 docker compose up -d
 ```
 
@@ -205,7 +205,7 @@ Open `http://<nas-lan-ip>:1337` on your home network.
 
 ### 3. Updates
 After you push changes and the GitHub workflow finishes (about 3–5 minutes), a new `latest` image exists.
-- **Docker Hub image** (`<username>/cosplay-build-planner`): the UGOS Docker app should show an update for it, like it does for other Docker Hub images. Apply it there, and the container is recreated with the new version.
+- **Docker Hub image** (`eazyeight/cosplay-build-planner`, the default in `docker-compose.yml`): the UGOS Docker app should show an update for it, like it does for other Docker Hub images. Apply it there, and the container is recreated with the new version.
 - **`ghcr.io` image:** UGOS doesn't appear to check GitHub's registry, so pull the image again in the Docker app or update over SSH.
 
 Over SSH, the update command is:
@@ -285,7 +285,7 @@ src/app/api/         health, uploads (serve + upload), CSV exports
 src/app/login/       login page and actions
 src/lib/             db, auth, validation (Zod), uploads, shopping-list logic, CSV
 src/components/      UI building blocks
-.github/workflows/  CI: tests, then publishes the image to ghcr.io
+.github/workflows/  CI: tests, then publishes the image to Docker Hub and ghcr.io
 docker/entrypoint.sh container start-up (backup → migrate → seed → run)
 scripts/backup.mjs   SQLite snapshot script
 tests/               Playwright smoke test
