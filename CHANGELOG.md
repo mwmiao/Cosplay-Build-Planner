@@ -4,6 +4,28 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.2.1 — 2026-10-26
+
+### Added
+- **Project export** as a versioned JSON file (format version 1): project
+  settings, budget, categories, and every expense with its original amount,
+  currency, dates, status, FX rate, rate date, converted base amount, FX
+  source, manual/automatic flag, notes and timestamps, plus hand-added
+  shopping items and reference-image metadata. The budget CSV stays available
+  for viewing.
+- **Project import** (Projects → Import): validates the file (format, schema
+  version, currency codes, dates, amounts, missing fields, duplicate IDs), shows
+  a preview with name, expense count, currencies, totals and warnings, then
+  creates a new project, merges into an existing one, or replaces one after
+  typing its name to confirm. Runs in a single transaction, takes a database
+  backup first for merge/replace, and ends with an import report.
+- Stable expense IDs, so merging the same file twice never duplicates
+  anything. Paid expenses keep their stored conversion exactly; nothing is
+  recalculated on import.
+
+### Upgrade notes
+- The database migrates automatically (existing expenses get a stable ID).
+
 ## 1.2.0 — 2026-10-25
 
 ### Added

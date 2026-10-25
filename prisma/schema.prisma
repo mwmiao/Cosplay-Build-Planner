@@ -42,6 +42,8 @@ model Project {
 
 model BuildPart {
   id                 String    @id @default(cuid())
+  /// Stable expense ID used by export/import (unique within a project)
+  uid                String    @default(cuid())
   projectId          String
   name               String
   category           String    @default("other")
@@ -76,6 +78,7 @@ model BuildPart {
   project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   shoppingItem ShoppingListItem?
 
+  @@unique([projectId, uid])
   @@index([projectId, deletedAt])
 }
 
@@ -101,6 +104,8 @@ model ReferenceImage {
 
 model ShoppingListItem {
   id                 String    @id @default(cuid())
+  /// Stable ID used by export/import (unique within a project)
+  uid                String    @default(cuid())
   /// Null for general items not tied to a project
   projectId          String?
   /// Set when the item is generated from a part that is still "needed"
@@ -123,6 +128,7 @@ model ShoppingListItem {
   project Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   part    BuildPart? @relation(fields: [partId], references: [id], onDelete: SetNull)
 
+  @@unique([projectId, uid])
   @@index([deletedAt, purchased])
 }
 

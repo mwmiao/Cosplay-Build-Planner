@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarIcon, PlusIcon } from "@/components/Icons";
+import { CalendarIcon, DownloadIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState, ProgressBar, StatusBadge } from "@/components/ui";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
@@ -47,9 +47,14 @@ export default async function ProjectsPage({
     <>
       <header className="mb-4 flex items-center justify-between gap-3">
         <h1 className="page-title">{archived ? t.projects.archivedTitle : t.projects.title}</h1>
-        <Link href="/projects/new" className="btn-primary hidden md:inline-flex">
-          <PlusIcon className="h-5 w-5" /> {t.nav.newProject}
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/projects/import" className="btn-secondary">
+            <DownloadIcon className="h-5 w-5 rotate-180" /> {t.transfer.import}
+          </Link>
+          <Link href="/projects/new" className="btn-primary hidden md:inline-flex">
+            <PlusIcon className="h-5 w-5" /> {t.nav.newProject}
+          </Link>
+        </div>
       </header>
 
       <div className="mb-4 flex gap-2" role="group" aria-label={t.projects.show}>

@@ -12,6 +12,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **Build parts**: category, status (needed → ordered → arrived → building → done), estimated and actual cost per item, quantity, supplier, link and notes. Filter parts by status or category, and tick them done with one tap.
 - **Shopping list**: parts marked *Needed* in active projects appear automatically. You can also add items by hand. Group by supplier, category or project. Ticking an item marks its part *Ordered*. Exports to CSV.
 - **Multiple currencies**: every part keeps its own currency. Totals are shown in the project's base currency, split into *paid*, *planned*, *budget left* and *over/under budget* (see [Currencies and exchange rates](#currencies-and-exchange-rates)).
+- **Project export/import**: export a project as a versioned JSON file and import it as a new project, merged into an existing one, or replacing one (see [Export and import](#export-and-import)).
 - **Budget CSV** export for each project, including the original amount, currency, exchange rate, rate date, source and manual/automatic for every payment.
 - **References**: upload several images at once with a caption and source link. The app makes thumbnails and removes location data from photos.
 - **English and European Portuguese**: switch in **Settings → Language** (saved per device; the first visit follows the browser's language). Dates, numbers and currency names follow the language.
@@ -76,6 +77,36 @@ Editing the part later (notes, status…) never redoes the conversion at today's
 - These are the only outside services the app contacts. Neither needs an account or API key, and only the currency codes are sent.
 
 **Parts entered before currencies existed** were migrated as paid in their project's base currency (rate 1, source *"Entered before multi-currency"*). Pick your currency in **Settings** first, so those amounts are read in the right one.
+
+---
+
+## Export and import
+
+**Export:** on a project, open **Export → Export JSON**. This downloads `<name>-<date>.cosplay.json`. JSON is the canonical, complete format; the CSV next to it is only for viewing in a spreadsheet.
+
+**What the JSON contains** (format version 1):
+- the project's settings, base currency and budget
+- the categories used
+- every expense with its stable ID, original amount and currency, quantity, status, dates and notes
+- for paid expenses: payment date, converted base amount, FX rate, rate date, source, and whether the conversion was manual or automatic
+- shopping items you added by hand
+- reference-image metadata. The image files themselves aren't included.
+
+Amounts are whole cents (`"actualCostCents": 6400` = 64.00).
+
+**Import:** go to **Projects → Import** and choose a `.json` file. Nothing changes until you confirm.
+1. **Validation:** the format and schema version, currency codes, dates, amounts, required fields and duplicate IDs are checked. Every problem is listed with its location, e.g. `parts[3].currency: unknown currency code`.
+2. **Preview:** project name, number of expenses and paid expenses, currencies, paid and planned totals, budget, and warnings. For example, unknown categories are imported as *Other*, and listed reference images aren't imported.
+3. **Choose:**
+   - **Create a new project:** a separate copy. Existing projects are untouched.
+   - **Merge into an existing project:** adds only expenses and items whose stable ID isn't already there, so importing the same file twice never duplicates anything. Project settings stay as they are. This needs the same base currency, so paid conversions stay exact.
+   - **Replace an existing project:** removes its current expenses and hand-added shopping items, then imports the file's settings, expenses and items. You must type the project's name to confirm. Reference images are kept.
+4. **Import report:** what was created, skipped or removed, and how many paid conversions were kept.
+
+**Safety:**
+- Each import runs as a single database transaction, so on any error nothing is changed.
+- Merge and replace first save a database snapshot to `data/backups/cosplay-…-pre-import.db`. These snapshots aren't removed by the automatic backup rotation.
+- Paid expenses are stored exactly as in the file. Their conversion is never recalculated.
 
 ---
 
@@ -283,6 +314,7 @@ src/app/(app)/       logged-in pages: projects, parts, references, shopping, set
 src/app/api/         health, uploads (serve + upload), CSV exports
 src/app/login/       login page and actions
 src/lib/             db, auth, validation (Zod), uploads, shopping-list logic, CSV
+src/lib/transfer/    project export/import: file format, export builder, import + preview
 src/i18n/            translations: en.ts, pt-PT.ts (same keys, type-checked)
 src/components/      UI building blocks
 .github/workflows/  CI: tests, then publishes the image to Docker Hub and ghcr.io

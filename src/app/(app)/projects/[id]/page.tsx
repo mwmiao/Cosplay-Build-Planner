@@ -162,15 +162,9 @@ export default async function ProjectPage({
           <h2 id="parts-title" className="section-title">
             {P.parts}
           </h2>
-          <div className="flex gap-2">
-            <a href={`/api/export/projects/${project.id}/budget`} className="btn-ghost" aria-label={P.exportBudget}>
-              <DownloadIcon className="h-5 w-5" />
-              <span className="hidden sm:inline">{t.common.csv}</span>
-            </a>
-            <Link href={`/projects/${project.id}/parts/new`} className="btn-primary">
-              <PlusIcon className="h-5 w-5" /> {P.addPart}
-            </Link>
-          </div>
+          <Link href={`/projects/${project.id}/parts/new`} className="btn-primary">
+            <PlusIcon className="h-5 w-5" /> {P.addPart}
+          </Link>
         </div>
 
         {allParts.length > 0 ? (
@@ -286,6 +280,21 @@ export default async function ProjectPage({
             })}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="export-title" className="card mb-8">
+        <h2 id="export-title" className="section-title mb-1">
+          {t.transfer.exportTitle}
+        </h2>
+        <p className="hint mb-3">{t.transfer.exportHint}</p>
+        <div className="flex flex-wrap gap-2">
+          <a href={`/api/export/projects/${project.id}/json`} className="btn-secondary" download>
+            <DownloadIcon className="h-5 w-5" /> {t.transfer.exportJson}
+          </a>
+          <a href={`/api/export/projects/${project.id}/budget`} className="btn-ghost" download aria-label={P.exportBudget}>
+            <DownloadIcon className="h-5 w-5" /> {t.transfer.exportCsv}
+          </a>
+        </div>
       </section>
 
       <section aria-labelledby="refs-title" className="mb-8">
