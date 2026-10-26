@@ -219,7 +219,9 @@ test("Copy to My Projects makes an independent private template from published d
     url: null,
   });
   expect(copy.parts[0].id).not.toBe(originalBefore.parts[0].id);
-  expect(copy.references).toHaveLength(1);
+  // The published image, plus the published cover as the copy's main picture.
+  expect(copy.references.filter((r: { kind: string }) => r.kind === "reference")).toHaveLength(1);
+  expect(copy.references.filter((r: { kind: string }) => r.kind === "cover")).toHaveLength(1);
   // It's on the copier's shopping list as something to buy.
   expect(await (await b.page.request.get("/api/export/shopping")).text()).toContain("Foam helmet");
   // Not published: absent from the Community.

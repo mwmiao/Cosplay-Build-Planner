@@ -5,16 +5,17 @@
 //   "schemaVersion": 1,
 //   "exportedAt": "2026-10-26T09:00:00.000Z",
 //   "app": { "name": "Cosplay Build Planner", "version": "1.2.1" },
-//   "project": { id, characterName, series, conventionName, deadline, status,
+//   "project": { id, characterName, series, conventionName, startDate, deadline, status,
 //                currency (base), budgetCents, notes, archived, createdAt, updatedAt },
 //   "categories": [{ code, label }],          // categories used by the parts
-//   "parts": [{ id (stable expense id), name, category, status, currency,
+//   "parts": [{ id (stable expense id), name, category, status, currency,   (in manual order)
 //               quantity, estimatedCostCents, actualCostCents, supplier, url,
 //               notes, completedAt, createdAt, updatedAt,
 //               payment: null | { paidAt, baseCurrency, baseAmountCents,
 //                                 fxRate, fxRateDate, fxSource, fxManual } }],
 //   "shoppingItems": [...],                   // items added by hand to this project
-//   "references": [...],                      // image metadata only (files not included)
+//   "references": [...],                      // image metadata only (files not included):
+//                                             // caption, sourceUrl, originalName, kind, group, createdAt
 //   "totals": { ... }                         // informational, ignored on import
 // }
 //
@@ -110,6 +111,9 @@ const referenceSchema = z.object({
   caption: text(200).nullable(),
   sourceUrl: text(2000).nullable(),
   originalName: text(200),
+  /** reference | part | cover (added in 1.5; optional for older files) */
+  kind: text(20).optional(),
+  group: text(40).nullable().optional(),
   createdAt: timestamp,
 });
 
@@ -124,6 +128,8 @@ export const exportFileSchema = z
       characterName: z.string().trim().min(1).max(120),
       series: text(120).nullable(),
       conventionName: text(120).nullable(),
+      /** Added in 1.5; optional for older files */
+      startDate: dateOnly.nullable().optional(),
       deadline: dateOnly.nullable(),
       status: z.enum(PROJECT_STATUSES),
       currency,

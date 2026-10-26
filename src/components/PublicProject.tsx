@@ -5,6 +5,7 @@
 import type { Dict } from "@/i18n";
 import type { PublicSnapshot } from "@/lib/community/snapshot";
 import type { Formatters } from "@/lib/format";
+import { LightboxGroup, LightboxThumb } from "./Lightbox";
 import { ProgressBar, StatusBadge } from "./ui";
 
 export type PublicProjectData = {
@@ -35,14 +36,20 @@ export function PublicProject({
   const C = t.community;
   const s = data.snapshot;
   const cover = data.images.find((i) => i.id === data.coverId) ?? data.images[0] ?? null;
+  const lightbox = data.images.map((img) => ({
+    id: img.id,
+    src: img.fullUrl ?? img.thumbUrl,
+    thumb: img.thumbUrl,
+    caption: img.caption,
+    alt: img.caption ?? data.title,
+  }));
   return (
+    <LightboxGroup images={lightbox}>
     <article className="space-y-6" data-testid="public-project">
       {cover ? (
-        <img
-          src={cover.fullUrl ?? cover.thumbUrl}
-          alt={cover.caption ?? data.title}
-          className="max-h-80 w-full rounded-2xl object-cover"
-        />
+        <LightboxThumb index={data.images.indexOf(cover)} label={t.lightbox.open(cover.caption ?? data.title)} className="rounded-2xl">
+          <img src={cover.fullUrl ?? cover.thumbUrl} alt={cover.caption ?? data.title} className="max-h-80 w-full object-cover" />
+        </LightboxThumb>
       ) : null}
 
       <header className="space-y-2">
@@ -144,16 +151,16 @@ export function PublicProject({
             {C.images}
           </h2>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {data.images.map((img) => (
+            {data.images.map((img, i) => (
               <li key={img.id}>
-                <a href={img.fullUrl ?? img.thumbUrl} target="_blank" rel="noopener" className="block">
+                <LightboxThumb index={i} label={t.lightbox.open(img.caption ?? data.title)}>
                   <img
                     src={img.thumbUrl}
                     alt={img.caption ?? data.title}
                     loading="lazy"
-                    className="aspect-square w-full rounded-xl object-cover"
+                    className="aspect-square w-full object-cover"
                   />
-                </a>
+                </LightboxThumb>
                 {img.caption ? <p className="mt-1 text-xs">{img.caption}</p> : null}
               </li>
             ))}
@@ -161,5 +168,6 @@ export function PublicProject({
         </section>
       ) : null}
     </article>
+    </LightboxGroup>
   );
 }

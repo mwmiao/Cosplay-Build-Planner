@@ -22,6 +22,7 @@ model Project {
   characterName  String
   series         String?
   conventionName String?
+  startDate      DateTime?
   deadline       DateTime?
   /// idea | researching | building | finished
   status         String    @default("idea")
@@ -70,6 +71,8 @@ model BuildPart {
   url                String?
   notes              String?
   completedAt        DateTime?
+  /// Manual order in the parts list (ascending)
+  position           Int       @default(0)
 
   /// Payment: set once the part is paid and never re-converted at today's rate.
   /// paidBaseCents is the line total (actual × quantity) in the project's base currency.
@@ -88,14 +91,25 @@ model BuildPart {
 
   project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   shoppingItem ShoppingListItem?
+  images       ReferenceImage[]
 
   @@unique([projectId, uid])
   @@index([projectId, deletedAt])
 }
 
+/// Every private image of a project: references, photos of one part, and the
+/// project's main picture. All are served by the same owner-checked route.
 model ReferenceImage {
   id           String   @id @default(cuid())
   projectId    String
+  /// reference | part | cover (one cover per project)
+  kind         String   @default("reference")
+  /// Set for kind "part"
+  partId       String?
+  /// Free-text group used to organise references (e.g. "Armour", "Wig")
+  groupName    String?
+  /// Manual order (ascending) within the same kind / part
+  position     Int      @default(0)
   /// Paths relative to UPLOAD_DIR
   filePath     String
   thumbPath    String
@@ -108,9 +122,11 @@ model ReferenceImage {
   sourceUrl    String?
   createdAt    DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  part    BuildPart? @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  @@index([projectId])
+  @@index([projectId, kind, position])
+  @@index([partId])
 }
 
 model ShoppingListItem {
@@ -316,4 +332,23 @@ model ModerationAction {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, createdAt])
+}
+
+/// Cosplay events added by an admin (shown in Events next to the built-in list
+/// in src/lib/events/builtin.ts).
+model Event {
+  id        String    @id @default(cuid())
+  name      String
+  /// Calendar days (UTC midnight)
+  startDate DateTime
+  endDate   DateTime?
+  city      String
+  venue     String?
+  url       String?
+  notes     String?
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([startDate])
 }

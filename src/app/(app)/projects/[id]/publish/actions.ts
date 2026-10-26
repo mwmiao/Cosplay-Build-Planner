@@ -77,10 +77,13 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
   // Only this project's images can be selected; anything else is ignored.
   const wanted = formData.getAll("imageIds").filter((v): v is string => typeof v === "string");
   const images = wanted.length
-    ? await db.referenceImage.findMany({ where: { projectId: project.id, id: { in: wanted } }, orderBy: { createdAt: "asc" } })
+    ? await db.referenceImage.findMany({
+        where: { projectId: project.id, id: { in: wanted }, kind: { in: ["cover", "reference"] } },
+        orderBy: [{ kind: "asc" }, { position: "asc" }, { createdAt: "asc" }],
+      })
     : [];
   const coverWanted = formData.get("coverId");
-  const cover = images.find((i) => i.id === coverWanted) ?? images[0] ?? null;
+  const cover = images.find((i) => i.id === coverWanted) ?? images.find((i) => i.kind === "cover") ?? images[0] ?? null;
 
   const parts = await db.buildPart.findMany({
     where: { projectId: project.id, deletedAt: null },

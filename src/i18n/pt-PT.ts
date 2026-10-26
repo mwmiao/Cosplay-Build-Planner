@@ -26,6 +26,7 @@ export const ptPT: Dict = {
   },
 
   nav: {
+    events: "Eventos",
     main: "Principal",
     projects: "Projetos",
     shopping: "Compras",
@@ -88,6 +89,15 @@ export const ptPT: Dict = {
   },
 
   projects: {
+    startShort: (date: string) => `Início ${date}`,
+    sort: {
+      deadline: "prazo",
+      start: "data de início",
+      updated: "atualizados recentemente",
+      created: "mais recentes",
+      name: "nome (A–Z)",
+      progress: "progresso",
+    },
     title: "Projetos",
     archivedTitle: "Projetos arquivados",
     show: "Mostrar",
@@ -103,6 +113,14 @@ export const ptPT: Dict = {
   },
 
   projectForm: {
+    startDate: "Data de início",
+    cover: "Imagem principal",
+    coverHint: "Aparece na lista de projetos e no topo do projeto. Carregue-a aqui; as imagens de referência nunca a substituem.",
+    coverUpload: "Carregar imagem principal",
+    coverReplace: "Substituir imagem principal",
+    coverSaved: "Imagem principal guardada.",
+    coverRemove: "Remover imagem principal",
+    coverRemoveConfirm: "Remover a imagem principal?",
     newTitle: "Novo projeto",
     editTitle: "Editar projeto",
     characterName: "Nome da personagem",
@@ -133,6 +151,15 @@ export const ptPT: Dict = {
   },
 
   project: {
+    startDate: "Início",
+    noStart: "Sem data",
+    startHint: "Adicione em Editar",
+    startsIn: (n: number) => `Começa daqui a ${n} ${plural(n, "dia", "dias")}`,
+    startsToday: "Começa hoje",
+    startedAgo: (n: number) => `Começou há ${n} ${plural(n, "dia", "dias")}`,
+    reorderParts: "Reordenar",
+    doneReordering: "Concluído",
+    allPhotosCount: (n: number) => `Todas as fotos (${n})`,
     archivedBanner: "Este projeto está arquivado.",
     unarchive: "Desarquivar",
     noSeries: "Sem série definida",
@@ -188,6 +215,10 @@ export const ptPT: Dict = {
   },
 
   partForm: {
+    photos: "Fotos",
+    photosHint: "Fotos do progresso, do artigo comprado, moldes… Só o próprio as pode ver.",
+    addPhotos: "Adicionar fotos",
+    photosAfterSave: "Pode adicionar fotos à peça depois de a guardar.",
     newTitle: "Adicionar peça",
     editTitle: "Editar peça",
     name: "Nome da peça",
@@ -248,6 +279,16 @@ export const ptPT: Dict = {
   },
 
   refs: {
+    image: "Imagem",
+    imageHint: (mb: number) => `JPEG, PNG, WebP, GIF ou AVIF, até ${mb} MB.`,
+    group: "Grupo",
+    groupPlaceholder: "p. ex. Armadura, Peruca, Adereços",
+    ungrouped: "Sem grupo",
+    filterGroup: "Mostrar grupo",
+    allGroups: "Todas",
+    groupsHint: "Dica: atribua um grupo às imagens (Editar) para as organizar por secções.",
+    reorder: "Reordenar",
+    doneReordering: "Concluído",
     title: "Referências",
     uploaded: (n: number) => plural(n, "1 imagem carregada.", `${n} imagens carregadas.`),
     addImages: "Adicionar imagens",
@@ -365,6 +406,7 @@ export const ptPT: Dict = {
   },
 
   validation: {
+    deadlineBeforeStart: "O prazo não pode ser anterior à data de início.",
     required: (label: string) => `${label}: campo obrigatório`,
     tooLong: (max: number) => `Máximo de ${max} caracteres`,
     amount: "Introduza um valor como 12,50",
@@ -547,6 +589,13 @@ export const ptPT: Dict = {
   },
 
   community: {
+    mainPicture: "Imagem principal",
+    sorts: {
+      newest: "mais recentes",
+      updated: "atualizados recentemente",
+      oldest: "mais antigos",
+      title: "título (A–Z)",
+    },
     title: "Comunidade",
     intro: "Projetos que outros cosplayers decidiram partilhar.",
     searchLabel: "Pesquisar",
@@ -656,6 +705,66 @@ export const ptPT: Dict = {
     adminTools: "Administração",
     ownerNotice: (date: string, reason: string) =>
       `Um administrador removeu este projeto da Comunidade a ${date}. Motivo: ${reason}. O projeto em si não foi alterado; pode corrigi-lo e voltar a publicar.`,
+  },
+
+  views: {
+    sortBy: "Ordenar por",
+    sortPrefix: "Ordenar:",
+    layout: "Vista",
+    grid: "Grelha",
+    list: "Lista",
+  },
+
+  lightbox: {
+    open: (name: string) => `Ver imagem: ${name}`,
+    close: "Fechar",
+    previous: "Imagem anterior",
+    next: "Imagem seguinte",
+    counter: (i: number, n: number) => `${i} de ${n}`,
+  },
+
+  sortable: {
+    hint: "Arraste pela pega ou use as setas. As alterações são guardadas automaticamente.",
+    saving: "A guardar…",
+    saved: "Ordem guardada",
+    error: "Não foi possível guardar a ordem. Tente novamente.",
+    drag: (name: string) => `Arrastar para mover: ${name}`,
+    up: (name: string) => `Mover para cima: ${name}`,
+    down: (name: string) => `Mover para baixo: ${name}`,
+  },
+
+  events: {
+    title: "Eventos",
+    intro: "Eventos de cosplay, anime, banda desenhada e videojogos em Portugal.",
+    show: "Mostrar eventos",
+    upcoming: "Próximos",
+    past: "Anteriores",
+    filterCity: "Cidade",
+    allCities: "Todas as cidades",
+    noUpcoming: "Não há próximos eventos na lista",
+    noPast: "Não há eventos anteriores na lista",
+    emptyText: "As novas datas são adicionadas à medida que os organizadores as anunciam.",
+    happeningNow: "A decorrer",
+    inDays: (n: number) => (n === 1 ? "Amanhã" : `Daqui a ${n} dias`),
+    dateUnconfirmed: "Data da página do organizador; ano por confirmar.",
+    website: "Site",
+    footer: "As datas vêm dos sites dos organizadores e da imprensa. Confirme sempre na página oficial antes de viajar.",
+    footerAdmin: "Os eventos incluídos chegam com as atualizações da aplicação. Adicione novos (ou datas mais recentes) com «Adicionar evento»; pode editar e eliminar os que adicionar.",
+    add: "Adicionar evento",
+    edit: "Editar evento",
+    save: "Guardar evento",
+    delete: "Eliminar evento",
+    deleteConfirm: (name: string) => `Eliminar «${name}»?`,
+    name: "Nome",
+    startDate: "Data de início",
+    endDate: "Data de fim",
+    endDateHint: "Deixe em branco para um evento de um só dia.",
+    endBeforeStart: "A data de fim não pode ser anterior à data de início.",
+    city: "Cidade",
+    venue: "Local",
+    link: "Ligação",
+    linkHint: "Site oficial ou página de Instagram.",
+    notes: "Notas",
   },
 
   csv: {

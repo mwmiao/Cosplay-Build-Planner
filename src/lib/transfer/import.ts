@@ -264,6 +264,7 @@ function projectData(file: ExportFile) {
     characterName: p.characterName,
     series: p.series,
     conventionName: p.conventionName,
+    startDate: p.startDate ? toDay(p.startDate) : null,
     deadline: p.deadline ? toDay(p.deadline) : null,
     status: p.status,
     currency: p.currency,
@@ -273,11 +274,12 @@ function projectData(file: ExportFile) {
 }
 
 /** Part row with the payment copied verbatim: no rate lookup, no recalculation. */
-function partData(part: ExportPart, projectId: string) {
+function partData(part: ExportPart, projectId: string, position: number) {
   const pay = part.payment;
   return {
     uid: part.id,
     projectId,
+    position,
     name: part.name,
     category: (CATEGORIES as readonly string[]).includes(part.category) ? part.category : "other",
     status: part.status,
@@ -309,10 +311,13 @@ async function insertRows(
 ) {
   let partsCreated = 0;
   let paidPreserved = 0;
+  // Parts keep the file's order, after any parts already in the project (merge).
+  const last = await tx.buildPart.aggregate({ where: { projectId }, _max: { position: true } });
+  let position = (last._max.position ?? -1) + 1;
   for (const p of file.parts) {
     if (skipPartUids.has(p.id)) continue;
     // New database ids every time; only the stable uid comes from the file.
-    const part = await tx.buildPart.create({ data: partData(p, projectId) });
+    const part = await tx.buildPart.create({ data: partData(p, projectId, position++) });
     await syncShoppingItemForPart(tx, part, ownerId);
     partsCreated += 1;
     if (p.payment) paidPreserved += 1;

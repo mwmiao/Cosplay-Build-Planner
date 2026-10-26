@@ -19,7 +19,11 @@ export default async function PublishPage({ params }: { params: { id: string } }
   const { t } = getI18n();
   const C = t.community;
   const [images, publication] = await Promise.all([
-    db.referenceImage.findMany({ where: { projectId: project.id }, orderBy: { createdAt: "asc" } }),
+    // The main picture (first) and the reference images, in their manual order. Part photos stay private.
+    db.referenceImage.findMany({
+      where: { projectId: project.id, kind: { in: ["cover", "reference"] } },
+      orderBy: [{ kind: "asc" }, { position: "asc" }, { createdAt: "asc" }],
+    }),
     db.publication.findFirst({
       where: { projectId: project.id, ownerId: user.id },
       include: { images: { select: { id: true, sourceImageId: true } } },
@@ -30,6 +34,7 @@ export default async function PublishPage({ params }: { params: { id: string } }
     .map((i) => i.sourceImageId)
     .filter((id): id is string => !!id && existing.has(id));
   const coverSource = publication?.images.find((i) => i.id === publication.coverImageId)?.sourceImageId ?? null;
+  const mainPicture = images.find((i) => i.kind === "cover") ?? null;
 
   return (
     <>
@@ -40,7 +45,11 @@ export default async function PublishPage({ params }: { params: { id: string } }
       <PublishForm
         projectId={project.id}
         published={!!publication}
-        images={images.map((i) => ({ id: i.id, caption: i.caption, thumbUrl: `/api/uploads/${i.thumbPath}` }))}
+        images={images.map((i) => ({
+          id: i.id,
+          caption: i.kind === "cover" ? (i.caption ?? C.mainPicture) : i.caption,
+          thumbUrl: `/api/uploads/${i.thumbPath}`,
+        }))}
         defaults={
           publication
             ? {
@@ -62,7 +71,7 @@ export default async function PublishPage({ params }: { params: { id: string } }
                 includeCosts: false,
                 includeLinks: false,
                 imageIds: [],
-                coverId: null,
+                coverId: mainPicture?.id ?? null,
               }
         }
       />

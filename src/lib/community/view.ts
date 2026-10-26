@@ -66,7 +66,15 @@ export async function getPublicProject(id: string): Promise<PublicProjectView | 
   return row ? toView(row) : null;
 }
 
-export type CommunitySort = "newest" | "updated";
+export const COMMUNITY_SORTS = ["newest", "updated", "oldest", "title"] as const;
+export type CommunitySort = (typeof COMMUNITY_SORTS)[number];
+
+const ORDER: Record<CommunitySort, Prisma.PublicationOrderByWithRelationInput[]> = {
+  newest: [{ publishedAt: "desc" }, { id: "desc" }],
+  updated: [{ versionAt: "desc" }, { id: "desc" }],
+  oldest: [{ publishedAt: "asc" }, { id: "asc" }],
+  title: [{ title: "asc" }, { id: "asc" }],
+};
 export const PAGE_SIZE = 12;
 
 export async function listPublicProjects(opts: { q?: string; sort: CommunitySort; page: number }) {
@@ -90,7 +98,7 @@ export async function listPublicProjects(opts: { q?: string; sort: CommunitySort
     db.publication.findMany({
       where,
       include,
-      orderBy: opts.sort === "updated" ? [{ versionAt: "desc" }, { id: "desc" }] : [{ publishedAt: "desc" }, { id: "desc" }],
+      orderBy: ORDER[opts.sort],
       skip: (opts.page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),

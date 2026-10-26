@@ -4,6 +4,37 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.5.0 — 2026-10-28
+
+### Added
+- **Start date** for projects (next to the deadline; the deadline can't be
+  earlier). Shown on the project ("starts in…" / "started … ago") and in the list.
+- **Main picture**: uploaded on purpose in Edit project (replace or remove).
+  Reference images no longer become the project picture. It's the default
+  Community cover when published, and Copy to My Projects keeps it.
+- **Part photos**: each part has its own photos (upload, caption, reorder,
+  delete); the first one is the part's thumbnail in the list.
+- **Manual order** for parts, reference images and part photos: drag by the
+  handle (works on touch screens) or use the arrow buttons; saved instantly.
+- **Reference groups** (e.g. Armour, Wig): sections, group filter, and
+  reordering within a group.
+- **In-app image viewer**: images open full-screen inside the app (swipe or
+  ←/→, Esc to close) instead of a new tab — also on Community pages.
+- **Sorting and grid/list views** for Projects (deadline, start date, updated,
+  newest, name, progress) and Community (newest, updated, oldest, title),
+  remembered per device.
+- **Events** tab: Portuguese cosplay/anime/gaming events, upcoming and past,
+  with a city filter. Built-in researched list plus events added by admins.
+  Replaces "New" in the phone bottom bar (the projects page has a New button).
+
+### Changed
+- Export files include the start date, part order and image kind/group
+  (format version 1, older files still import).
+
+### Upgrading
+- Additive migration (new columns and an Event table). Existing parts keep
+  their order and reference images stay newest-first.
+
 ## 1.4.1 — 2026-10-27
 
 ### Changed

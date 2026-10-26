@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SubmitButton } from "@/components/FormBits";
+import { LightboxGroup, LightboxThumb } from "@/components/Lightbox";
+import { Sortable } from "@/components/Sortable";
 import { CheckIcon, DownloadIcon, ImageIcon, LinkIcon, PencilIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState, ProgressBar, Stat, StatusBadge } from "@/components/ui";
 import { CATEGORIES, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/constants";
@@ -11,7 +13,8 @@ import { daysLabel, daysUntil, hostname } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
 import { getMoneyContext, getProjectOr404 } from "@/lib/queries";
 import { setProjectArchived } from "../actions";
-import { togglePartDone } from "./parts/actions";
+import { reorderParts, togglePartDone } from "./parts/actions";
+import { lightboxImages } from "./references/ImageCard";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const user = await requireUser();
@@ -19,13 +22,14 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   return { title: project.characterName };
 }
 
-type Search = { status?: string; category?: string };
+type Search = { status?: string; category?: string; reorder?: string };
 
 function filterHref(projectId: string, current: Search, change: Search) {
   const next = { ...current, ...change };
   const qs = new URLSearchParams();
   if (next.status) qs.set("status", next.status);
   if (next.category) qs.set("category", next.category);
+  if (next.reorder) qs.set("reorder", next.reorder);
   const s = qs.toString();
   return `/projects/${projectId}${s ? `?${s}` : ""}#parts`;
 }
@@ -41,22 +45,33 @@ export default async function ProjectPage({
   const project = await getProjectOr404(params.id, user.id);
   const { t, f } = getI18n();
   const P = t.project;
-  const [allParts, references] = await Promise.all([
+  const [allParts, references, referenceCount, cover, partPhotos] = await Promise.all([
     db.buildPart.findMany({
       where: { projectId: project.id, deletedAt: null },
-      orderBy: [{ createdAt: "asc" }],
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
     db.referenceImage.findMany({
-      where: { projectId: project.id },
-      orderBy: { createdAt: "desc" },
+      where: { projectId: project.id, kind: "reference" },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       take: 6,
     }),
+    db.referenceImage.count({ where: { projectId: project.id, kind: "reference" } }),
+    db.referenceImage.findFirst({ where: { projectId: project.id, kind: "cover" } }),
+    db.referenceImage.findMany({
+      where: { projectId: project.id, kind: "part" },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: { partId: true, thumbPath: true },
+    }),
   ]);
+  // First photo of each part, shown as its thumbnail in the list.
+  const partThumb = new Map<string, string>();
+  for (const photo of partPhotos) if (photo.partId && !partThumb.has(photo.partId)) partThumb.set(photo.partId, photo.thumbPath);
 
   const filter: Search = {
     status: (PART_STATUSES as readonly string[]).includes(searchParams.status ?? "") ? searchParams.status : undefined,
     category: (CATEGORIES as readonly string[]).includes(searchParams.category ?? "") ? searchParams.category : undefined,
   };
+  const reorder = searchParams.reorder === "1";
   const parts = allParts.filter(
     (p) => (!filter.status || p.status === filter.status) && (!filter.category || p.category === filter.category),
   );
@@ -78,6 +93,7 @@ export default async function ProjectPage({
   const stats = projectStats(project, allParts, ctx);
   const base = stats.base;
   const days = daysUntil(project.deadline);
+  const startDays = daysUntil(project.startDate);
   const over = stats.overUnder !== null && stats.overUnder < 0;
 
   const C = t.community;
@@ -111,7 +127,16 @@ export default async function ProjectPage({
 
       <header className="mb-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          {cover ? (
+            <div className="w-20 shrink-0 sm:w-28">
+              <LightboxGroup images={lightboxImages([cover])}>
+                <LightboxThumb index={0} label={t.lightbox.open(project.characterName)} className="rounded-2xl shadow-sm">
+                  <img src={`/api/uploads/${cover.thumbPath}`} alt="" className="aspect-square w-full object-cover" data-testid="project-cover" />
+                </LightboxThumb>
+              </LightboxGroup>
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1">
             <h1 className="page-title break-words">{project.characterName}</h1>
             <p className="text-zinc-500 dark:text-zinc-400">
               {[project.series, project.conventionName].filter(Boolean).join(" · ") || P.noSeries}
@@ -142,13 +167,20 @@ export default async function ProjectPage({
         </div>
       </header>
 
-      <section aria-label={P.summary} className="mb-3 grid grid-cols-2 gap-3">
+      <section aria-label={P.summary} className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Stat
+          label={P.startDate}
+          value={project.startDate ? f.date(project.startDate) : P.noStart}
+          sub={startDays === null ? P.startHint : startDays > 0 ? P.startsIn(startDays) : startDays === 0 ? P.startsToday : P.startedAgo(-startDays)}
+        />
         <Stat
           label={P.deadline}
           value={<span className={days !== null && days < 14 && days >= 0 ? "text-amber-600 dark:text-amber-400" : ""}>{daysLabel(days, t)}</span>}
           sub={f.date(project.deadline)}
         />
-        <Stat label={P.partsDone} value={`${stats.done} / ${stats.count}`} sub={P.percentComplete(stats.completion)} />
+        <div className="col-span-2 sm:col-span-1">
+          <Stat label={P.partsDone} value={`${stats.done} / ${stats.count}`} sub={P.percentComplete(stats.completion)} />
+        </div>
       </section>
 
       <section aria-labelledby="budget-title" className="mb-6">
@@ -201,13 +233,24 @@ export default async function ProjectPage({
       ) : null}
 
       <section id="parts" aria-labelledby="parts-title" className="mb-8 scroll-mt-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 id="parts-title" className="section-title">
             {P.parts}
           </h2>
-          <Link href={`/projects/${project.id}/parts/new`} className="btn-primary">
-            <PlusIcon className="h-5 w-5" /> {P.addPart}
-          </Link>
+          <div className="flex shrink-0 gap-2">
+            {allParts.length > 1 ? (
+              <Link
+                href={filterHref(project.id, { ...filter, reorder: reorder ? undefined : "1" }, {})}
+                className={reorder ? "btn-primary" : "btn-secondary"}
+                aria-pressed={reorder}
+              >
+                {reorder ? P.doneReordering : P.reorderParts}
+              </Link>
+            ) : null}
+            <Link href={`/projects/${project.id}/parts/new`} className="btn-primary">
+              <PlusIcon className="h-5 w-5" /> {P.addPart}
+            </Link>
+          </div>
         </div>
 
         {allParts.length > 0 ? (
@@ -254,6 +297,23 @@ export default async function ProjectPage({
               {P.clearFilters}
             </Link>
           </EmptyState>
+        ) : reorder && parts.length > 1 ? (
+          <Sortable
+            onSave={reorderParts.bind(null, project.id)}
+            items={parts.map((part) => ({
+              id: part.id,
+              label: part.name,
+              content: (
+                <div className="flex min-w-0 items-center gap-2">
+                  {partThumb.get(part.id) ? (
+                    <img src={`/api/uploads/${partThumb.get(part.id)}`} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" draggable={false} />
+                  ) : null}
+                  <span className="truncate font-medium">{part.name}</span>
+                  <StatusBadge status={part.status} label={statusLabel(part.status, t)} />
+                </div>
+              ),
+            }))}
+          />
         ) : (
           <ul className="space-y-2">
             {parts.map((part) => {
@@ -275,6 +335,11 @@ export default async function ProjectPage({
                       <CheckIcon className="h-5 w-5" />
                     </button>
                   </form>
+                  {partThumb.get(part.id) ? (
+                    <Link href={`/projects/${project.id}/parts/${part.id}/edit#photos`} className="shrink-0" tabIndex={-1} aria-hidden="true">
+                      <img src={`/api/uploads/${partThumb.get(part.id)}`} alt="" loading="lazy" className="h-12 w-12 rounded-xl object-cover" />
+                    </Link>
+                  ) : null}
                   <Link href={`/projects/${project.id}/parts/${part.id}/edit`} className="min-w-0 flex-1 py-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`font-medium ${done ? "text-zinc-400 line-through dark:text-zinc-500" : ""}`}>
@@ -381,26 +446,28 @@ export default async function ProjectPage({
             {P.references}
           </h2>
           <Link href={`/projects/${project.id}/references`} className="btn-secondary">
-            <ImageIcon className="h-5 w-5" /> {references.length ? P.allPhotos : P.addPhotos}
+            <ImageIcon className="h-5 w-5" /> {referenceCount ? P.allPhotosCount(referenceCount) : P.addPhotos}
           </Link>
         </div>
         {references.length === 0 ? (
           <EmptyState title={P.noRefs}>{P.noRefsText}</EmptyState>
         ) : (
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {references.map((r) => (
-              <li key={r.id}>
-                <Link href={`/projects/${project.id}/references#ref-${r.id}`}>
-                  <img
-                    src={`/api/uploads/${r.thumbPath}`}
-                    alt={r.caption ?? P.refAlt}
-                    loading="lazy"
-                    className="aspect-square w-full rounded-xl object-cover"
-                  />
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <LightboxGroup images={lightboxImages(references)}>
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {references.map((r, i) => (
+                <li key={r.id}>
+                  <LightboxThumb index={i} label={t.lightbox.open(r.caption ?? P.refAlt)}>
+                    <img
+                      src={`/api/uploads/${r.thumbPath}`}
+                      alt={r.caption ?? P.refAlt}
+                      loading="lazy"
+                      className="aspect-square w-full object-cover"
+                    />
+                  </LightboxThumb>
+                </li>
+              ))}
+            </ul>
+          </LightboxGroup>
         )}
       </section>
     </>

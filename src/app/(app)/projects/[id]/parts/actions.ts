@@ -3,10 +3,12 @@
 import type { BuildPart, Project } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import { z } from "zod";
 import type { Dict } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { reorderPositions } from "@/lib/ordering";
 import { UNPAID, type PaymentFields, convertPayment } from "@/lib/payments";
 import { RateUnavailableError } from "@/lib/rates";
 import { getDefaultCurrency } from "@/lib/settings";
@@ -119,11 +121,14 @@ export async function createPart(
   if (!("fields" in payment)) return payment;
 
   await db.$transaction(async (tx) => {
+    // New parts go to the end of the manual order.
+    const last = await tx.buildPart.aggregate({ where: { projectId: pid }, _max: { position: true } });
     const part = await tx.buildPart.create({
       data: {
         ...partData(parsed.data),
         ...payment.fields,
         projectId: pid,
+        position: (last._max.position ?? -1) + 1,
         completedAt: parsed.data.status === "done" ? new Date() : null,
       },
     });
@@ -203,4 +208,29 @@ export async function deletePart(projectId: string, partId: string): Promise<voi
   });
   revalidate(pid);
   redirect(`/projects/${pid}#parts`);
+}
+
+/**
+ * Saves a new manual order for some of the project's parts. Only the listed
+ * parts move, among the slots they already hold (so a filtered view can be
+ * reordered without disturbing the rest).
+ */
+export async function reorderParts(projectId: string, ids: string[]): Promise<{ ok: boolean }> {
+  const user = await requireUser();
+  const pid = idSchema.parse(projectId);
+  const parsed = z.array(idSchema).min(1).max(5000).safeParse(ids);
+  if (!parsed.success) return { ok: false };
+  const ok = await db.$transaction(async (tx) => {
+    const rows = await tx.buildPart.findMany({
+      where: { id: { in: parsed.data }, projectId: pid, deletedAt: null, project: { ownerId: user.id, deletedAt: null } },
+      select: { id: true, position: true },
+    });
+    if (rows.length !== new Set(parsed.data).size) return false;
+    for (const { id, position } of reorderPositions(rows, parsed.data)) {
+      await tx.buildPart.update({ where: { id }, data: { position } });
+    }
+    return true;
+  });
+  if (ok) revalidate(pid);
+  return { ok };
 }

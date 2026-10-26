@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/client";
-import { CartIcon, CogIcon, FolderIcon, GlobeIcon, PlusIcon } from "./Icons";
+import { CalendarIcon, CartIcon, CogIcon, FolderIcon, GlobeIcon, PlusIcon } from "./Icons";
 
 function useItems() {
   const { t } = useI18n();
@@ -16,7 +16,9 @@ function useItems() {
       match: (p: string) => p.startsWith("/projects") && p !== "/projects/new",
     },
     { href: "/community", label: t.nav.community, long: t.nav.community, Icon: GlobeIcon, match: (p: string) => p.startsWith("/community") },
-    { href: "/projects/new", label: t.nav.new, long: t.nav.newProject, Icon: PlusIcon, match: (p: string) => p === "/projects/new" },
+    // On phones the projects page has its own "New project" button, so the bottom bar shows Events instead.
+    { href: "/projects/new", label: t.nav.new, long: t.nav.newProject, Icon: PlusIcon, match: (p: string) => p === "/projects/new", sidebarOnly: true },
+    { href: "/events", label: t.nav.events, long: t.nav.events, Icon: CalendarIcon, match: (p: string) => p.startsWith("/events") },
     { href: "/shopping", label: t.nav.shopping, long: t.nav.shopping, Icon: CartIcon, match: (p: string) => p.startsWith("/shopping") },
     { href: "/settings", label: t.nav.settings, long: t.nav.settings, Icon: CogIcon, match: (p: string) => p.startsWith("/settings") },
   ];
@@ -98,7 +100,7 @@ export function Sidebar({
 export function BottomNav() {
   const pathname = usePathname();
   const { t } = useI18n();
-  const items = useItems();
+  const items = useItems().filter((i) => !i.sidebarOnly);
   return (
     <nav
       aria-label={t.nav.main}

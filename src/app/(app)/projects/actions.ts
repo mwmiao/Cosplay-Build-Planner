@@ -75,6 +75,7 @@ export async function updateProject(
         characterName: d.characterName,
         series: d.series ?? null,
         conventionName: d.conventionName ?? null,
+        startDate: d.startDate ?? null,
         deadline: d.deadline ?? null,
         status: d.status,
         currency: d.currency,

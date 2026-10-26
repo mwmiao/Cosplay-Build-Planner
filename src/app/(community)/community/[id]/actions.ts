@@ -38,13 +38,16 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
   const projectId = newId();
 
   // Copy the published images into the new project's private folder first.
-  const images: { caption: string | null; filePath: string; thumbPath: string; sizeBytes: number }[] = [];
+  const images: { kind: "reference" | "cover"; caption: string | null; filePath: string; thumbPath: string; sizeBytes: number }[] = [];
   try {
     for (const img of source.images) {
       const file = fileById.get(img.id);
       if (!file) continue;
-      images.push({ caption: img.caption, ...(await copyPublicToPrivate(file, projectId)) });
+      images.push({ kind: "reference", caption: img.caption, ...(await copyPublicToPrivate(file, projectId)) });
     }
+    // The published cover also becomes the copy's main picture (a separate file).
+    const coverFile = source.cover ? fileById.get(source.cover.id) : undefined;
+    if (coverFile) images.push({ kind: "cover", caption: null, ...(await copyPublicToPrivate(coverFile, projectId)) });
   } catch (err) {
     console.error("Copying community images failed", err);
     await removeProjectFiles(projectId);
@@ -69,10 +72,11 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
           copiedFromCreator: source.creator.displayName,
         },
       });
-      for (const item of source.snapshot.items) {
+      for (const [position, item] of source.snapshot.items.entries()) {
         const part = await tx.buildPart.create({
           data: {
             projectId,
+            position,
             name: item.name,
             category: (CATEGORIES as readonly string[]).includes(item.category) ? item.category : "other",
             status: "needed",
@@ -85,10 +89,12 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
         });
         await syncShoppingItemForPart(tx, part, user.id);
       }
-      for (const img of images) {
+      for (const [position, img] of images.entries()) {
         await tx.referenceImage.create({
           data: {
             projectId,
+            kind: img.kind,
+            position,
             filePath: img.filePath,
             thumbPath: img.thumbPath,
             originalName: img.filePath.split("/")[1] ?? "image",

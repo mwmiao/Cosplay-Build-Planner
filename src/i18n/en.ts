@@ -26,6 +26,7 @@ export const en = {
   },
 
   nav: {
+    events: "Events",
     main: "Main",
     projects: "Projects",
     shopping: "Shopping",
@@ -88,6 +89,15 @@ export const en = {
   },
 
   projects: {
+    startShort: (date: string) => `Starts ${date}`,
+    sort: {
+      deadline: "deadline",
+      start: "start date",
+      updated: "recently updated",
+      created: "newest",
+      name: "name (A–Z)",
+      progress: "progress",
+    },
     title: "Projects",
     archivedTitle: "Archived projects",
     show: "Show",
@@ -103,6 +113,14 @@ export const en = {
   },
 
   projectForm: {
+    startDate: "Start date",
+    cover: "Main picture",
+    coverHint: "Shown on your project list and at the top of the project. Upload it here; reference images never replace it.",
+    coverUpload: "Upload main picture",
+    coverReplace: "Replace main picture",
+    coverSaved: "Main picture saved.",
+    coverRemove: "Remove main picture",
+    coverRemoveConfirm: "Remove the main picture?",
     newTitle: "New project",
     editTitle: "Edit project",
     characterName: "Character name",
@@ -132,6 +150,15 @@ export const en = {
   },
 
   project: {
+    startDate: "Start",
+    noStart: "Not set",
+    startHint: "Add it in Edit",
+    startsIn: (n: number) => `Starts in ${n} ${plural(n, "day", "days")}`,
+    startsToday: "Starts today",
+    startedAgo: (n: number) => `Started ${n} ${plural(n, "day", "days")} ago`,
+    reorderParts: "Reorder",
+    doneReordering: "Done",
+    allPhotosCount: (n: number) => `All photos (${n})`,
     archivedBanner: "This project is archived.",
     unarchive: "Unarchive",
     noSeries: "No series set",
@@ -186,6 +213,10 @@ export const en = {
   },
 
   partForm: {
+    photos: "Photos",
+    photosHint: "Progress shots, the item you bought, patterns… Only you can see them.",
+    addPhotos: "Add photos",
+    photosAfterSave: "You can add photos to the part after saving it.",
     newTitle: "Add part",
     editTitle: "Edit part",
     name: "Part name",
@@ -247,6 +278,16 @@ export const en = {
   },
 
   refs: {
+    image: "Image",
+    imageHint: (mb: number) => `JPEG, PNG, WebP, GIF or AVIF, up to ${mb} MB.`,
+    group: "Group",
+    groupPlaceholder: "e.g. Armour, Wig, Props",
+    ungrouped: "Ungrouped",
+    filterGroup: "Show group",
+    allGroups: "All",
+    groupsHint: "Tip: give images a group (Edit) to organise them into sections.",
+    reorder: "Reorder",
+    doneReordering: "Done",
     title: "References",
     uploaded: (n: number) => `Uploaded ${n} ${plural(n, "image", "images")}.`,
     addImages: "Add images",
@@ -360,6 +401,7 @@ export const en = {
   },
 
   validation: {
+    deadlineBeforeStart: "The deadline can't be before the start date.",
     required: (label: string) => `${label} is required`,
     tooLong: (max: number) => `Must be ${max} characters or fewer`,
     amount: "Enter an amount like 12.50",
@@ -541,6 +583,13 @@ export const en = {
   },
 
   community: {
+    mainPicture: "Main picture",
+    sorts: {
+      newest: "newest",
+      updated: "recently updated",
+      oldest: "oldest",
+      title: "title (A–Z)",
+    },
     title: "Community",
     intro: "Builds other cosplayers chose to share.",
     searchLabel: "Search",
@@ -650,6 +699,66 @@ export const en = {
     adminTools: "Admin",
     ownerNotice: (date: string, reason: string) =>
       `An admin removed this project from the Community on ${date}. Reason: ${reason}. Your project itself is unchanged; you can fix it and publish again.`,
+  },
+
+  views: {
+    sortBy: "Sort by",
+    sortPrefix: "Sort:",
+    layout: "Layout",
+    grid: "Grid",
+    list: "List",
+  },
+
+  lightbox: {
+    open: (name: string) => `View image: ${name}`,
+    close: "Close",
+    previous: "Previous image",
+    next: "Next image",
+    counter: (i: number, n: number) => `${i} of ${n}`,
+  },
+
+  sortable: {
+    hint: "Drag by the handle, or use the arrows. Changes save automatically.",
+    saving: "Saving…",
+    saved: "Order saved",
+    error: "Couldn't save the order. Try again.",
+    drag: (name: string) => `Drag to move: ${name}`,
+    up: (name: string) => `Move up: ${name}`,
+    down: (name: string) => `Move down: ${name}`,
+  },
+
+  events: {
+    title: "Events",
+    intro: "Cosplay, anime, comics and gaming events in Portugal.",
+    show: "Show events",
+    upcoming: "Upcoming",
+    past: "Past",
+    filterCity: "City",
+    allCities: "All cities",
+    noUpcoming: "No upcoming events listed",
+    noPast: "No past events listed",
+    emptyText: "New dates are added as organisers announce them.",
+    happeningNow: "Happening now",
+    inDays: (n: number) => (n === 1 ? "Tomorrow" : `In ${n} days`),
+    dateUnconfirmed: "Date from the organiser's page; year not confirmed.",
+    website: "Website",
+    footer: "Dates come from organisers' websites and event press. Always check the official page before travelling.",
+    footerAdmin: "Built-in events come with app updates. Add new ones (or newer dates) with “Add event”; you can edit and delete the ones you add.",
+    add: "Add event",
+    edit: "Edit event",
+    save: "Save event",
+    delete: "Delete event",
+    deleteConfirm: (name: string) => `Delete “${name}”?`,
+    name: "Name",
+    startDate: "Start date",
+    endDate: "End date",
+    endDateHint: "Leave empty for a one-day event.",
+    endBeforeStart: "The end date can't be before the start date.",
+    city: "City",
+    venue: "Venue",
+    link: "Link",
+    linkHint: "Official website or Instagram page.",
+    notes: "Notes",
   },
 
   csv: {

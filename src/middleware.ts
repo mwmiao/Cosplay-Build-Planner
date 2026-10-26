@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // (lib/auth.ts), so this never decides access on its own.
 const SESSION_COOKIES = ["cbp.session_token", "__Secure-cbp.session_token"];
 
-const PUBLIC_PAGES = /^\/(login|register|forgot-password|reset-password|community)(\/|$)/;
+const PUBLIC_PAGES = /^\/(login|register|forgot-password|reset-password|community|events)(\/|$)/;
 const PUBLIC_API = /^\/api\/(health|community)(\/|$)/;
 
 export function middleware(req: NextRequest) {

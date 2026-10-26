@@ -14,6 +14,7 @@ export type ProjectFormValues = {
   characterName: string;
   series: string;
   conventionName: string;
+  startDate: string;
   deadline: string;
   status: string;
   currency: string;
@@ -29,6 +30,7 @@ export function ProjectForm({
   submitLabel,
   defaultCurrency,
   currencyNote,
+  eventNames = [],
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   initial?: ProjectFormValues;
@@ -37,6 +39,8 @@ export function ProjectForm({
   currencyNote?: string;
   cancelHref: string;
   submitLabel: string;
+  /** Upcoming event names, suggested for the convention field */
+  eventNames?: string[];
 }) {
   const { t } = useI18n();
   const F = t.projectForm;
@@ -59,8 +63,24 @@ export function ProjectForm({
         <Field label={F.series} name="series" defaultValue={initial?.series} errors={e.series} placeholder={F.seriesPlaceholder} />
         <Field as="select" label={F.status} name="status" options={statusOptions} defaultValue={initial?.status ?? "idea"} errors={e.status} />
       </div>
+      <Field
+        label={F.convention}
+        name="conventionName"
+        defaultValue={initial?.conventionName}
+        errors={e.conventionName}
+        placeholder={F.conventionPlaceholder}
+        list={eventNames.length ? "event-names" : undefined}
+        autoComplete="off"
+      />
+      {eventNames.length ? (
+        <datalist id="event-names">
+          {eventNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
+      ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label={F.convention} name="conventionName" defaultValue={initial?.conventionName} errors={e.conventionName} placeholder={F.conventionPlaceholder} />
+        <Field label={F.startDate} name="startDate" type="date" defaultValue={initial?.startDate} errors={e.startDate} />
         <Field label={F.deadline} name="deadline" type="date" defaultValue={initial?.deadline} errors={e.deadline} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

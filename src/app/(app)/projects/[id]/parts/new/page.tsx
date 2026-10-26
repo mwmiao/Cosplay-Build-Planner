@@ -31,6 +31,7 @@ export default async function NewPartPage({ params }: { params: { id: string } }
           suppliers={await knownSuppliers(user.id)}
         />
       </div>
+      <p className="hint mt-3">{t.partForm.photosAfterSave}</p>
     </>
   );
 }

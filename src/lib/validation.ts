@@ -77,16 +77,23 @@ export function schemas(t: Dict) {
       .max(9999, v.tooMany),
   );
 
-  const project = z.object({
-    characterName: requiredText(120, t.projectForm.characterName),
-    series: optionalText(120),
-    conventionName: optionalText(120),
-    deadline: optionalDate,
-    status: z.enum(PROJECT_STATUSES, { errorMap: () => ({ message: v.pickStatus }) }),
-    currency,
-    budgetCents: optionalMoney,
-    notes: optionalText(5000),
-  });
+  const project = z
+    .object({
+      characterName: requiredText(120, t.projectForm.characterName),
+      series: optionalText(120),
+      conventionName: optionalText(120),
+      startDate: optionalDate,
+      deadline: optionalDate,
+      status: z.enum(PROJECT_STATUSES, { errorMap: () => ({ message: v.pickStatus }) }),
+      currency,
+      budgetCents: optionalMoney,
+      notes: optionalText(5000),
+    })
+    .superRefine((d, ctx) => {
+      if (d.startDate && d.deadline && d.startDate > d.deadline) {
+        ctx.addIssue({ code: "custom", path: ["deadline"], message: v.deadlineBeforeStart });
+      }
+    });
 
   const part = z
     .object({
@@ -132,6 +139,7 @@ export function schemas(t: Dict) {
   const reference = z.object({
     caption: optionalText(200),
     sourceUrl: optionalUrl,
+    groupName: optionalText(40),
   });
 
   return { project, part, shoppingItem, reference };

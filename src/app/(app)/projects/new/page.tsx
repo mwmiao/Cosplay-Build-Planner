@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
+import { upcomingEventNames } from "@/lib/events";
 import { getDefaultCurrency } from "@/lib/settings";
 import { createProject } from "../actions";
 import { ProjectForm } from "../ProjectForm";
@@ -23,6 +24,7 @@ export default async function NewProjectPage() {
           cancelHref="/projects"
           submitLabel={t.projectForm.create}
           defaultCurrency={await getDefaultCurrency(user.id)}
+          eventNames={await upcomingEventNames()}
         />
       </div>
     </>

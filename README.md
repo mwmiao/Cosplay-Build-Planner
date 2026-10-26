@@ -11,13 +11,14 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **Accounts**: register with email and password, log in and out, change your display name and password. Password reset uses a single-use email link when email is configured. Every project is private to its owner (see [Accounts](#accounts)).
 - **Community**: publish a project on purpose, choosing exactly what becomes public, and browse what others shared. Others can copy a published project into their own projects as a private template (see [Community](#community)).
 - **Moderation**: an admin account can remove Community projects that break the rules, with a reason the owner sees (see [Admin and moderation](#admin-and-moderation)).
-- **Projects**: character, series, convention, deadline, status, base currency, budget, notes. The dashboard shows completion %, days left, and paid / planned / budget left / over-or-under budget. Projects can be archived, deleted (restorable from Settings) or deleted permanently.
-- **Build parts**: category, status (needed → ordered → arrived → building → done), estimated and actual cost per item, quantity, supplier, link and notes. Filter parts by status or category, and tick them done with one tap.
+- **Projects**: character, series, convention (suggested from upcoming events), start date, deadline, status, base currency, budget, notes, and a **main picture** you upload on purpose. The dashboard shows completion %, when it starts, days left, and paid / planned / budget left / over-or-under budget. Sort the list by deadline, start date, recently updated, newest, name or progress, and switch between **grid** and **list** (remembered per device). Projects can be archived, deleted (restorable from Settings) or deleted permanently.
+- **Build parts**: category, status (needed → ordered → arrived → building → done), estimated and actual cost per item, quantity, supplier, link, notes and **photos**. Filter parts by status or category, tick them done with one tap, and **reorder** them by dragging (or with the arrow buttons).
 - **Shopping list**: parts marked *Needed* in active projects appear automatically. You can also add items by hand. Group by supplier, category or project. Ticking an item marks its part *Ordered*. Exports to CSV.
 - **Multiple currencies**: every part keeps its own currency. Totals are shown in the project's base currency, split into *paid*, *planned*, *budget left* and *over/under budget* (see [Currencies and exchange rates](#currencies-and-exchange-rates)).
 - **Project export/import**: export a project as a versioned JSON file and import it as a new project, merged into an existing one, or replacing one (see [Export and import](#export-and-import)).
 - **Budget CSV** export for each project, including the original amount, currency, exchange rate, rate date, source and manual/automatic for every payment.
-- **References**: upload several images at once with a caption and source link. The app makes thumbnails and removes location data from photos.
+- **References**: upload several images at once with a caption, source link and **group** (e.g. Armour, Wig). Images are shown by group, can be filtered and **reordered**, and open full-screen **inside the app** (swipe or ←/→ to browse, Esc to close). The app makes thumbnails and removes location data from photos.
+- **Events**: cosplay, anime, comics and gaming events in Portugal, upcoming (by month) and past (by year), filterable by city (see [Events](#events)).
 - **English and European Portuguese**: switch in **Settings → Language** (saved per device; the first visit follows the browser's language). Dates, numbers and currency names follow the language.
 - **Phone-friendly layout**: works from 360 px wide, with bottom tabs on phones and a sidebar on desktop. Dark mode follows your system setting, with an option to override it. Form fields have proper labels and keyboard focus is visible. It can be added to your home screen like an app.
 
@@ -77,6 +78,16 @@ The account must already be registered. The command signs that user out, so log 
 - **What removal does:** the same as the owner unpublishing. The public page, its data and its image copies stop working immediately.
 - **What it never does:** change or delete the owner's private project. The owner sees a notice on the project with the date and reason, and can fix it and publish again (which clears the notice).
 - **Log:** the last 20 removals are listed on the Moderation page. Admins can't see other users' private projects or emails.
+
+---
+
+## Events
+
+The **Events** tab lists cosplay-friendly events in Portugal (Lisboa Games Week, XL Games, Comic Con Portugal, IberAnime, Mercado Pingado, Aniaki…). Anyone who can reach the app can read it.
+
+- **Where the dates come from:** a built-in list researched from organisers' websites and event press, updated with app releases (`src/lib/events/builtin.ts`). Instagram can't be read automatically (it needs a login and doesn't allow scraping), so events announced only there are added by hand.
+- **Admins** see **Add event** on the Events page: name, dates, city, venue, link (website or Instagram) and notes. Admin-added events can be edited and deleted; they're stored in the database and kept across updates.
+- Upcoming event names are suggested in a project's *Convention / event* field.
 
 ---
 
@@ -178,7 +189,8 @@ Editing the part later (notes, status…) never redoes the conversion at today's
 - every expense with its stable ID, original amount and currency, quantity, status, dates and notes
 - for paid expenses: payment date, converted base amount, FX rate, rate date, source, and whether the conversion was manual or automatic
 - shopping items you added by hand
-- reference-image metadata. The image files themselves aren't included.
+- the start date and the parts' manual order
+- image metadata (references with their group, part photos and the main picture). The image files themselves aren't included.
 
 Amounts are whole cents (`"actualCostCents": 6400` = 64.00).
 

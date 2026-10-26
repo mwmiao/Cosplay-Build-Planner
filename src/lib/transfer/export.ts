@@ -22,10 +22,10 @@ export async function buildProjectExport(
   const project = await db.project.findFirst({
     where: { id: projectId, ownerId: userId, deletedAt: null },
     include: {
-      parts: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
+      parts: { where: { deletedAt: null }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
       // Part-linked items are rebuilt from their parts on import.
       shoppingItems: { where: { deletedAt: null, partId: null }, orderBy: { createdAt: "asc" } },
-      references: { orderBy: { createdAt: "asc" } },
+      references: { orderBy: [{ kind: "asc" }, { position: "asc" }, { createdAt: "asc" }] },
     },
   });
   if (!project) return null;
@@ -44,6 +44,7 @@ export async function buildProjectExport(
       characterName: project.characterName,
       series: project.series,
       conventionName: project.conventionName,
+      startDate: day(project.startDate),
       deadline: day(project.deadline),
       status: project.status as ExportFile["project"]["status"],
       currency: base,
@@ -100,6 +101,8 @@ export async function buildProjectExport(
       caption: r.caption,
       sourceUrl: r.sourceUrl,
       originalName: r.originalName,
+      kind: r.kind,
+      group: r.groupName,
       createdAt: r.createdAt.toISOString(),
     })),
     totals: {
