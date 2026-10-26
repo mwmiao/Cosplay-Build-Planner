@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
 import { getDefaultCurrency } from "@/lib/settings";
 import { removePublicationFolder } from "@/lib/community/images";
 import { removeProjectFiles } from "@/lib/uploads";
@@ -32,6 +33,9 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
   const { t } = getI18n();
   const parsed = schemas(t).project.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
+  if (user.isGuest && (await guestUsage(user.id)).projects >= GUEST_MAX_PROJECTS) {
+    return { ok: false, message: t.guest.projectLimit(GUEST_MAX_PROJECTS) };
+  }
 
   // New projects are always private and owned by the session user.
   const project = await db.project.create({ data: { ...parsed.data, ownerId: user.id } });

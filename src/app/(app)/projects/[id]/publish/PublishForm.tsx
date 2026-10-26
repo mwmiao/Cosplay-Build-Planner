@@ -16,8 +16,9 @@ export type PublishDefaults = {
   includeBudget: boolean;
   includeCosts: boolean;
   includeLinks: boolean;
+  /** all = main picture + every reference image (new ones appear automatically) */
+  imageMode: "all" | "selected";
   imageIds: string[];
-  coverId: string | null;
 };
 
 export function PublishForm({
@@ -35,12 +36,11 @@ export function PublishForm({
   const C = t.community;
   const [state, action] = useFormState<PublishState, FormData>(previewOrPublish.bind(null, projectId), {});
   const [selected, setSelected] = useState<string[]>(defaults.imageIds);
-  const [cover, setCover] = useState<string | null>(defaults.coverId);
+  const [mode, setMode] = useState(defaults.imageMode);
   const e = state.errors ?? {};
 
   function toggle(id: string, on: boolean) {
     setSelected((cur) => (on ? [...cur, id] : cur.filter((x) => x !== id)));
-    if (!on && cover === id) setCover(null);
   }
 
   return (
@@ -82,8 +82,31 @@ export function PublishForm({
         <h2 id="publish-images" className="section-title">
           {C.imagesLabel}
         </h2>
-        <p className="hint">{C.imagesHint}</p>
-        {images.length === 0 ? (
+        <fieldset className="space-y-2">
+          <legend className="sr-only">{C.imagesLabel}</legend>
+          {(
+            [
+              ["all", C.imageModeAll, C.imageModeAllHint],
+              ["selected", C.imageModeSelected, C.imageModeSelectedHint],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <label key={value} className="flex cursor-pointer gap-3">
+              <input
+                type="radio"
+                name="imageMode"
+                value={value}
+                checked={mode === value}
+                onChange={() => setMode(value)}
+                className="mt-1 h-5 w-5 border-zinc-300 text-brand-600"
+              />
+              <span>
+                <span className="block text-sm font-medium">{label}</span>
+                <span className="hint block">{hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        {mode === "all" ? null : images.length === 0 ? (
           <p className="text-sm text-zinc-500">{C.noImages}</p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -105,18 +128,6 @@ export function PublishForm({
                       <span className="truncate">{img.caption ?? ""}</span>
                     </span>
                   </label>
-                  {on ? (
-                    <label className="mt-1 flex items-center gap-2 text-xs">
-                      <input
-                        type="radio"
-                        name="coverId"
-                        value={img.id}
-                        checked={(cover ?? selected[0]) === img.id}
-                        onChange={() => setCover(img.id)}
-                      />
-                      {C.cover}
-                    </label>
-                  ) : null}
                 </li>
               );
             })}

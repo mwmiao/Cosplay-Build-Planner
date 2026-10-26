@@ -49,7 +49,6 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
           creatorName: project.creator.displayName,
           publishedAt: project.publishedAt,
           updatedAt: project.updatedAt,
-          version: project.version,
           snapshot: project.snapshot,
           images: project.images,
           coverId: project.cover?.id ?? null,

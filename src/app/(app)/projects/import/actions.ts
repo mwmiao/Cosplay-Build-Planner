@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
+import { GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
 import { getMoneyContext } from "@/lib/queries";
 import {
   ImportError,
@@ -35,6 +36,9 @@ export async function runImport(text: string, options: ImportOptions): Promise<I
   const parsed = parseImportText(text, t);
   if (!parsed.ok) return parsed;
 
+  if (options.mode === "create" && user.isGuest && (await guestUsage(user.id)).projects >= GUEST_MAX_PROJECTS) {
+    return { ok: false, errors: [t.guest.projectLimit(GUEST_MAX_PROJECTS)] };
+  }
   if (options.mode !== "create" && !idSchema.safeParse(options.targetId).success) {
     return { ok: false, errors: [t.transfer.errors.missingTarget] };
   }

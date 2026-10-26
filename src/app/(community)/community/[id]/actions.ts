@@ -4,14 +4,15 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { copyPublicToPrivate } from "@/lib/community/images";
+import { copyImageToProject } from "@/lib/community/images";
 import { getPublicProject } from "@/lib/community/view";
 import { CATEGORIES } from "@/lib/constants";
 import { isCurrency } from "@/lib/currencies";
 import { db } from "@/lib/db";
+import { GUEST_MAX_PROJECTS, guestKey, guestUsage } from "@/lib/guest";
 import { getDefaultCurrency } from "@/lib/settings";
 import { syncShoppingItemForPart } from "@/lib/shopping";
-import { mimeForPath, removeProjectFiles } from "@/lib/uploads";
+import { removeProjectFiles } from "@/lib/uploads";
 import { idSchema } from "@/lib/validation";
 
 const newId = () => `c${randomBytes(12).toString("hex")}`;
@@ -29,25 +30,41 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
   const source = await getPublicProject(publicationId);
   if (!source) notFound();
 
-  const files = await db.publicImage.findMany({
-    where: { publicationId: source.id },
-    select: { id: true, filePath: true, thumbPath: true },
+  if (user.isGuest && (await guestUsage(user.id)).projects >= GUEST_MAX_PROJECTS) redirect("/projects?limit=1");
+  // Guests' copies are encrypted with their key, like their uploads.
+  const key = user.isGuest ? guestKey() : null;
+  if (user.isGuest && !key) redirect("/projects?limit=1");
+
+  // Only images the public page shows right now (getPublicProject applied the allow-list).
+  const files = await db.referenceImage.findMany({
+    where: { id: { in: source.images.map((i) => i.id) } },
+    select: { id: true, filePath: true, thumbPath: true, mimeType: true },
   });
   const fileById = new Map(files.map((f) => [f.id, f]));
   const base = source.snapshot.budget?.currency ?? (await getDefaultCurrency(user.id));
   const projectId = newId();
 
   // Copy the published images into the new project's private folder first.
-  const images: { kind: "reference" | "cover"; caption: string | null; filePath: string; thumbPath: string; sizeBytes: number }[] = [];
+  const images: {
+    kind: "reference" | "cover";
+    caption: string | null;
+    mimeType: string;
+    filePath: string;
+    thumbPath: string;
+    sizeBytes: number;
+    encrypted: boolean;
+  }[] = [];
   try {
     for (const img of source.images) {
       const file = fileById.get(img.id);
       if (!file) continue;
-      images.push({ kind: "reference", caption: img.caption, ...(await copyPublicToPrivate(file, projectId)) });
+      images.push({ kind: "reference", caption: img.caption, mimeType: file.mimeType, ...(await copyImageToProject(file, projectId, key)) });
     }
     // The published cover also becomes the copy's main picture (a separate file).
     const coverFile = source.cover ? fileById.get(source.cover.id) : undefined;
-    if (coverFile) images.push({ kind: "cover", caption: null, ...(await copyPublicToPrivate(coverFile, projectId)) });
+    if (coverFile) {
+      images.push({ kind: "cover", caption: null, mimeType: coverFile.mimeType, ...(await copyImageToProject(coverFile, projectId, key)) });
+    }
   } catch (err) {
     console.error("Copying community images failed", err);
     await removeProjectFiles(projectId);
@@ -98,8 +115,9 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
             filePath: img.filePath,
             thumbPath: img.thumbPath,
             originalName: img.filePath.split("/")[1] ?? "image",
-            mimeType: mimeForPath(img.filePath),
+            mimeType: img.mimeType,
             sizeBytes: img.sizeBytes,
+            encrypted: img.encrypted,
             caption: img.caption,
           },
         });

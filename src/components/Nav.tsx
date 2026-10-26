@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/client";
+import { ConfirmButton } from "./FormBits";
 import { CalendarIcon, CartIcon, CogIcon, FolderIcon, GlobeIcon, PlusIcon } from "./Icons";
 
 function useItems() {
@@ -28,10 +29,12 @@ function useItems() {
 export function Sidebar({
   userName,
   isAdmin = false,
+  isGuest = false,
   signOut,
 }: {
   userName: string;
   isAdmin?: boolean;
+  isGuest?: boolean;
   signOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
@@ -84,13 +87,19 @@ export function Sidebar({
           </span>
           <span className="min-w-0">
             <span className="block truncate font-medium">{userName}</span>
-            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{t.auth.account}</span>
+            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{isGuest ? t.guest.guestAccount : t.auth.account}</span>
           </span>
         </Link>
         <form action={signOut}>
-          <button type="submit" className="btn-ghost mt-1 w-full justify-start">
-            {t.auth.logout}
-          </button>
+          {isGuest ? (
+            <ConfirmButton className="btn-ghost mt-1 w-full justify-start" message={t.guest.leaveConfirm}>
+              {t.guest.leave}
+            </ConfirmButton>
+          ) : (
+            <button type="submit" className="btn-ghost mt-1 w-full justify-start">
+              {t.auth.logout}
+            </button>
+          )}
         </form>
       </div>
     </nav>

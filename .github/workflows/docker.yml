@@ -101,7 +101,7 @@ jobs:
       - name: Replace with this build (same volume)
         run: |
           docker rm -f app
-          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e APP_URL=http://127.0.0.1:1337 -e EVENT_SYNC_HOURS=0 cosplay-planner:ci
           "$RUNNER_TEMP/wait.sh"
       - run: npx playwright test -c playwright.container.config.ts
         env: { CONTAINER_PHASE: register }
@@ -116,7 +116,7 @@ jobs:
         run: |
           before=$(sha256sum "$DATA/secrets/auth-secret" | cut -c1-64)
           docker rm -f app
-          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e APP_URL=http://127.0.0.1:1337 cosplay-planner:ci
+          docker run -d --name app -p 1337:1337 -v "$DATA:/app/data" -e PUID=$(id -u) -e PGID=$(id -g) -e APP_URL=http://127.0.0.1:1337 -e EVENT_SYNC_HOURS=0 cosplay-planner:ci
           "$RUNNER_TEMP/wait.sh"
           after=$(sha256sum "$DATA/secrets/auth-secret" | cut -c1-64)
           test "$before" = "$after" && echo "auth secret unchanged"

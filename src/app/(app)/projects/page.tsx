@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { statusLabel } from "@/lib/constants";
 import { daysLabel, daysUntil } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
+import { GUEST_MAX_PROJECTS } from "@/lib/guest";
 import { getMoneyContext } from "@/lib/queries";
 import { viewPrefs } from "@/lib/viewPrefs";
 
@@ -26,7 +27,7 @@ const byDate = (a: Date | null, b: Date | null) =>
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: { view?: string; sort?: string; layout?: string };
+  searchParams: { view?: string; sort?: string; layout?: string; welcome?: string; limit?: string };
 }) {
   const user = await requireUser();
   const { t, f } = getI18n();
@@ -89,6 +90,17 @@ export default async function ProjectsPage({
           </Link>
         </div>
       </header>
+
+      {searchParams.welcome === "guest" && user.isGuest ? (
+        <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          {t.guest.welcome}
+        </div>
+      ) : null}
+      {searchParams.limit ? (
+        <div role="alert" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {t.guest.projectLimit(GUEST_MAX_PROJECTS)}
+        </div>
+      ) : null}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2" role="group" aria-label={t.projects.show}>

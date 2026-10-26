@@ -8,6 +8,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 
 ## Features
 
+- **Try without an account**: guests get up to 5 private projects for 30 days, with their images encrypted; creating an account keeps everything (see [Guests](#guests)).
 - **Accounts**: register with email and password, log in and out, change your display name and password. Password reset uses a single-use email link when email is configured. Every project is private to its owner (see [Accounts](#accounts)).
 - **Community**: publish a project on purpose, choosing exactly what becomes public, and browse what others shared. Others can copy a published project into their own projects as a private template (see [Community](#community)).
 - **Moderation**: an admin account can remove Community projects that break the rules, with a reason the owner sees (see [Admin and moderation](#admin-and-moderation)).
@@ -85,8 +86,12 @@ The account must already be registered. The command signs that user out, so log 
 
 The **Events** tab lists cosplay-friendly events in Portugal (Lisboa Games Week, XL Games, Comic Con Portugal, IberAnime, Mercado Pingado, Aniaki…). Anyone who can reach the app can read it.
 
-- **Where the dates come from:** a built-in list researched from organisers' websites and event press, updated with app releases (`src/lib/events/builtin.ts`). Instagram can't be read automatically (it needs a login and doesn't allow scraping), so events announced only there are added by hand.
-- **Admins** see **Add event** on the Events page: name, dates, city, venue, link (website or Instagram) and notes. Admin-added events can be edited and deleted; they're stored in the database and kept across updates.
+- **Built-in list:** researched from organisers' websites and event press, updated with app releases (`src/lib/events/builtin.ts`).
+- **Automatic check (daily):** the app reads public event listings that allow it (Viral Agenda's cosplay and anime pages, and schema.org event data on organisers' sites such as XL Games). It honours each site's `robots.txt`, identifies itself, and skips events it already knows. New events go to **Suggested events** for an admin to approve; nothing is published automatically. Sources live in `src/lib/events/sync.ts`.
+- **Instagram can't be read automatically** (no public API for other accounts, scraping isn't allowed), so Instagram-only events come in as suggestions.
+- **Suggestions:** anyone with an account can **Suggest event** (with the Instagram post or site where they saw it). An admin approves, edits or rejects it in **Suggested events** (linked from the Events and Moderation pages). Rejected events aren't suggested again.
+- **Maps:** each event with a venue has an **Open in Maps** button. It searches Google Maps for the venue exactly as the organiser names it (plus address and city) and opens the Maps app on phones. Admins can paste an exact map link to override the search.
+- **Admins** can also **Add event** directly and edit or delete the events they added.
 - Upcoming event names are suggested in a project's *Convention / event* field.
 
 ---
@@ -99,17 +104,30 @@ The **Events** tab lists cosplay-friendly events in Portugal (Lisboa Games Week,
   - budget totals (budget, total spent, total still planned)
   - estimated item costs (what you actually paid stays private)
   - shop names and links
-  - which images to publish (only ticked images are copied, and the copies get new file names)
+  - images: **main picture + all reference images** (the default; new reference images appear automatically) or **only the images you choose**. Part photos are never public.
 - **Never public:** private notes, payments (dates, actual amounts, exchange-rate details), receipts, delivery details and anything about your account. Your display name is shown; your email never is.
-- **It's a snapshot:** the public page shows the version you published. Changes you make afterwards stay private until you press **Update published version**.
+- **It's live:** the public page is built from your project every time someone opens it, through the same allow-list. New parts, status, progress and (with "all images") new images appear without republishing. Change the settings any time in **Community → Manage → Save changes**.
 - **Unpublish** at any time. The public page, its data and its image addresses stop working immediately. Anything someone already downloaded or saved can't be recalled.
 - **Browsing:** the **Community** tab can be read without logging in, with search, newest/recently-updated sorting and pages. Anyone who can reach the app can see published projects. Behind a public Cloudflare Tunnel that's the whole internet, unless you add Cloudflare Access (see [Cloudflare Tunnel](#access-via-cloudflare-tunnel-public-https)).
 - **Copy to My Projects:** logged-in users can copy a published project. The copy:
   - is private and theirs, with new IDs
-  - contains only what was published
+  - contains only what was public at that moment (including the main picture)
   - has every item set to *needed*, with no actual costs or payments
   - shows "Based on … by …"
   - never affects the original when edited
+
+---
+
+## Guests
+
+On the login page, **Try without an account** starts a guest session:
+
+- up to **5 projects** and **50 MB** of images, all private; **publishing to the Community needs an account**;
+- a banner shows how many days are left: guests are **deleted 30 days after they started** (projects, images, shopping items), checked every hour;
+- **Create account** or **Log in** at any time: everything moves into that account, images included;
+- **Leave guest mode** deletes everything immediately.
+
+**Guest images are encrypted** on disk (AES-256-GCM) with a random key that exists only in the guest's browser cookie; the server never stores it. Opening the files or the database on the NAS shows nothing usable. What this doesn't cover: the key is sent with each request so the app can show the guest their images, so someone who changes the app's code could capture it while the guest is using it; and project text (names, notes, parts) isn't encrypted. If a guest clears their cookies, their images can't be recovered.
 
 ---
 
@@ -443,7 +461,8 @@ Copy the data folder (including `secrets/`), `docker-compose.yml` and your `.env
 - **Admin** is a role set only by the server command `set-admin.js`; the browser can't set it. Admin pages return "not found" to everyone else, and admin actions check the role again on the server.
 - **Authorization** happens on the server for every page, server action, API route, export, import and image. Ownership always comes from the session, never from an ID sent by the browser. Tests include a user tampering with a form submission to target someone else's project.
 - **CSRF:** server actions use Next.js's built-in origin check; the image-upload route rejects cross-site requests.
-- **Public vs private data:** published projects are separate snapshots built from an allow-list and checked against a strict schema. Published images are separate copies served by a separate route. Private image URLs always require ownership.
+- **Public vs private data:** public pages are built from an allow-list on every view and checked against a strict schema. Public images are served by a separate route that checks, on each request, that the image is a main picture or reference image of a published project and is currently included. Part photos and guest images are never served publicly. Private image URLs always require ownership.
+- **Guests** can't publish, are limited in projects and storage, are rate-limited per address, and their images are encrypted with a key only their browser holds.
 - **Imports** are always private and owned by the importer. Owner IDs and publication state in a file are ignored, internal IDs are always new, and paid conversions are copied exactly.
 - **Exports** contain no account data (no email, owner ID or session data).
 - **Uploads** are checked by actually reading the image, re-encoded with metadata (including GPS) removed, size-limited, and saved under random file names.

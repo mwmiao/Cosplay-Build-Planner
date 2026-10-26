@@ -4,6 +4,37 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.6.0 — 2026-10-29
+
+### Added
+- **Try without an account (guests):** up to 5 private projects and 50 MB of
+  images for 30 days; can't publish. Registering or logging in moves everything
+  into the account; "Leave guest mode" deletes it at once; expired guests are
+  removed hourly. Guest images are encrypted on disk (AES-256-GCM) with a key
+  that only the guest's browser holds.
+- **Events: automatic check** of public listings once a day (Viral Agenda
+  cosplay/anime, schema.org event data such as XL Games), honouring robots.txt.
+  New events wait in **Suggested events** for admin approval.
+- **Events: user suggestions** (with where they saw it) and an admin queue to
+  approve, edit or reject; rejected events aren't suggested again.
+- **Open in Maps** button on events (venue search; admins can set an exact
+  map link). Aniaki's venue is ESPAV.
+
+### Changed
+- **Community pages are live:** built from the project on every view (same
+  allow-list). Images: main picture + all reference images (default) or only
+  chosen ones. No more copied image files or "Update published version".
+  Existing publications keep exactly their previous images until the owner
+  switches to "all".
+
+### Fixed
+- Logging in with a stale session cookie (expired session, or right after
+  `set-admin`) could leave the user signed out.
+
+### Upgrading
+- Additive migration (guest flag, image encryption flag, publication image
+  settings, event review fields). No new settings needed.
+
 ## 1.5.0 — 2026-10-28
 
 ### Added

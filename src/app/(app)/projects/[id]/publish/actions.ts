@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { getI18n } from "@/i18n/server";
-import { requireUser } from "@/lib/auth";
-import { copyToPublic, removePublicFiles, removePublicationFolder } from "@/lib/community/images";
+import { requireAccount } from "@/lib/auth";
+import { removePublicationFolder } from "@/lib/community/images";
 import { type PublicSnapshot, buildPublicSnapshot } from "@/lib/community/snapshot";
 import { db } from "@/lib/db";
 import { getMoneyContext } from "@/lib/queries";
@@ -31,7 +31,7 @@ function checkbox(formData: FormData, name: string) {
   return formData.get(name) === "on";
 }
 
-/** Owner's project (or 404). Ownership always comes from the session. */
+/** Owner's project (or 404). Ownership always comes from the session; guests can't publish. */
 async function ownedProject(projectId: string, userId: string) {
   const id = idSchema.safeParse(projectId);
   if (!id.success) notFound();
@@ -41,11 +41,13 @@ async function ownedProject(projectId: string, userId: string) {
 }
 
 /**
- * "Preview" builds the public snapshot and returns it for display (nothing is
- * stored). "Publish" stores a new snapshot version and copies the selected images.
+ * Published projects are live: this stores the owner's publish SETTINGS
+ * (public title, description, tags, which optional fields and which images)
+ * and the public page is built from the current project on every view.
+ * "Preview" shows exactly that without saving; "Publish" saves the settings.
  */
 export async function previewOrPublish(projectId: string, _prev: PublishState, formData: FormData): Promise<PublishState> {
-  const user = await requireUser();
+  const user = await requireAccount();
   const project = await ownedProject(projectId, user.id);
   const { t } = getI18n();
   const C = t.community;
@@ -73,21 +75,21 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
     includeCosts: checkbox(formData, "includeCosts"),
     includeLinks: checkbox(formData, "includeLinks"),
   };
+  const imageMode = formData.get("imageMode") === "selected" ? "selected" : "all";
 
-  // Only this project's images can be selected; anything else is ignored.
-  const wanted = formData.getAll("imageIds").filter((v): v is string => typeof v === "string");
-  const images = wanted.length
-    ? await db.referenceImage.findMany({
-        where: { projectId: project.id, id: { in: wanted }, kind: { in: ["cover", "reference"] } },
-        orderBy: [{ kind: "asc" }, { position: "asc" }, { createdAt: "asc" }],
-      })
-    : [];
-  const coverWanted = formData.get("coverId");
-  const cover = images.find((i) => i.id === coverWanted) ?? images.find((i) => i.kind === "cover") ?? images[0] ?? null;
+  // Main picture first, then reference images in the owner's order. Only this
+  // project's images can be selected; part photos and guest images never.
+  const candidates = await db.referenceImage.findMany({
+    where: { projectId: project.id, kind: { in: ["cover", "reference"] }, encrypted: false },
+    orderBy: [{ kind: "asc" }, { position: "asc" }, { createdAt: "asc" }],
+  });
+  const wanted = new Set(formData.getAll("imageIds").filter((v): v is string => typeof v === "string"));
+  const images = imageMode === "all" ? candidates : candidates.filter((i) => wanted.has(i.id));
+  const cover = images.find((i) => i.kind === "cover") ?? images[0] ?? null;
 
   const parts = await db.buildPart.findMany({
     where: { projectId: project.id, deletedAt: null },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   });
   const ctx = await getMoneyContext(user.id);
   const snapshot = buildPublicSnapshot(project, parts, options, ctx);
@@ -104,67 +106,42 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
         creatorName: user.name,
         snapshot,
         // Preview uses the owner's private thumbnails; nothing is public yet.
-        images: images.map((i) => ({ id: i.id, caption: i.caption, thumbUrl: `/api/uploads/${i.thumbPath}` })),
+        images: images.map((i) => ({
+          id: i.id,
+          caption: i.kind === "cover" ? (i.caption ?? C.mainPicture) : i.caption,
+          thumbUrl: `/api/uploads/${i.thumbPath}`,
+        })),
         coverId: cover?.id ?? null,
       },
     };
   }
 
-  const existing = await db.publication.findUnique({
-    where: { projectId: project.id },
-    include: { images: { select: { filePath: true, thumbPath: true } } },
-  });
-  const publicationId = existing?.id ?? newId();
-
-  // 1) Copy the chosen images (fresh names) before touching the database.
-  const copies: { id: string; sourceImageId: string; caption: string | null; filePath: string; thumbPath: string }[] = [];
-  try {
-    for (const img of images) {
-      const copied = await copyToPublic(publicationId, img);
-      copies.push({ id: newId(), sourceImageId: img.id, caption: img.caption, ...copied });
-    }
-  } catch (err) {
-    console.error("Copying images for publication failed", err);
-    await removePublicFiles(...copies.flatMap((c) => [c.filePath, c.thumbPath]));
-    return { ok: false, message: t.transfer.errors.failed };
-  }
-  const coverCopyId = copies.find((c) => c.sourceImageId === cover?.id)?.id ?? null;
-
-  // 2) Swap the published version in one transaction.
   const data = {
     title: parsed.data.title,
     series: project.series,
     description,
     tags: JSON.stringify(parsed.data.tags),
     ...options,
+    imageMode,
+    selectedImageIds: JSON.stringify(images.map((i) => i.id)),
+    // Kept for reference only; public pages are built live.
     snapshot: JSON.stringify(snapshot),
-    coverImageId: coverCopyId,
+    coverImageId: null,
   };
-  try {
-    await db.$transaction(async (tx) => {
-      if (existing) {
-        await tx.publicImage.deleteMany({ where: { publicationId } });
-        await tx.publication.update({
-          where: { id: publicationId, ownerId: user.id },
-          data: { ...data, version: { increment: 1 }, versionAt: new Date() },
-        });
-      } else {
-        await tx.publication.create({ data: { id: publicationId, projectId: project.id, ownerId: user.id, ...data } });
-      }
-      for (const [position, c] of copies.entries()) {
-        await tx.publicImage.create({
-          data: { id: c.id, publicationId, sourceImageId: c.sourceImageId, caption: c.caption, filePath: c.filePath, thumbPath: c.thumbPath, position },
-        });
-      }
-    });
-  } catch (err) {
-    console.error("Publishing failed", err);
-    await removePublicFiles(...copies.flatMap((c) => [c.filePath, c.thumbPath]));
-    return { ok: false, message: t.transfer.errors.failed };
+  const existing = await db.publication.findUnique({ where: { projectId: project.id }, select: { id: true } });
+  if (existing) {
+    await db.$transaction([
+      // Image copies from before live publishing are no longer used.
+      db.publicImage.deleteMany({ where: { publicationId: existing.id } }),
+      db.publication.update({
+        where: { id: existing.id, ownerId: user.id },
+        data: { ...data, version: { increment: 1 }, versionAt: new Date() },
+      }),
+    ]);
+    await removePublicationFolder(existing.id);
+  } else {
+    await db.publication.create({ data: { id: newId(), projectId: project.id, ownerId: user.id, ...data } });
   }
-
-  // 3) Only now remove the previous version's copies.
-  if (existing) await removePublicFiles(...existing.images.flatMap((i) => [i.filePath, i.thumbPath]));
 
   revalidatePath("/community", "layout");
   revalidatePath(`/projects/${project.id}`, "layout");
@@ -172,9 +149,9 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
   redirect(`/projects/${project.id}?published=1`);
 }
 
-/** Removes the publication, its public image copies and every public URL for it. */
+/** Removes the publication; every public URL for it (page, data, images) stops working. */
 export async function unpublish(projectId: string): Promise<void> {
-  const user = await requireUser();
+  const user = await requireAccount();
   const project = await ownedProject(projectId, user.id);
   const publication = await db.publication.findFirst({ where: { projectId: project.id, ownerId: user.id } });
   if (publication) {

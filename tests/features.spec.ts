@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { parseJsonLd, parseViralAgenda, robotsAllows } from "../src/lib/events/parse";
 import { PNG, asNewPerson, createProject, makeAdmin, newUser, register } from "./helpers";
 
 /** Uploads images through the real upload route (same as the forms). */
@@ -222,4 +223,75 @@ test("Events: public list of Portuguese events; only admins add, edit and delete
   await admin.page.getByRole("button", { name: "Delete event" }).click();
   await expect(admin.page.getByTestId("event").filter({ hasText: name })).toHaveCount(0);
   await admin.context.close();
+});
+
+test("Events: maps button, suggestions wait for admin approval", async ({ page, browser }) => {
+  // Every event with a venue opens it in Maps (a search for the venue as the organiser names it).
+  await page.goto("/events");
+  const aniaki = page.getByTestId("event").filter({ hasText: "Aniaki" });
+  if (await aniaki.count()) {
+    const href = await aniaki.getByTestId("map-link").getAttribute("href");
+    expect(decodeURIComponent(href!)).toContain("ESPAV – Escola Secundária Padre António Vieira, Lisboa");
+  }
+
+  // A user suggests an event: it isn't public until approved.
+  const fan = newUser("Suggester");
+  await register(page, fan);
+  await page.goto("/events");
+  await page.getByRole("link", { name: "Suggest event" }).click();
+  const name = `Mercado Teste ${Date.now()}`;
+  await page.getByLabel("Name").fill(name);
+  await page.getByLabel("Start date").fill("2099-03-01");
+  await page.getByLabel("City").fill("Porto");
+  await page.getByLabel("Venue").fill("Mercado Ferreira Borges");
+  await page.getByLabel("Where did you see it?").fill("https://www.instagram.com/p/example/");
+  await page.getByRole("button", { name: "Send suggestion" }).click();
+  await expect(page.getByText("An admin will check your suggestion.")).toBeVisible();
+  await expect(page.getByTestId("event").filter({ hasText: name })).toHaveCount(0);
+
+  const adminUser = newUser("Approver");
+  const admin = await asNewPerson(browser, "10.0.6.30");
+  await register(admin.page, adminUser);
+  makeAdmin(adminUser.email);
+  await admin.page.goto("/login?next=%2Fadmin%2Fevents");
+  await admin.page.getByLabel("Email").fill(adminUser.email);
+  await admin.page.getByLabel("Password").fill(adminUser.password);
+  await admin.page.getByRole("button", { name: "Log in" }).click();
+  const queued = admin.page.getByTestId("queued-event").filter({ hasText: name });
+  await expect(queued).toContainText("User suggestion");
+  await queued.getByRole("button", { name: "Approve" }).click();
+  await expect(queued).toHaveCount(0);
+
+  await page.goto("/events?city=Porto");
+  const card = page.getByTestId("event").filter({ hasText: name });
+  await expect(card).toBeVisible();
+  const href = await card.getByTestId("map-link").getAttribute("href");
+  expect(href).toMatch(/^https:\/\/www\.google\.com\/maps\/search\//);
+  expect(decodeURIComponent(href!)).toContain("Mercado Ferreira Borges, Porto");
+  await admin.context.close();
+});
+
+test("events check: parsers and robots.txt rules", async () => {
+  const va = `<ul><li id="c1" data-id="1" data-url="/pt/events/1/con" data-date-start="2099-05-02T10:00:00+01:00" data-date-end="2099-05-03T19:00:00+01:00" class="viral-item viral-event">
+    <div class="viral-event-title vds-title"><a class="viral-linked" aria-label="Con &amp; Cosplay" href="/pt/events/1/con"><span>Con &amp; Cosplay</span></a></div>
+    <a class="node-name" href="/pt/braga"><span class="varios node-name">Braga</span></a>
+    <a class="viral-event-place" title="x" href="/pt/p/v"> <span>Altice Forum Braga</span> </a></li>
+    <li id="c2" data-id="2" data-url="/pt/events/2/old" data-date-start="2020-01-01T10:00:00+01:00" class="viral-item viral-event finished"></li></ul>`;
+  expect(parseViralAgenda(va, "https://www.viralagenda.com/pt/tags/cosplay")).toEqual([
+    {
+      key: "viralagenda:1",
+      name: "Con & Cosplay",
+      start: "2099-05-02",
+      end: "2099-05-03",
+      city: "Braga",
+      venue: "Altice Forum Braga",
+      url: "https://www.viralagenda.com/pt/events/1/con",
+    },
+  ]);
+  const ld = `<script type="application/ld+json">{"@graph":[{"@type":"Organization"},{"@type":"Event","name":"Expo","startDate":"2099-06-01T10:00:00+00:00","location":{"@type":"Place","name":"Pavilhão","address":{"addressLocality":"Lisboa","addressCountry":"PT"}}},{"@type":"Event","name":"Abroad","startDate":"2099-06-01","location":{"address":{"addressLocality":"Madrid","addressCountry":"ES"}}}]}</script>`;
+  const found = parseJsonLd(ld, "https://example.pt/");
+  expect(found.map((e) => [e.name, e.city, e.venue])).toEqual([["Expo", "Lisboa", "Pavilhão"]]);
+  expect(robotsAllows("User-agent: *\nDisallow: /pt/\n", "/pt/tags/cosplay")).toBe(false);
+  expect(robotsAllows("User-agent: Yandex\nDisallow: /\n", "/pt/tags/cosplay")).toBe(true);
+  expect(robotsAllows("", "/anything")).toBe(true);
 });

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { encryptBytes } from "./crypto";
 import { env, uploadRoot } from "./env";
 
 /** Formats sharp can decode with its prebuilt binaries and browsers can show. */
@@ -34,14 +35,17 @@ export type StoredImage = {
   sizeBytes: number;
   width: number | null;
   height: number | null;
+  encrypted: boolean;
 };
+
 
 /**
  * Validates an uploaded image by decoding it (not by trusting the file name or
  * MIME type), then stores a resized copy with metadata (incl. GPS) stripped,
- * plus a WebP thumbnail. Animated GIFs are kept as-is.
+ * plus a WebP thumbnail. Animated GIFs are kept as-is. With `key` (guests),
+ * both files are written encrypted and named *.enc.
  */
-export async function storeImage(projectId: string, file: File): Promise<StoredImage> {
+export async function storeImage(projectId: string, file: File, key?: Buffer | null): Promise<StoredImage> {
   const maxBytes = env().MAX_UPLOAD_MB * 1024 * 1024;
   if (file.size === 0) throw new UploadError("empty");
   if (file.size > maxBytes) {
@@ -90,10 +94,10 @@ export async function storeImage(projectId: string, file: File): Promise<StoredI
     .webp({ quality: 75 })
     .toBuffer();
 
-  const fileName = `${id}.${FORMATS[fmt].ext}`;
-  const thumbName = `${id}.thumb.webp`;
-  await writeFile(path.join(dir, fileName), output);
-  await writeFile(path.join(dir, thumbName), thumb);
+  const fileName = key ? `${id}.enc` : `${id}.${FORMATS[fmt].ext}`;
+  const thumbName = key ? `${id}.thumb.enc` : `${id}.thumb.webp`;
+  await writeFile(path.join(dir, fileName), key ? encryptBytes(output, key) : output);
+  await writeFile(path.join(dir, thumbName), key ? encryptBytes(thumb, key) : thumb);
 
   return {
     filePath: `${projectId}/${fileName}`,
@@ -102,6 +106,7 @@ export async function storeImage(projectId: string, file: File): Promise<StoredI
     sizeBytes: output.length,
     width,
     height,
+    encrypted: !!key,
   };
 }
 

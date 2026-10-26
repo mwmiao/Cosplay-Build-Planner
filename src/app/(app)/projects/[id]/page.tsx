@@ -406,7 +406,7 @@ export default async function ProjectPage({
           </span>
         </div>
         <p className="hint mb-3">
-          {publication ? `${C.cardPublished} ${C.snapshotNote(f.date(publication.versionAt))}` : C.cardPrivate}
+          {publication ? C.cardPublishedLive : C.cardPrivate}
         </p>
         {removedNotice ? (
           <p role="alert" data-testid="moderation-notice" className="mb-3 whitespace-pre-wrap break-words rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -414,9 +414,18 @@ export default async function ProjectPage({
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Link href={`/projects/${project.id}/publish`} className={publication ? "btn-secondary" : "btn-primary"}>
-            {publication ? C.manage : C.publishTitle}
-          </Link>
+          {user.isGuest ? (
+            <>
+              <p className="hint w-full">{t.guest.publishNeedsAccount}</p>
+              <Link href="/register" className="btn-primary">
+                {t.guest.createAccount}
+              </Link>
+            </>
+          ) : (
+            <Link href={`/projects/${project.id}/publish`} className={publication ? "btn-secondary" : "btn-primary"}>
+              {publication ? C.manage : C.publishTitle}
+            </Link>
+          )}
           {publication ? (
             <Link href={`/community/${publication.id}`} className="btn-ghost">
               {C.viewPublic}

@@ -4,7 +4,18 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getAuth } from "./betterAuth";
 
-export type CurrentUser = { id: string; name: string; email: string; isAdmin: boolean };
+import { guestExpiresAt } from "./guest";
+
+export type CurrentUser = {
+  id: string;
+  name: string;
+  /** Empty for guests */
+  email: string;
+  isAdmin: boolean;
+  /** "Try without an account" user: private only, removed at guestExpiresAt unless they register */
+  isGuest: boolean;
+  guestExpiresAt: Date | null;
+};
 
 /**
  * The signed-in user, validated server-side against the session table on
@@ -13,11 +24,14 @@ export type CurrentUser = { id: string; name: string; email: string; isAdmin: bo
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await getAuth().api.getSession({ headers: headers() });
   if (!session) return null;
+  const isGuest = session.user.isAnonymous === true;
   return {
     id: session.user.id,
     name: session.user.name,
-    email: session.user.email,
-    isAdmin: session.user.role === "admin",
+    email: isGuest ? "" : session.user.email,
+    isAdmin: !isGuest && session.user.role === "admin",
+    isGuest,
+    guestExpiresAt: isGuest ? guestExpiresAt(new Date(session.user.createdAt)) : null,
   };
 });
 
@@ -25,6 +39,13 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  return user;
+}
+
+/** Things that need a real account (publishing, suggesting events). Guests are sent to registration. */
+export async function requireAccount(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (user.isGuest) redirect("/register?from=guest");
   return user;
 }
 

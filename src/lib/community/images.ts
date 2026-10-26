@@ -1,13 +1,15 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { copyFile, mkdir, rm, stat } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { uploadRoot } from "../env";
+import { encryptBytes } from "../crypto";
 import { resolveUploadPath } from "../uploads";
 
-// Published images are COPIES under <UPLOAD_DIR>/public/<publicationId>/ with
-// fresh random names. Private originals stay behind the private route, and
-// unpublishing removes the copies.
+// Before 1.6, published images were COPIES under <UPLOAD_DIR>/public/<publicationId>/.
+// Public pages are live now (images served by /api/community/images after an
+// allow check), so these helpers only clean up old copies, plus the copy used by
+// "Copy to My Projects".
 
 const SAFE = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
 
@@ -24,25 +26,6 @@ export function resolvePublicPath(relative: string): string | null {
   return full.startsWith(root + path.sep) ? full : null;
 }
 
-/** Copies a private image (display version + thumbnail) into the publication's folder. */
-export async function copyToPublic(
-  publicationId: string,
-  image: { filePath: string; thumbPath: string },
-): Promise<{ filePath: string; thumbPath: string }> {
-  const src = resolveUploadPath(image.filePath);
-  const srcThumb = resolveUploadPath(image.thumbPath);
-  if (!src || !srcThumb) throw new Error("Invalid stored image path");
-  const dir = path.join(publicRoot(), publicationId);
-  await mkdir(dir, { recursive: true });
-  const id = randomUUID();
-  const ext = path.extname(image.filePath).toLowerCase() || ".jpg";
-  const file = `${id}${ext}`;
-  const thumb = `${id}.thumb.webp`;
-  await copyFile(src, path.join(dir, file));
-  await copyFile(srcThumb, path.join(dir, thumb));
-  return { filePath: `${publicationId}/${file}`, thumbPath: `${publicationId}/${thumb}` };
-}
-
 export async function removePublicFiles(...relativePaths: string[]): Promise<void> {
   for (const rel of relativePaths) {
     const full = resolvePublicPath(rel);
@@ -56,22 +39,30 @@ export async function removePublicationFolder(publicationId: string): Promise<vo
 }
 
 /**
- * Copies a published image into a (new) private project folder, for "Copy to
- * My Projects". Returns paths relative to UPLOAD_DIR plus the copied size.
+ * Copies a published (plain) image into a new private project folder, for
+ * "Copy to My Projects". With `key` (a guest copying), the copy is encrypted.
+ * Returns paths relative to UPLOAD_DIR plus the stored size.
  */
-export async function copyPublicToPrivate(
+export async function copyImageToProject(
   image: { filePath: string; thumbPath: string },
   projectId: string,
-): Promise<{ filePath: string; thumbPath: string; sizeBytes: number }> {
-  const src = resolvePublicPath(image.filePath);
-  const srcThumb = resolvePublicPath(image.thumbPath);
+  key: Buffer | null,
+): Promise<{ filePath: string; thumbPath: string; sizeBytes: number; encrypted: boolean }> {
+  const src = resolveUploadPath(image.filePath);
+  const srcThumb = resolveUploadPath(image.thumbPath);
   if (!src || !srcThumb || !SAFE.test(projectId)) throw new Error("Invalid image path");
   const dir = path.join(uploadRoot(), projectId);
   await mkdir(dir, { recursive: true });
   const id = randomUUID();
-  const ext = path.extname(image.filePath).toLowerCase() || ".jpg";
-  await copyFile(src, path.join(dir, `${id}${ext}`));
-  await copyFile(srcThumb, path.join(dir, `${id}.thumb.webp`));
+  const ext = key ? ".enc" : path.extname(image.filePath).toLowerCase() || ".jpg";
+  const thumbExt = key ? ".thumb.enc" : ".thumb.webp";
+  if (key) {
+    await writeFile(path.join(dir, `${id}${ext}`), encryptBytes(await readFile(src), key));
+    await writeFile(path.join(dir, `${id}${thumbExt}`), encryptBytes(await readFile(srcThumb), key));
+  } else {
+    await copyFile(src, path.join(dir, `${id}${ext}`));
+    await copyFile(srcThumb, path.join(dir, `${id}${thumbExt}`));
+  }
   const { size } = await stat(path.join(dir, `${id}${ext}`));
-  return { filePath: `${projectId}/${id}${ext}`, thumbPath: `${projectId}/${id}.thumb.webp`, sizeBytes: size };
+  return { filePath: `${projectId}/${id}${ext}`, thumbPath: `${projectId}/${id}${thumbExt}`, sizeBytes: size, encrypted: !!key };
 }

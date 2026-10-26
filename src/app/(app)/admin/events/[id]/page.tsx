@@ -26,17 +26,33 @@ export default async function EditEventPage({ params }: { params: { id: string }
     <>
       <BackLink href="/events">{E.title}</BackLink>
       <h1 className="page-title mb-4">{E.edit}</h1>
+      {event.status === "pending" ? (
+        <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {E.pendingEditNote}
+          {event.sourceUrl ? (
+            <>
+              {" "}
+              <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="link">
+                {E.whereFound}
+              </a>
+            </>
+          ) : null}
+        </p>
+      ) : null}
       <div className="card">
         <EventForm
           action={updateEvent.bind(null, event.id)}
-          submitLabel={E.save}
+          submitLabel={event.status === "pending" ? E.saveAndApprove : E.save}
           initial={{
             name: event.name,
             startDate: dateInput(event.startDate),
             endDate: event.endDate ? dateInput(event.endDate) : "",
             city: event.city,
             venue: event.venue ?? "",
+            address: event.address ?? "",
+            mapUrl: event.mapUrl ?? "",
             url: event.url ?? "",
+            sourceUrl: event.sourceUrl ?? "",
             notes: event.notes ?? "",
           }}
         />

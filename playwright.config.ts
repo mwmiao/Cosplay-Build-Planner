@@ -7,6 +7,8 @@ export const OUTBOX_DIR = "./prisma/playwright-outbox";
 export default defineConfig({
   testDir: "./tests",
   timeout: 60_000,
+  // The dev server compiles each page on first visit, which can take several seconds.
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
   reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],
@@ -31,6 +33,8 @@ export default defineConfig({
       // Test-only: reset emails are written here instead of being sent.
       EMAIL_OUTBOX_DIR: OUTBOX_DIR,
       SMTP_HOST: "",
+      // No outside requests during tests; the events check is tested with fixtures.
+      EVENT_SYNC_HOURS: "0",
     },
   },
 });

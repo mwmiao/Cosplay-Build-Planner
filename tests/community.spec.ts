@@ -5,7 +5,7 @@ test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.4.1" } });
 
 /** Every key that may appear in a public project response, per object type. */
 const ALLOWED: Record<string, string[]> = {
-  root: ["id", "title", "series", "description", "tags", "creator", "publishedAt", "updatedAt", "version", "cover", "images", "snapshot"],
+  root: ["id", "title", "series", "description", "tags", "creator", "publishedAt", "updatedAt", "cover", "images", "snapshot"],
   creator: ["displayName"],
   image: ["id", "caption", "thumbUrl", "fullUrl"],
   snapshot: ["v", "status", "progress", "budget", "items"],
@@ -54,14 +54,20 @@ async function setUpPrivateProject(page: Page, name: string) {
   return projectId;
 }
 
-async function publish(page: Page, projectId: string, opts: { costs?: boolean; links?: boolean; image?: boolean } = {}) {
+/** images: "all" = main picture + all references (default), "none" = choose images but tick none. */
+async function publish(page: Page, projectId: string, opts: { costs?: boolean; links?: boolean; images?: "all" | "none" } = {}) {
   await page.goto(`/projects/${projectId}/publish`);
   if (opts.costs) await page.getByLabel("Include item costs").check();
   if (opts.links) await page.getByLabel("Include shop names and links").check();
-  if (opts.image) await page.locator("input[name=imageIds]").first().check();
+  if (opts.images === "none") {
+    await page.getByLabel("Only the images I choose").check();
+    for (const box of await page.locator("input[name=imageIds]").all()) await box.uncheck();
+  } else {
+    await page.getByLabel("Main picture and all reference images").check();
+  }
   await page.getByRole("button", { name: "Preview" }).click();
   await expect(page.getByTestId("publish-preview")).toBeVisible();
-  await page.getByRole("button", { name: /^(Publish|Update published version)$/ }).click();
+  await page.getByRole("button", { name: /^(Publish|Save changes)$/ }).click();
   await expect(page.getByText("Published to the Community.").first()).toBeVisible();
   const href = await page.getByRole("link", { name: "View public page" }).getAttribute("href");
   return href!.split("/")[2]!;
@@ -84,7 +90,8 @@ test("private projects never appear publicly; publishing shows only allowed fiel
   await expect(page.getByLabel("Public description")).toHaveValue(""); // notes are never prefilled
   await page.getByLabel("Public description").fill("Foam build, first attempt.");
   await page.getByLabel("Tags").fill("Bloodborne, Foam");
-  await page.locator("input[name=imageIds]").first().check();
+  // Default: main picture + all reference images.
+  await expect(page.getByLabel("Main picture and all reference images")).toBeChecked();
   await page.getByRole("button", { name: "Preview" }).click();
   await expect(page.getByTestId("publish-preview")).toContainText("Foam build, first attempt.");
   await expect(page.getByTestId("publish-preview")).not.toContainText("SecretShop");
@@ -121,29 +128,44 @@ test("private projects never appear publicly; publishing shows only allowed fiel
   await visitor.context.close();
 });
 
-test("private edits stay private until the published version is updated; options and unpublish", async ({ page, browser }) => {
+test("public page follows the project live; options, image choice and unpublish", async ({ page, browser }) => {
   await register(page, newUser("Edit"));
   const projectId = await setUpPrivateProject(page, `Gehrman ${Date.now()}`);
-  const pubId = await publish(page, projectId, { image: true });
+  const pubId = await publish(page, projectId);
   const visitor = await asNewPerson(browser, "10.0.4.60");
   const v1 = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
+  expect(v1.images).toHaveLength(1);
   const imageUrl = v1.images[0].fullUrl;
 
-  // Rename the part privately: the public snapshot doesn't change.
+  // Private edits show up publicly without republishing.
   await page.goto(`/projects/${projectId}`);
   await page.locator("a[href*='/parts/']", { hasText: "Foam helmet" }).click();
   await page.getByLabel("Part name").fill("Renamed helmet");
   await page.getByRole("button", { name: "Save part" }).click();
   await expect(page.getByText("Renamed helmet")).toBeVisible();
-  const stillOld = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
-  expect(stillOld.snapshot.items[0].name).toBe("Foam helmet");
-  expect(stillOld.version).toBe(1);
+  const live = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
+  expect(live.snapshot.items[0].name).toBe("Renamed helmet");
 
-  // Update the published version, now opting in to costs and shop links.
-  await publish(page, projectId, { costs: true, links: true, image: false });
+  // A new reference image and a main picture appear automatically; part photos never do.
+  const add = (fields: Record<string, string>) =>
+    page.request.post(`/api/projects/${projectId}/references`, {
+      multipart: { ...fields, images: { name: "x.png", mimeType: "image/png", buffer: PNG } },
+      maxRedirects: 0,
+    });
+  await add({ caption: "Back view" });
+  await add({ kind: "cover" });
+  const partId = (await page.locator("a[href*='/parts/']", { hasText: "Renamed helmet" }).getAttribute("href"))!.split("/")[4]!;
+  await add({ kind: "part", partId, caption: "PART-PHOTO-private" });
+  const withNew = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
+  checkPublicShape(withNew);
+  expect(withNew.images).toHaveLength(3);
+  expect(withNew.cover.id).toBe(withNew.images[0].id); // the main picture leads
+  expect(JSON.stringify(withNew)).not.toContain("PART-PHOTO-private");
+
+  // Opt in to costs and links; choose no images.
+  await publish(page, projectId, { costs: true, links: true, images: "none" });
   const v2 = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
   checkPublicShape(v2);
-  expect(v2.version).toBe(2);
   expect(v2.snapshot.items[0]).toMatchObject({
     name: "Renamed helmet",
     estimatedEachCents: 4000,
@@ -152,9 +174,14 @@ test("private edits stay private until the published version is updated; options
     url: "https://secret-shop.example/helmet",
   });
   expect(JSON.stringify(v2)).not.toContain("3777"); // actual payment never public
-  expect(v2.images).toHaveLength(1); // previous selection kept by default
+  expect(v2.images).toHaveLength(0);
+  expect((await visitor.page.request.get(imageUrl)).status()).toBe(404); // switched off = gone
+  const newImage = withNew.images[1].thumbUrl;
+  expect((await visitor.page.request.get(newImage)).status()).toBe(404);
 
-  // Unpublish: list, detail, page and image URLs all stop working.
+  // Back to all images, then unpublish: list, detail, page and image URLs all stop working.
+  await publish(page, projectId);
+  expect((await visitor.page.request.get(imageUrl)).status()).toBe(200);
   await page.goto(`/projects/${projectId}/publish`);
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Unpublish" }).click();
@@ -162,7 +189,6 @@ test("private edits stay private until the published version is updated; options
   await expect(page.getByTestId("community-card")).toContainText("Private");
   expect((await visitor.page.request.get(`/api/community/${pubId}`)).status()).toBe(404);
   expect((await visitor.page.request.get(imageUrl)).status()).toBe(404);
-  expect((await visitor.page.request.get(v2.images[0].thumbUrl)).status()).toBe(404);
   const list = await (await visitor.page.request.get("/api/community")).json();
   expect(list.items.map((i: { id: string }) => i.id)).not.toContain(pubId);
   await visitor.page.goto(`/community/${pubId}`);
@@ -191,7 +217,7 @@ test("Copy to My Projects makes an independent private template from published d
   await register(page, alice);
   const title = `Eileen ${Date.now()}`;
   const original = await setUpPrivateProject(page, title);
-  const pubId = await publish(page, original, { costs: true, image: true });
+  const pubId = await publish(page, original, { costs: true });
   const originalBefore = await (await page.request.get(`/api/export/projects/${original}/json`)).json();
 
   const b = await asNewPerson(browser, "10.0.4.80");
@@ -249,7 +275,7 @@ test("admin can remove a Community project with a reason; others can't; owner's 
   await register(page, newUser("Owner"));
   const title = `Rule breaker ${Date.now()}`;
   const projectId = await setUpPrivateProject(page, title);
-  const pubId = await publish(page, projectId, { image: true });
+  const pubId = await publish(page, projectId);
   const visitor = await asNewPerson(browser, "10.0.4.90");
   const before = await (await visitor.page.request.get(`/api/community/${pubId}`)).json();
 

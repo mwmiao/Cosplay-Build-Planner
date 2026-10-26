@@ -13,7 +13,8 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
   await requireAdmin();
   const { t, f } = getI18n();
   const A = t.admin;
-  const [publications, log] = await Promise.all([
+  const [pendingEvents, publications, log] = await Promise.all([
+    db.event.count({ where: { status: "pending" } }),
     db.publication.findMany({
       where: { project: { deletedAt: null } },
       orderBy: { versionAt: "desc" },
@@ -27,6 +28,9 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
     <>
       <h1 className="page-title">{A.title}</h1>
       <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{A.intro}</p>
+      <Link href="/admin/events" className="card mb-6 flex items-center justify-between gap-3 p-3 text-sm font-medium hover:border-brand-400">
+        {pendingEvents ? t.events.pendingBanner(pendingEvents) : t.events.queueTitle} <span aria-hidden="true">→</span>
+      </Link>
       {searchParams.removed === "1" && (
         <p role="status" className="mb-4 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {A.removed}

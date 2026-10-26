@@ -2,9 +2,11 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { anonymous } from "better-auth/plugins";
 import { db } from "./db";
 import { sendEmail } from "./email";
 import { appUrl, secureCookies } from "./env";
+import { clearGuestKey, guestKey, moveGuestData } from "./guest";
 import { getAuthSecret } from "./secrets";
 
 export const SESSION_DAYS = 30;
@@ -52,7 +54,20 @@ function create() {
       useSecureCookies: secureCookies(),
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for", "x-real-ip"] },
     },
-    plugins: [nextCookies()],
+    plugins: [
+      // Guests ("try without an account"). When a guest registers or logs in,
+      // their projects move to that account (images decrypted with the key from
+      // their cookie); the plugin then deletes the guest user.
+      anonymous({
+        emailDomainName: "guest.invalid",
+        generateName: () => "Guest",
+        onLinkAccount: async ({ anonymousUser, newUser }) => {
+          await moveGuestData(anonymousUser.user.id, newUser.user.id, guestKey());
+          clearGuestKey();
+        },
+      }),
+      nextCookies(),
+    ],
   });
 }
 

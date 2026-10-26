@@ -4,6 +4,7 @@ import { LinkIcon, PinIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { type EventView, listEvents, today } from "@/lib/events";
 import { hostname } from "@/lib/format";
 
@@ -11,8 +12,9 @@ export function generateMetadata(): Metadata {
   return { title: getI18n().t.events.title };
 }
 
-export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string } }) {
+export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string; suggested?: string } }) {
   const [user, all] = await Promise.all([getCurrentUser(), listEvents()]);
+  const pendingCount = user?.isAdmin ? await db.event.count({ where: { status: "pending" } }) : 0;
   const { t, f } = getI18n();
   const E = t.events;
   const past = searchParams.when === "past";
@@ -63,9 +65,32 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
           <Link href="/admin/events/new" className="btn-primary">
             <PlusIcon className="h-5 w-5" /> {E.add}
           </Link>
+        ) : user && !user.isGuest ? (
+          <Link href="/events/suggest" className="btn-secondary">
+            <PlusIcon className="h-5 w-5" /> {E.suggest}
+          </Link>
         ) : null}
       </header>
       <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{E.intro}</p>
+      {searchParams.suggested ? (
+        <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          {E.suggestedThanks}
+        </div>
+      ) : null}
+      {pendingCount > 0 ? (
+        <Link
+          href="/admin/events"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-200"
+        >
+          {E.pendingBanner(pendingCount)} <span aria-hidden="true">→</span>
+        </Link>
+      ) : user?.isAdmin ? (
+        <p className="mb-4 text-sm">
+          <Link href="/admin/events" className="link">
+            {E.queueTitle}
+          </Link>
+        </p>
+      ) : null}
 
       <div className="mb-3 flex gap-2" role="group" aria-label={E.show}>
         <Link href={href({ when: null, city: null })} className={past ? "chip-off" : "chip-on"} aria-current={!past ? "page" : undefined}>
@@ -127,11 +152,24 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                         <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300">{range(e)}</p>
                         <p className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
                           <PinIcon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{[e.venue, e.city].filter(Boolean).join(" · ")}</span>
+                          <span className="min-w-0 break-words">{[e.venue, e.address, e.city].filter(Boolean).join(" · ")}</span>
                         </p>
                         {e.dateUnconfirmed ? <p className="hint">{E.dateUnconfirmed}</p> : null}
                         {e.notes ? <p className="mt-1 whitespace-pre-wrap break-words text-sm">{e.notes}</p> : null}
-                        <div className="mt-1 flex flex-wrap gap-x-4">
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                          {e.mapLink ? (
+                            <a
+                              href={e.mapLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-secondary min-h-9 gap-1.5 px-3 text-sm"
+                              data-testid="map-link"
+                              aria-label={E.openMapFor(e.venue ?? e.name)}
+                            >
+                              <PinIcon className="h-4 w-4" />
+                              {E.openMap}
+                            </a>
+                          ) : null}
                           {e.url ? (
                             <a href={e.url} target="_blank" rel="noopener noreferrer" className="link inline-flex items-center gap-1 text-sm">
                               <LinkIcon className="h-3.5 w-3.5" />

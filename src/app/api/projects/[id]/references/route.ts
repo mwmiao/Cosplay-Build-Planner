@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { UploadError, removeStoredFiles, storeImage } from "@/lib/uploads";
 import { getI18n } from "@/i18n/server";
 import { env } from "@/lib/env";
+import { GUEST_MAX_BYTES, guestKey, guestUsage } from "@/lib/guest";
 import { idSchema, schemas } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +83,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (files.length === 0) return back({ uploadError: t.refs.chooseOne });
   if (files.length > (kind === "cover" ? 1 : 20)) return back({ uploadError: E.tooMany });
 
+  // Guests: images are encrypted with the key only their browser has, within a storage limit.
+  let key: Buffer | null = null;
+  let guestRoom = Number.POSITIVE_INFINITY;
+  if (user.isGuest) {
+    key = guestKey();
+    if (!key) return back({ uploadError: t.guest.keyMissing });
+    guestRoom = GUEST_MAX_BYTES - (await guestUsage(user.id)).bytes;
+  }
+
   // New images go after the existing ones of the same kind (and part).
   const last = await db.referenceImage.aggregate({
     where: { projectId, kind, ...(partId ? { partId } : {}) },
@@ -93,7 +103,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const errors: string[] = [];
   for (const file of files) {
     try {
-      const stored = await storeImage(projectId, file);
+      if (file.size > guestRoom) {
+        errors.push(`${file.name}: ${t.guest.storageFull(Math.round(GUEST_MAX_BYTES / 1024 / 1024))}`);
+        continue;
+      }
+      const stored = await storeImage(projectId, file, key);
+      guestRoom -= stored.sizeBytes;
       try {
         const data = {
           projectId,

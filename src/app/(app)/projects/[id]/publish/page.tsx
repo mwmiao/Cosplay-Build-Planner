@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { ConfirmButton } from "@/components/FormBits";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
-import { requireUser } from "@/lib/auth";
+import { requireAccount } from "@/lib/auth";
 import { parseTags } from "@/lib/community/snapshot";
+import { parseIds } from "@/lib/community/view";
 import { db } from "@/lib/db";
 import { getProjectOr404 } from "@/lib/queries";
 import { unpublish } from "./actions";
@@ -14,27 +15,20 @@ export function generateMetadata(): Metadata {
 }
 
 export default async function PublishPage({ params }: { params: { id: string } }) {
-  const user = await requireUser();
+  const user = await requireAccount();
   const project = await getProjectOr404(params.id, user.id);
   const { t } = getI18n();
   const C = t.community;
   const [images, publication] = await Promise.all([
     // The main picture (first) and the reference images, in their manual order. Part photos stay private.
     db.referenceImage.findMany({
-      where: { projectId: project.id, kind: { in: ["cover", "reference"] } },
+      where: { projectId: project.id, kind: { in: ["cover", "reference"] }, encrypted: false },
       orderBy: [{ kind: "asc" }, { position: "asc" }, { createdAt: "asc" }],
     }),
-    db.publication.findFirst({
-      where: { projectId: project.id, ownerId: user.id },
-      include: { images: { select: { id: true, sourceImageId: true } } },
-    }),
+    db.publication.findFirst({ where: { projectId: project.id, ownerId: user.id } }),
   ]);
   const existing = new Set(images.map((i) => i.id));
-  const previouslySelected = (publication?.images ?? [])
-    .map((i) => i.sourceImageId)
-    .filter((id): id is string => !!id && existing.has(id));
-  const coverSource = publication?.images.find((i) => i.id === publication.coverImageId)?.sourceImageId ?? null;
-  const mainPicture = images.find((i) => i.kind === "cover") ?? null;
+  const previouslySelected = parseIds(publication?.selectedImageIds ?? "[]").filter((id) => existing.has(id));
 
   return (
     <>
@@ -59,8 +53,8 @@ export default async function PublishPage({ params }: { params: { id: string } }
                 includeBudget: publication.includeBudget,
                 includeCosts: publication.includeCosts,
                 includeLinks: publication.includeLinks,
+                imageMode: publication.imageMode === "selected" ? "selected" : "all",
                 imageIds: previouslySelected,
-                coverId: coverSource && existing.has(coverSource) ? coverSource : null,
               }
             : {
                 // Nothing optional is public until the owner opts in; notes are never prefilled.
@@ -70,8 +64,8 @@ export default async function PublishPage({ params }: { params: { id: string } }
                 includeBudget: false,
                 includeCosts: false,
                 includeLinks: false,
+                imageMode: "all",
                 imageIds: [],
-                coverId: mainPicture?.id ?? null,
               }
         }
       />

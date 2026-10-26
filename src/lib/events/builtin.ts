@@ -9,7 +9,11 @@ export type BuiltinEvent = {
   start: string;
   end?: string;
   city: string;
+  /** Venue as the organiser names it; the maps button searches for it */
   venue?: string;
+  address?: string;
+  /** Exact map link when a venue search would be ambiguous */
+  mapUrl?: string;
   url?: string;
   note?: "dateUnconfirmed";
 };
@@ -96,6 +100,8 @@ export const BUILTIN_EVENTS: readonly BuiltinEvent[] = [
     name: "Aniaki",
     start: "2026-11-07",
     city: "Lisboa",
+    // Aniaki is always held here (organiser's Instagram).
+    venue: "ESPAV – Escola Secundária Padre António Vieira",
   },
   {
     key: "lgw-2026",

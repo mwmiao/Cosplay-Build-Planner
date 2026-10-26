@@ -4,13 +4,27 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getI18n } from "@/i18n/server";
-import { safeNext } from "@/lib/auth";
+import { getCurrentUser, safeNext } from "@/lib/auth";
 import { getAuth } from "@/lib/betterAuth";
 import { EmailUnavailableError, emailConfigured } from "@/lib/email";
+import { clearGuestKey, deleteGuest, issueGuestKey } from "@/lib/guest";
 import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/passwordRules";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import type { FormState } from "@/lib/validation";
 
+
+/**
+ * Request headers for sign-in/sign-up. The current session cookie is only
+ * passed on for a guest (so their data can move to the account). A stale
+ * cookie (expired, or removed by set-admin) must not be sent: Better Auth's
+ * guest plugin would see it and clear the cookie, undoing the new login.
+ */
+async function authHeaders(): Promise<Headers> {
+  const h = new Headers(headers());
+  const user = await getCurrentUser();
+  if (!user?.isGuest) h.delete("cookie");
+  return h;
+}
 
 function field(formData: FormData, name: string): string {
   const v = formData.get(name);
@@ -29,7 +43,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   }
   if (!email || !password) return { ok: false, message: A.invalidCredentials };
   try {
-    await getAuth().api.signInEmail({ body: { email, password, rememberMe: true }, headers: headers() });
+    await getAuth().api.signInEmail({ body: { email, password, rememberMe: true }, headers: await authHeaders() });
   } catch {
     // Same message whether the email exists or not.
     return { ok: false, message: A.invalidCredentials };
@@ -62,7 +76,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   try {
     await getAuth().api.signUpEmail({
       body: { name: parsed.data.name, email: parsed.data.email, password: parsed.data.password },
-      headers: headers(),
+      headers: await authHeaders(),
     });
   } catch {
     return { ok: false, message: A.registerFailed };
@@ -70,11 +84,26 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   redirect("/projects");
 }
 
+/** "Try without an account": a guest session plus the guest's own image key (kept only in their browser). */
+export async function startGuest(): Promise<void> {
+  if (await getCurrentUser()) redirect("/projects");
+  if (!(await rateLimit(`guest-ip:${clientIp()}`, 10, 24 * 60 * 60))) redirect("/login?error=guest-limit");
+  await getAuth().api.signInAnonymous({ headers: headers() });
+  issueGuestKey();
+  redirect("/projects?welcome=guest");
+}
+
 export async function signOut(): Promise<void> {
+  const user = await getCurrentUser();
   try {
     await getAuth().api.signOut({ headers: headers() });
   } catch {
     /* already signed out */
+  }
+  // A guest can't log back in, so leaving guest mode deletes their data now.
+  if (user?.isGuest) {
+    await deleteGuest(user.id);
+    clearGuestKey();
   }
   redirect("/login");
 }

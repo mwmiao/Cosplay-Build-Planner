@@ -116,6 +116,9 @@ model ReferenceImage {
   originalName String
   mimeType     String
   sizeBytes    Int
+  /// Guest images are stored encrypted (AES-256-GCM) with a key that only the
+  /// guest's browser holds, so they can't be opened from the server's disk.
+  encrypted    Boolean  @default(false)
   width        Int?
   height       Int?
   caption      String?
@@ -197,6 +200,10 @@ model User {
   /// "user" or "admin". Admins can remove Community publications. Only set
   /// with the set-admin command on the server, never through the app.
   role            String    @default("user")
+  /// Guest ("try without an account"): no email/password, private only, can't
+  /// publish, deleted 30 days after creation unless they register (which moves
+  /// their data into the new account). Managed by Better Auth's anonymous plugin.
+  isAnonymous     Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -283,8 +290,15 @@ model Publication {
   includeBudget Boolean  @default(false)
   includeCosts  Boolean  @default(false)
   includeLinks  Boolean  @default(false)
-  /// JSON of the public representation (see src/lib/community/snapshot.ts)
+  /// Last built public representation (informational since 1.6: public pages
+  /// are built live from the project; see src/lib/community/view.ts)
   snapshot      String
+  /// all = main picture + every reference image (new ones appear automatically);
+  /// selected = only the ids in selectedImageIds
+  imageMode        String  @default("all")
+  /// JSON array of ReferenceImage ids (cover/reference kinds) for "selected"
+  selectedImageIds String  @default("[]")
+  /// Before 1.6: PublicImage copy used as cover. Unused now.
   coverImageId  String?
   version       Int      @default(1)
   publishedAt   DateTime @default(now())
@@ -334,21 +348,35 @@ model ModerationAction {
   @@index([projectId, createdAt])
 }
 
-/// Cosplay events added by an admin (shown in Events next to the built-in list
-/// in src/lib/events/builtin.ts).
+/// Events beyond the built-in list (src/lib/events/builtin.ts): added by an
+/// admin, suggested by users, or found by the daily source check. Only
+/// "approved" ones are shown; suggestions wait in the admin queue.
 model Event {
-  id        String    @id @default(cuid())
-  name      String
+  id          String    @id @default(cuid())
+  name        String
   /// Calendar days (UTC midnight)
-  startDate DateTime
-  endDate   DateTime?
-  city      String
-  venue     String?
-  url       String?
-  notes     String?
-  createdBy String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  startDate   DateTime
+  endDate     DateTime?
+  city        String
+  /// Venue name as the organiser gives it, e.g. "ESPAV – Escola Secundária Padre António Vieira"
+  venue       String?
+  address     String?
+  /// Optional exact map link (overrides the venue search)
+  mapUrl      String?
+  url         String?
+  notes       String?
+  /// approved | pending | rejected
+  status      String    @default("approved")
+  /// admin | user | sync
+  source      String    @default("admin")
+  /// Where a suggestion or synced event was found (event page, Instagram post…)
+  sourceUrl   String?
+  /// Identity in the source ("<source>:<id>"), so a rejected event isn't suggested again
+  externalKey String?   @unique
+  /// Admin who added it, or the user who suggested it
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@index([startDate])
+  @@index([status, startDate])
 }

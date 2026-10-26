@@ -1,4 +1,6 @@
+import { GuestBanner } from "@/components/GuestBanner";
 import { BottomNav, Sidebar } from "@/components/Nav";
+import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { signOut } from "../(auth)/actions";
 
@@ -8,9 +10,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   return (
     <div className="flex min-h-dvh">
-      <Sidebar userName={user.name} isAdmin={user.isAdmin} signOut={signOut} />
+      <Sidebar userName={user.name} isAdmin={user.isAdmin} isGuest={user.isGuest} signOut={signOut} />
       <main className="pb-safe-nav min-w-0 flex-1 md:pb-8">
-        <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-8 md:py-8">{children}</div>
+        <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-8 md:py-8">
+          {user.guestExpiresAt ? <GuestBanner expiresAt={user.guestExpiresAt} t={getI18n().t} /> : null}
+          {children}
+        </div>
       </main>
       <BottomNav />
     </div>

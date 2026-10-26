@@ -4,6 +4,8 @@ const nextConfig = {
   poweredByHeader: false,
   eslint: { ignoreDuringBuilds: true },
   experimental: {
+    // src/instrumentation.ts starts the background jobs (guest cleanup, events check).
+    instrumentationHook: true,
     serverComponentsExternalPackages: ["sharp", "@prisma/client"],
     // Project imports send the JSON file to a server action (files up to 5 MB).
     serverActions: { bodySizeLimit: "6mb" },
