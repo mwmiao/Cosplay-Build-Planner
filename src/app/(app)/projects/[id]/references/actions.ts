@@ -97,3 +97,29 @@ export async function reorderImages(projectId: string, ids: string[]): Promise<{
   if (ok) revalidate(pid);
   return { ok };
 }
+
+/** Updates a progress photo's day, stage and caption. */
+export async function updateProgress(
+  projectId: string,
+  imageId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireUser();
+  const pid = idSchema.parse(projectId);
+  const id = idSchema.parse(imageId);
+  const { t } = getI18n();
+  const parsed = schemas(t).progress.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, errors: parsed.error.flatten().fieldErrors };
+  const result = await db.referenceImage.updateMany({
+    where: { id, projectId: pid, kind: "progress", project: { ownerId: user.id, deletedAt: null } },
+    data: {
+      caption: parsed.data.caption ?? null,
+      stage: parsed.data.stage ?? null,
+      ...(parsed.data.takenAt ? { takenAt: parsed.data.takenAt } : {}),
+    },
+  });
+  if (result.count !== 1) notFound();
+  revalidate(pid);
+  return { ok: true, message: t.refs.saved };
+}

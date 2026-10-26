@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { Field } from "@/components/Field";
 import { useI18n } from "@/i18n/client";
 
-export type UploadKind = "reference" | "part" | "cover";
+export type UploadKind = "reference" | "part" | "cover" | "progress";
 
 /**
  * Plain multipart form posting to the upload route (works without JS too).
@@ -25,7 +25,7 @@ export function UploadForm({
   maxMb: number;
   kind?: UploadKind;
   partId?: string;
-  /** Existing reference groups, suggested in the group field */
+  /** Existing reference groups (or progress stages), suggested in the group/stage field */
   groups?: string[];
   submitLabel?: string;
 }) {
@@ -79,7 +79,18 @@ export function UploadForm({
         </p>
         {error ? <p className="field-error">{error}</p> : null}
       </div>
-      {kind === "cover" ? null : (
+      {kind === "progress" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label={R.progressDate} name="takenAt" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+          <Field label={R.stage} name="stage" placeholder={R.stagePlaceholder} list={`${id}-stages`} autoComplete="off" />
+          <datalist id={`${id}-stages`}>
+            {[...new Set([...groups, ...R.stageSuggestions])].map((g) => (
+              <option key={g} value={g} />
+            ))}
+          </datalist>
+          <Field label={R.caption} name="caption" placeholder={R.progressCaptionPlaceholder} />
+        </div>
+      ) : kind === "cover" ? null : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={R.caption} name="caption" placeholder={R.captionPlaceholder} />
           {kind === "reference" ? (

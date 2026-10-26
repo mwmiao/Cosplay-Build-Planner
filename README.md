@@ -18,6 +18,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **Multiple currencies**: every part keeps its own currency. Totals are shown in the project's base currency, split into *paid*, *planned*, *budget left* and *over/under budget* (see [Currencies and exchange rates](#currencies-and-exchange-rates)).
 - **Project export/import**: export a project as a versioned JSON file and import it as a new project, merged into an existing one, or replacing one (see [Export and import](#export-and-import)).
 - **Budget CSV** export for each project, including the original amount, currency, exchange rate, rate date, source and manual/automatic for every payment.
+- **Progress timeline**: progress photos with a date, stage (e.g. "Painting") and caption, shown oldest to newest on the project page. Optional on the public page.
 - **References**: upload several images at once with a caption, source link and **group** (e.g. Armour, Wig). Images are shown by group, can be filtered and **reordered**, and open full-screen **inside the app** (swipe or ←/→ to browse, Esc to close). The app makes thumbnails and removes location data from photos.
 - **Events**: cosplay, anime, comics and gaming events in Portugal, upcoming (by month) and past (by year), filterable by city (see [Events](#events)).
 - **English and European Portuguese**: switch in **Settings → Language** (saved per device; the first visit follows the browser's language). Dates, numbers and currency names follow the language.
@@ -41,6 +42,7 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 | `PUID` / `PGID` | no | `1000` / `1000` | (Docker) The user and group that will own the files in the data folder. |
 | `BACKUP_INTERVAL_HOURS` | no | `24` | (Docker) How often to back up the database automatically. `0` turns it off. |
 | `BACKUP_KEEP` | no | `14` | How many automatic database backups to keep. |
+| `INSTAGRAM_USER_ID`, `INSTAGRAM_ACCESS_TOKEN` | no | empty | Instagram API for the Events tab (see [Instagram](#instagram-optional-one-time-setup)). Keep the token secret. |
 | `EMAIL_OUTBOX_DIR` | **testing only** | empty | Writes emails to files instead of sending them (used by the automated tests). Never set this in production. |
 
 `APP_PASSWORD`, `SESSION_SECRET` and `SEED_EXAMPLE` from 1.2, and `REGISTRATION_CODE` from 1.3, are no longer used.
@@ -86,13 +88,32 @@ The account must already be registered. The command signs that user out, so log 
 
 The **Events** tab lists cosplay-friendly events in Portugal (Lisboa Games Week, XL Games, Comic Con Portugal, IberAnime, Mercado Pingado, Aniaki…). Anyone who can reach the app can read it.
 
-- **Built-in list:** researched from organisers' websites and event press, updated with app releases (`src/lib/events/builtin.ts`).
-- **Automatic check (daily):** the app reads public event listings that allow it (Viral Agenda's cosplay and anime pages, and schema.org event data on organisers' sites such as XL Games). It honours each site's `robots.txt`, identifies itself, and skips events it already knows. New events go to **Suggested events** for an admin to approve; nothing is published automatically. Sources live in `src/lib/events/sync.ts`.
-- **Instagram can't be read automatically** (no public API for other accounts, scraping isn't allowed), so Instagram-only events come in as suggestions.
-- **Suggestions:** anyone with an account can **Suggest event** (with the Instagram post or site where they saw it). An admin approves, edits or rejects it in **Suggested events** (linked from the Events and Moderation pages). Rejected events aren't suggested again.
+- **What an event holds:** dates (multi-day up to 14 days), time, venue, address, city, country, tickets, type (convention, market, gaming, workshop, other), status (**announced**, **tickets on sale**, **confirmed**, **cancelled**) and its source with the date it was found. The year and "past" come from the dates. Past events stay in the **Past** archive.
+- **Built-in list:** researched from organisers' websites and event press (`src/lib/events/builtin.ts`), copied into the database. When an update changes the list, events you haven't edited are refreshed automatically; for events you edited, the change waits under **Suggested events → Changes reported** instead of overwriting your edit. Deleting a built-in or found event hides it for good.
+- **Organisers** (**Suggested events → Organisers**): recurring events and who runs them, with their Instagram username, usual venue and city. Organisers with no upcoming date are listed under **Next edition not announced yet**; no dates are guessed.
+- **Daily check:** organisers' **Instagram** posts (see below), plus public listings that allow it (Viral Agenda's cosplay and anime pages, schema.org event data such as XL Games; `robots.txt` honoured). Dates, times, venues, addresses and tickets are read from the post text. Everything new goes to **Suggested events** as *needs review*, with the post link, poster and the date it was found. If a source later reports a different date or venue for a published event, it shows up as a change to apply or dismiss.
+- **Data quality:** addresses are tidied ("R." → Rua, "Av." → Avenida, postal codes 0000-000), city names standardised, possible duplicates (similar name and venue within 3 days) flagged, and events missing a venue or source marked for review.
+- **Suggestions:** anyone with an account can **Suggest event**, pasting the Instagram caption into **Fill in from post text** to fill the form. An admin approves, edits or rejects it. Rejected events aren't suggested again.
 - **Maps:** each event with a venue has an **Open in Maps** button. It searches Google Maps for the venue exactly as the organiser names it (plus address and city) and opens the Maps app on phones. Admins can paste an exact map link to override the search.
 - **Admins** can also **Add event** directly and edit or delete the events they added.
 - Upcoming event names are suggested in a project's *Convention / event* field.
+
+### Instagram (optional, one-time setup)
+
+The app reads organisers' public posts through Meta's official Instagram API ("business discovery"); there's no scraping. It works for **business and creator accounts** only: personal and age-gated accounts can't be read. You need:
+
+1. **Your own Instagram professional account** (Business or Creator), linked to a Facebook Page.
+2. **A Meta app** at developers.facebook.com with the Instagram API (Facebook Login) product.
+3. **An access token** for your account with the `instagram_basic` and `pages_show_list` permissions, exchanged for a **long-lived token**. Long-lived tokens expire after about 60 days unless refreshed; the Organisers page then shows "Access token expired or invalid".
+4. **Your Instagram user ID:** `GET /me/accounts` gives your Page, then `GET /{page-id}?fields=instagram_business_account`.
+5. **Add both to `.env` and redeploy:**
+   ```bash
+   INSTAGRAM_USER_ID=1784…
+   INSTAGRAM_ACCESS_TOKEN=EAAG…
+   ```
+6. **Add each organiser's username** under **Organisers**.
+
+Each organiser costs one API request per day. Only the post link, the details read from the text and the poster URL (for review) are stored; posts aren't copied.
 
 ---
 
@@ -104,6 +125,7 @@ The **Events** tab lists cosplay-friendly events in Portugal (Lisboa Games Week,
   - budget totals (budget, total spent, total still planned)
   - estimated item costs (what you actually paid stays private)
   - shop names and links
+  - **progress timeline** (off by default): your progress photos with dates and stages
   - images: **main picture + all reference images** (the default; new reference images appear automatically) or **only the images you choose**. Part photos are never public.
 - **Never public:** private notes, payments (dates, actual amounts, exchange-rate details), receipts, delivery details and anything about your account. Your display name is shown; your email never is.
 - **It's live:** the public page is built from your project every time someone opens it, through the same allow-list. New parts, status, progress and (with "all images") new images appear without republishing. Change the settings any time in **Community → Manage → Save changes**.

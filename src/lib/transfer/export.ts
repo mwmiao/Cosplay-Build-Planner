@@ -103,6 +103,8 @@ export async function buildProjectExport(
       originalName: r.originalName,
       kind: r.kind,
       group: r.groupName,
+      stage: r.stage,
+      takenAt: day(r.takenAt),
       createdAt: r.createdAt.toISOString(),
     })),
     totals: {

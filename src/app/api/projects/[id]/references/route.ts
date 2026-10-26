@@ -11,7 +11,7 @@ import { idSchema, schemas } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-const KINDS = ["reference", "part", "cover"] as const;
+const KINDS = ["reference", "part", "cover", "progress"] as const;
 type Kind = (typeof KINDS)[number];
 
 /**
@@ -62,8 +62,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       ? `/projects/${projectId}/parts/${partId}/edit`
       : kind === "cover"
         ? `/projects/${projectId}/edit`
-        : `/projects/${projectId}/references`;
-  const anchor = kind === "part" ? "#photos" : kind === "cover" ? "#cover" : "";
+        : kind === "progress"
+          ? `/projects/${projectId}`
+          : `/projects/${projectId}/references`;
+  const anchor = kind === "part" ? "#photos" : kind === "cover" ? "#cover" : kind === "progress" ? "#progress" : "";
   const back = (query: Record<string, string>) => {
     const qs = new URLSearchParams(query).toString();
     return new NextResponse(null, { status: 303, headers: { Location: `${backPath}${qs ? `?${qs}` : ""}${anchor}` } });
@@ -78,6 +80,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!meta.success) {
     return back({ uploadError: meta.error.issues[0]?.message ?? E.checkFields });
   }
+  const progress =
+    kind === "progress"
+      ? schemas(t).progress.safeParse({ stage: form.get("stage") ?? undefined, takenAt: form.get("takenAt") ?? undefined })
+      : null;
+  if (progress && !progress.success) {
+    return back({ uploadError: progress.error.issues[0]?.message ?? E.checkFields });
+  }
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
   const files = form.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return back({ uploadError: t.refs.chooseOne });
@@ -120,6 +131,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           originalName: file.name.slice(0, 200) || "image",
           caption: meta.data.caption ?? null,
           sourceUrl: meta.data.sourceUrl ?? null,
+          ...(progress?.success ? { stage: progress.data.stage ?? null, takenAt: progress.data.takenAt ?? today } : {}),
         };
         if (kind === "cover") {
           // One main picture per project: swap it in, then remove the old files.

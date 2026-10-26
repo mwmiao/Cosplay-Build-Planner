@@ -114,6 +114,9 @@ const referenceSchema = z.object({
   /** reference | part | cover (added in 1.5; optional for older files) */
   kind: text(20).optional(),
   group: text(40).nullable().optional(),
+  /** Progress photos (1.7+) */
+  stage: text(40).nullable().optional(),
+  takenAt: dateOnly.nullable().optional(),
   createdAt: timestamp,
 });
 

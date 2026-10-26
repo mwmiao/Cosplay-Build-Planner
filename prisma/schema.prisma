@@ -102,7 +102,7 @@ model BuildPart {
 model ReferenceImage {
   id           String   @id @default(cuid())
   projectId    String
-  /// reference | part | cover (one cover per project)
+  /// reference | part | cover (one cover per project) | progress (timeline photo)
   kind         String   @default("reference")
   /// Set for kind "part"
   partId       String?
@@ -110,6 +110,9 @@ model ReferenceImage {
   groupName    String?
   /// Manual order (ascending) within the same kind / part
   position     Int      @default(0)
+  /// Progress photos: the day the photo shows (defaults to the upload day) and an optional stage label
+  takenAt      DateTime?
+  stage        String?
   /// Paths relative to UPLOAD_DIR
   filePath     String
   thumbPath    String
@@ -298,6 +301,8 @@ model Publication {
   imageMode        String  @default("all")
   /// JSON array of ReferenceImage ids (cover/reference kinds) for "selected"
   selectedImageIds String  @default("[]")
+  /// Show the progress-photo timeline publicly (off unless the owner ticks it)
+  includeProgress  Boolean @default(false)
   /// Before 1.6: PublicImage copy used as cover. Unused now.
   coverImageId  String?
   version       Int      @default(1)
@@ -348,35 +353,80 @@ model ModerationAction {
   @@index([projectId, createdAt])
 }
 
-/// Events beyond the built-in list (src/lib/events/builtin.ts): added by an
-/// admin, suggested by users, or found by the daily source check. Only
-/// "approved" ones are shown; suggestions wait in the admin queue.
+/// Every event shown in Events: the built-in list (src/lib/events/builtin.ts,
+/// kept in sync automatically), events added by an admin, suggested by users,
+/// or found by the daily check (organisers' Instagram, event listings). Only
+/// "approved" ones are shown; the rest wait in the admin's review queue.
 model Event {
-  id          String    @id @default(cuid())
-  name        String
-  /// Calendar days (UTC midnight)
-  startDate   DateTime
-  endDate     DateTime?
-  city        String
-  /// Venue name as the organiser gives it, e.g. "ESPAV – Escola Secundária Padre António Vieira"
-  venue       String?
-  address     String?
+  id             String     @id @default(cuid())
+  name           String
+  /// Calendar days (UTC midnight). The year and "past" are derived from these.
+  startDate      DateTime
+  endDate        DateTime?
+  /// Free text, e.g. "10h–19h"
+  time           String?
+  city           String
+  country        String     @default("Portugal")
+  /// Venue as the organiser names it, e.g. "ESPAV – Escola Secundária Padre António Vieira"
+  venue          String?
+  address        String?
   /// Optional exact map link (overrides the venue search)
-  mapUrl      String?
-  url         String?
-  notes       String?
-  /// approved | pending | rejected
-  status      String    @default("approved")
-  /// admin | user | sync
-  source      String    @default("admin")
-  /// Where a suggestion or synced event was found (event page, Instagram post…)
-  sourceUrl   String?
-  /// Identity in the source ("<source>:<id>"), so a rejected event isn't suggested again
-  externalKey String?   @unique
+  mapUrl         String?
+  url            String?
+  /// Ticket information as announced ("Entrada livre", "5 €"…)
+  tickets        String?
+  notes          String?
+  /// convention | market | gaming | workshop | other
+  eventType      String     @default("other")
+  /// announced | tickets | confirmed | cancelled (how firm the date is)
+  announceStatus String     @default("announced")
+  /// Review: approved | needs_review | rejected (rejected = hidden, and never re-added)
+  status         String     @default("approved")
+  /// builtin | admin | user | sync | instagram
+  source         String     @default("admin")
+  /// Provenance: where it was found and when
+  sourceUrl      String?
+  capturedAt     DateTime?
+  /// Poster/post image URL from the source (shown to admins while reviewing; may expire)
+  posterUrl      String?
+  /// Identity in the source ("builtin:<key>", "viralagenda:<id>", "instagram:<postId>"…)
+  externalKey    String?    @unique
+  /// Built-in events: fingerprint of the built-in data last applied
+  builtinHash    String?
+  /// Set when an admin edits it, so automatic refreshes don't overwrite their changes
+  editedAt       DateTime?
+  /// JSON of changed fields reported by the source, waiting for the admin
+  pendingChange  String?
+  organiserId    String?
   /// Admin who added it, or the user who suggested it
-  createdBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdBy      String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organiser Organiser? @relation(fields: [organiserId], references: [id], onDelete: SetNull)
 
   @@index([status, startDate])
+}
+
+/// Recurring events and their organisers (e.g. Quimera Art Market). The daily
+/// check reads their Instagram posts (Instagram API) for new dates; while no
+/// upcoming edition is known they're listed as "next edition not announced".
+model Organiser {
+  id            String    @id @default(cuid())
+  name          String
+  /// Instagram username (business/creator account), without @
+  instagram     String?   @unique
+  website       String?
+  city          String?
+  usualVenue    String?
+  usualAddress  String?
+  eventType     String    @default("other")
+  /// Checked daily and listed under "next edition not announced"
+  active        Boolean   @default(true)
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  events Event[]
 }

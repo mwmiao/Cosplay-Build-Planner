@@ -54,6 +54,7 @@ export default async function PublishPage({ params }: { params: { id: string } }
                 includeCosts: publication.includeCosts,
                 includeLinks: publication.includeLinks,
                 imageMode: publication.imageMode === "selected" ? "selected" : "all",
+                includeProgress: publication.includeProgress,
                 imageIds: previouslySelected,
               }
             : {
@@ -65,6 +66,7 @@ export default async function PublishPage({ params }: { params: { id: string } }
                 includeCosts: false,
                 includeLinks: false,
                 imageMode: "all",
+                includeProgress: false,
                 imageIds: [],
               }
         }

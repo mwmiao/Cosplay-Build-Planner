@@ -1,3 +1,4 @@
+import { ensureBuiltinData } from "./events/builtinSync";
 import { cleanupExpiredGuests } from "./guest";
 import { getSyncStatus, syncEvents } from "./events/sync";
 
@@ -20,6 +21,8 @@ export function startJobs() {
       .then((n) => n && console.log(`Removed ${n} expired guest account(s).`))
       .catch((err) => console.error("Guest cleanup failed", err));
   setTimeout(cleanup, 30_000);
+  // Built-in events: add new ones / refresh changed ones from this release.
+  setTimeout(() => void ensureBuiltinData(), 5_000);
   setInterval(cleanup, HOUR);
 
   const hours = Number(process.env.EVENT_SYNC_HOURS ?? "24");

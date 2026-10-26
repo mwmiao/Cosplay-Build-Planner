@@ -1,39 +1,43 @@
 import "server-only";
 import type { Event } from "@prisma/client";
 import { db } from "../db";
-import { BUILTIN_EVENTS } from "./builtin";
-import { normaliseName } from "./names";
+import { ensureBuiltinData } from "./builtinSync";
+import { nameSimilarity, normaliseName } from "./names";
 
 export { normaliseName };
 
 export type EventView = {
-  /** "b:<key>" for built-in events, the database id for the others */
   id: string;
   name: string;
   start: Date;
   end: Date;
+  time: string | null;
   city: string;
+  country: string;
   venue: string | null;
   address: string | null;
   url: string | null;
+  tickets: string | null;
   notes: string | null;
+  eventType: string;
+  announceStatus: string;
+  sourceUrl: string | null;
   /** Where to open the place in a maps app, or null when there's no venue to search for */
   mapLink: string | null;
-  builtin: boolean;
-  dateUnconfirmed: boolean;
+  /** Added by an admin (editable by them) rather than built in or found automatically */
+  editable: boolean;
+  organiserId: string | null;
 };
-
-const day = (s: string) => new Date(`${s}T00:00:00.000Z`);
 
 /**
  * Link that opens the venue in Google Maps (the Maps app on phones). An exact
  * map link wins; otherwise it searches for the venue as the organiser names
  * it, plus the address and city. No venue → no link (a city alone is too vague).
  */
-export function mapsLink(e: { venue?: string | null; address?: string | null; city: string; mapUrl?: string | null }): string | null {
+export function mapsLink(e: { venue?: string | null; address?: string | null; city: string; country?: string | null; mapUrl?: string | null }): string | null {
   if (e.mapUrl) return e.mapUrl;
   if (!e.venue && !e.address) return null;
-  const query = [e.venue, e.address, e.city, "Portugal"].filter(Boolean).join(", ");
+  const query = [e.venue, e.address, e.city, e.country ?? "Portugal"].filter(Boolean).join(", ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
@@ -43,38 +47,28 @@ export function eventView(r: Event): EventView {
     name: r.name,
     start: r.startDate,
     end: r.endDate ?? r.startDate,
+    time: r.time,
     city: r.city,
+    country: r.country,
     venue: r.venue,
     address: r.address,
     url: r.url,
+    tickets: r.tickets,
     notes: r.notes,
+    eventType: r.eventType,
+    announceStatus: r.announceStatus,
+    sourceUrl: r.sourceUrl,
     mapLink: mapsLink(r),
-    builtin: false,
-    dateUnconfirmed: false,
+    editable: true,
+    organiserId: r.organiserId,
   };
 }
 
-/** Built-in and approved events, soonest first. */
+/** Approved events (built-in ones included), soonest first. */
 export async function listEvents(): Promise<EventView[]> {
-  const rows = await db.event.findMany({ where: { status: "approved" }, orderBy: { startDate: "asc" } });
-  const events: EventView[] = [
-    ...BUILTIN_EVENTS.map((e) => ({
-      id: `b:${e.key}`,
-      name: e.name,
-      start: day(e.start),
-      end: day(e.end ?? e.start),
-      city: e.city,
-      venue: e.venue ?? null,
-      address: e.address ?? null,
-      url: e.url ?? null,
-      notes: null,
-      mapLink: mapsLink(e),
-      builtin: true,
-      dateUnconfirmed: e.note === "dateUnconfirmed",
-    })),
-    ...rows.map(eventView),
-  ];
-  return events.sort((a, b) => a.start.getTime() - b.start.getTime() || a.name.localeCompare(b.name));
+  await ensureBuiltinData();
+  const rows = await db.event.findMany({ where: { status: "approved" }, orderBy: [{ startDate: "asc" }, { name: "asc" }] });
+  return rows.map(eventView);
 }
 
 /** Today as UTC midnight of the server's local calendar day (same rule as deadlines). */
@@ -89,26 +83,42 @@ export async function upcomingEventNames(): Promise<string[]> {
   return [...new Set(names)];
 }
 
+const DAY = 86_400_000;
+
 /**
- * Is this (name, start day) already known — built in, or in the database with
- * any status (so rejected suggestions don't come back)? Names match when one
- * contains the other ("XL Games Aveiro" ~ "XL Games 2026 – Aveiro" is handled
- * by also comparing without years/digits).
+ * Events in the database (any status, so rejected ones count) that look like
+ * the same event: dates within 3 days, and a similar name, or the same venue
+ * or address with a loosely similar name.
  */
-export async function isKnownEvent(name: string, start: Date): Promise<boolean> {
-  const key = normaliseName(name);
-  const loose = key.replace(/\d+/g, "");
-  const same = (other: string) => {
-    const k = normaliseName(other);
-    const l = k.replace(/\d+/g, "");
-    return k === key || k.includes(key) || key.includes(k) || (l.length >= 6 && (l.includes(loose) || loose.includes(l)));
-  };
-  const dayMs = 86_400_000;
-  const near = (d: Date) => Math.abs(d.getTime() - start.getTime()) <= 3 * dayMs;
-  if (BUILTIN_EVENTS.some((e) => near(day(e.start)) && same(e.name))) return true;
+export async function findSimilarEvents(e: {
+  name: string;
+  start: Date;
+  venue?: string | null;
+  address?: string | null;
+  excludeId?: string;
+}): Promise<Event[]> {
   const rows = await db.event.findMany({
-    where: { startDate: { gte: new Date(start.getTime() - 3 * dayMs), lte: new Date(start.getTime() + 3 * dayMs) } },
-    select: { name: true },
+    where: {
+      startDate: { gte: new Date(e.start.getTime() - 3 * DAY), lte: new Date(e.start.getTime() + 3 * DAY) },
+      ...(e.excludeId ? { id: { not: e.excludeId } } : {}),
+    },
   });
-  return rows.some((r) => same(r.name));
+  const place = (x?: string | null) => (x ? normaliseName(x) : "");
+  return rows.filter((r) => {
+    const sim = nameSimilarity(r.name, e.name);
+    const samePlace =
+      (!!place(e.venue) && place(r.venue) === place(e.venue)) || (!!place(e.address) && place(r.address) === place(e.address));
+    return sim >= 0.75 || (samePlace && sim >= 0.45);
+  });
+}
+
+/** Things an admin should check before approving (shown in the review queue). */
+export function reviewFlags(e: Pick<Event, "venue" | "address" | "sourceUrl" | "source" | "startDate" | "endDate">): string[] {
+  const flags: string[] = [];
+  if (!e.venue && !e.address) flags.push("noVenue");
+  if (!e.sourceUrl && (e.source === "user" || e.source === "sync" || e.source === "instagram")) flags.push("noSource");
+  const now = today().getTime();
+  if (e.startDate.getTime() > now + 2 * 365 * DAY) flags.push("farFuture");
+  if (e.endDate && e.endDate.getTime() - e.startDate.getTime() > 14 * DAY) flags.push("longRange");
+  return flags;
 }

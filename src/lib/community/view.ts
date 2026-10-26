@@ -12,6 +12,8 @@ import { type PublicSnapshot, buildPublicSnapshot, parseTags } from "./snapshot"
 // spreading a row).
 
 export type PublicImageView = { id: string; caption: string | null; thumbUrl: string; fullUrl: string };
+/** Progress photo: only when the owner chose "Show progress timeline". */
+export type PublicProgressView = PublicImageView & { stage: string | null; date: string };
 
 export type PublicProjectView = {
   id: string;
@@ -24,10 +26,11 @@ export type PublicProjectView = {
   updatedAt: string;
   cover: PublicImageView | null;
   images: PublicImageView[];
+  progress: PublicProgressView[];
   snapshot: PublicSnapshot;
 };
 
-export type PublicCardView = Omit<PublicProjectView, "images" | "snapshot"> & { progressPercent: number };
+export type PublicCardView = Omit<PublicProjectView, "images" | "snapshot" | "progress"> & { progressPercent: number };
 
 const imageView = (img: { id: string; caption: string | null }): PublicImageView => ({
   id: img.id,
@@ -88,6 +91,13 @@ export async function getPublicProject(id: string): Promise<PublicProjectView | 
   const ctx = await getMoneyContext(p.ownerId);
   const snapshot = buildPublicSnapshot(p.project, p.project.parts, p, ctx);
   const imgs = (await publicImagesFor([p])).get(p.projectId) ?? { images: [], cover: null };
+  const progress = p.includeProgress
+    ? await db.referenceImage.findMany({
+        where: { projectId: p.projectId, kind: "progress", encrypted: false },
+        orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+        select: { id: true, caption: true, stage: true, takenAt: true, createdAt: true },
+      })
+    : [];
   return {
     id: p.id,
     title: p.title,
@@ -99,6 +109,7 @@ export async function getPublicProject(id: string): Promise<PublicProjectView | 
     updatedAt: latest(p.versionAt, p.project.updatedAt, ...p.project.parts.map((x) => x.updatedAt)).toISOString(),
     cover: imgs.cover,
     images: imgs.images,
+    progress: progress.map((r) => ({ ...imageView(r), stage: r.stage, date: (r.takenAt ?? r.createdAt).toISOString() })),
     snapshot,
   };
 }

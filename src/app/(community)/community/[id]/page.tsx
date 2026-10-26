@@ -51,6 +51,7 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
           updatedAt: project.updatedAt,
           snapshot: project.snapshot,
           images: project.images,
+          progress: project.progress,
           coverId: project.cover?.id ?? null,
         }}
         actions={

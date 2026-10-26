@@ -6,6 +6,7 @@ import type { Dict } from "@/i18n";
 import type { PublicSnapshot } from "@/lib/community/snapshot";
 import type { Formatters } from "@/lib/format";
 import { LightboxGroup, LightboxThumb } from "./Lightbox";
+import { Timeline, type TimelineItem } from "./Timeline";
 import { ProgressBar, StatusBadge } from "./ui";
 
 export type PublicProjectData = {
@@ -20,6 +21,8 @@ export type PublicProjectData = {
   snapshot: PublicSnapshot;
   images: { id: string; caption: string | null; thumbUrl: string; fullUrl?: string }[];
   coverId: string | null;
+  /** Progress timeline, only when the owner chose to show it */
+  progress?: TimelineItem[];
 };
 
 export function PublicProject({
@@ -46,16 +49,22 @@ export function PublicProject({
   return (
     <LightboxGroup images={lightbox}>
     <article className="space-y-6" data-testid="public-project">
-      {cover ? (
-        <LightboxThumb index={data.images.indexOf(cover)} label={t.lightbox.open(cover.caption ?? data.title)} className="rounded-2xl">
-          <img src={cover.fullUrl ?? cover.thumbUrl} alt={cover.caption ?? data.title} className="max-h-80 w-full object-cover" />
-        </LightboxThumb>
-      ) : null}
-
       <header className="space-y-2">
-        <h1 className="page-title break-words">{data.title}</h1>
-        {data.series ? <p className="text-zinc-500 dark:text-zinc-400">{data.series}</p> : null}
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">{C.byCreator(data.creatorName)}</p>
+        {/* Same square presentation as the owner's project page. */}
+        <div className="flex items-start gap-3">
+          {cover ? (
+            <div className="w-20 shrink-0 sm:w-28">
+              <LightboxThumb index={data.images.indexOf(cover)} label={t.lightbox.open(cover.caption ?? data.title)} className="rounded-2xl shadow-sm">
+                <img src={cover.thumbUrl} alt={cover.caption ?? data.title} className="aspect-square w-full object-cover" data-testid="public-cover" />
+              </LightboxThumb>
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <h1 className="page-title break-words">{data.title}</h1>
+            {data.series ? <p className="text-zinc-500 dark:text-zinc-400">{data.series}</p> : null}
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">{C.byCreator(data.creatorName)}</p>
+          </div>
+        </div>
         {data.publishedAt ? (
           <p className="hint">
             {C.published(f.date(new Date(data.publishedAt)))}
@@ -165,6 +174,14 @@ export function PublicProject({
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+      {data.progress?.length ? (
+        <section aria-labelledby="public-progress">
+          <h2 id="public-progress" className="section-title mb-3">
+            {C.progressTimeline}
+          </h2>
+          <Timeline items={data.progress} t={t} f={f} />
         </section>
       ) : null}
     </article>

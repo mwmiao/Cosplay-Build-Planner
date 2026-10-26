@@ -142,7 +142,14 @@ export function schemas(t: Dict) {
     groupName: optionalText(40),
   });
 
-  return { project, part, shoppingItem, reference };
+  /** Progress photo details: day it shows (defaults to today), optional caption and stage. */
+  const progress = z.object({
+    caption: optionalText(200),
+    stage: optionalText(40),
+    takenAt: optionalDate.refine((d) => !d || d.getTime() <= Date.now() + 86_400_000, v.paidFuture),
+  });
+
+  return { project, part, shoppingItem, reference, progress };
 }
 
 type Schemas = ReturnType<typeof schemas>;

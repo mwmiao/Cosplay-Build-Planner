@@ -5,7 +5,8 @@ test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.4.1" } });
 
 /** Every key that may appear in a public project response, per object type. */
 const ALLOWED: Record<string, string[]> = {
-  root: ["id", "title", "series", "description", "tags", "creator", "publishedAt", "updatedAt", "cover", "images", "snapshot"],
+  root: ["id", "title", "series", "description", "tags", "creator", "publishedAt", "updatedAt", "cover", "images", "progress", "snapshot"],
+  progressItem: ["id", "caption", "thumbUrl", "fullUrl", "stage", "date"],
   creator: ["displayName"],
   image: ["id", "caption", "thumbUrl", "fullUrl"],
   snapshot: ["v", "status", "progress", "budget", "items"],
@@ -22,6 +23,7 @@ function checkPublicShape(p: Record<string, any>) {
   expectOnlyAllowed(p, "root");
   expectOnlyAllowed(p.creator, "creator");
   for (const img of p.images) expectOnlyAllowed(img, "image");
+  for (const item of p.progress ?? []) expectOnlyAllowed(item, "progressItem");
   if (p.cover) expectOnlyAllowed(p.cover, "image");
   expectOnlyAllowed(p.snapshot, "snapshot");
   expectOnlyAllowed(p.snapshot.progress, "progress");

@@ -44,6 +44,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_SECURE: ${SMTP_SECURE:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+      # Optional: Instagram API for the Events tab (see README → Events → Instagram).
+      INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
     ports:
       - "1337:1337"
     volumes:

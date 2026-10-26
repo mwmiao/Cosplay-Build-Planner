@@ -18,6 +18,7 @@ export type PublishDefaults = {
   includeLinks: boolean;
   /** all = main picture + every reference image (new ones appear automatically) */
   imageMode: "all" | "selected";
+  includeProgress: boolean;
   imageIds: string[];
 };
 
@@ -65,6 +66,7 @@ export function PublishForm({
               ["includeBudget", C.includeBudget, C.includeBudgetHint, defaults.includeBudget],
               ["includeCosts", C.includeCosts, C.includeCostsHint, defaults.includeCosts],
               ["includeLinks", C.includeLinks, C.includeLinksHint, defaults.includeLinks],
+              ["includeProgress", C.includeProgress, C.includeProgressHint, defaults.includeProgress],
             ] as const
           ).map(([name, label, hint, on]) => (
             <label key={name} className="flex cursor-pointer gap-3">

@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SubmitButton } from "@/components/FormBits";
+import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { LightboxGroup, LightboxThumb } from "@/components/Lightbox";
 import { Sortable } from "@/components/Sortable";
+import { Timeline } from "@/components/Timeline";
 import { CheckIcon, DownloadIcon, ImageIcon, LinkIcon, PencilIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState, ProgressBar, Stat, StatusBadge } from "@/components/ui";
 import { CATEGORIES, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
-import { daysLabel, daysUntil, hostname } from "@/lib/format";
+import { dateInput, daysLabel, daysUntil, hostname } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
+import { env } from "@/lib/env";
 import { getMoneyContext, getProjectOr404 } from "@/lib/queries";
+import { ACCEPT_ATTR } from "@/lib/uploads";
 import { setProjectArchived } from "../actions";
 import { reorderParts, togglePartDone } from "./parts/actions";
+import { deleteReference, updateProgress } from "./references/actions";
 import { lightboxImages } from "./references/ImageCard";
+import { ProgressForm } from "./references/ProgressForm";
+import { UploadForm } from "./references/UploadForm";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const user = await requireUser();
@@ -45,7 +51,7 @@ export default async function ProjectPage({
   const project = await getProjectOr404(params.id, user.id);
   const { t, f } = getI18n();
   const P = t.project;
-  const [allParts, references, referenceCount, cover, partPhotos] = await Promise.all([
+  const [allParts, references, referenceCount, cover, partPhotos, progress] = await Promise.all([
     db.buildPart.findMany({
       where: { projectId: project.id, deletedAt: null },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -62,7 +68,12 @@ export default async function ProjectPage({
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       select: { partId: true, thumbPath: true },
     }),
+    db.referenceImage.findMany({
+      where: { projectId: project.id, kind: "progress" },
+      orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+    }),
   ]);
+  const stages = [...new Set(progress.map((p) => p.stage).filter((s): s is string => !!s))];
   // First photo of each part, shown as its thumbnail in the list.
   const partThumb = new Map<string, string>();
   for (const photo of partPhotos) if (photo.partId && !partThumb.has(photo.partId)) partThumb.set(photo.partId, photo.thumbPath);
@@ -388,6 +399,55 @@ export default async function ProjectPage({
             })}
           </ul>
         )}
+      </section>
+
+      <section id="progress" aria-labelledby="progress-title" className="mb-8 scroll-mt-4">
+        <h2 id="progress-title" className="section-title mb-1">
+          {P.progress} {progress.length ? <span className="text-sm font-normal text-zinc-500">({progress.length})</span> : null}
+        </h2>
+        <p className="hint mb-3">{P.progressHint}</p>
+        {progress.length ? (
+          <Timeline
+            t={t}
+            f={f}
+            items={progress.map((img) => ({
+              id: img.id,
+              thumbUrl: `/api/uploads/${img.thumbPath}`,
+              fullUrl: `/api/uploads/${img.filePath}`,
+              caption: img.caption,
+              stage: img.stage,
+              date: (img.takenAt ?? img.createdAt).toISOString(),
+            }))}
+            actions={(item) => {
+              const img = progress.find((p) => p.id === item.id)!;
+              return (
+                <details className="mt-auto text-sm">
+                  <summary className="flex min-h-9 cursor-pointer items-center text-zinc-600 dark:text-zinc-400">{t.refs.edit}</summary>
+                  <div className="space-y-3 pb-1 pt-2">
+                    <ProgressForm
+                      action={updateProgress.bind(null, project.id, img.id)}
+                      caption={img.caption ?? ""}
+                      stage={img.stage ?? ""}
+                      takenAt={dateInput(img.takenAt ?? img.createdAt)}
+                      stages={stages}
+                    />
+                    <form action={deleteReference.bind(null, project.id, img.id)}>
+                      <ConfirmButton className="btn-danger w-full" message={t.refs.deleteConfirm}>
+                        {t.refs.delete}
+                      </ConfirmButton>
+                    </form>
+                  </div>
+                </details>
+              );
+            }}
+          />
+        ) : null}
+        <details className="card mt-3" open={progress.length === 0}>
+          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{P.addProgress}</summary>
+          <div className="pt-3">
+            <UploadForm projectId={project.id} accept={ACCEPT_ATTR} maxMb={env().MAX_UPLOAD_MB} kind="progress" groups={stages} submitLabel={P.addProgress} />
+          </div>
+        </details>
       </section>
 
       <section aria-labelledby="community-title" className="card mb-6" data-testid="community-card">

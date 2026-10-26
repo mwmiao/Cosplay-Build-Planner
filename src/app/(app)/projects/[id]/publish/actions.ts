@@ -22,6 +22,7 @@ export type PublishPreview = {
   snapshot: PublicSnapshot;
   images: PreviewImage[];
   coverId: string | null;
+  progress: { id: string; caption: string | null; stage: string | null; date: string; thumbUrl: string; fullUrl: string }[];
 };
 export type PublishState = FormState & { preview?: PublishPreview };
 
@@ -76,6 +77,7 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
     includeLinks: checkbox(formData, "includeLinks"),
   };
   const imageMode = formData.get("imageMode") === "selected" ? "selected" : "all";
+  const includeProgress = checkbox(formData, "includeProgress");
 
   // Main picture first, then reference images in the owner's order. Only this
   // project's images can be selected; part photos and guest images never.
@@ -112,6 +114,21 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
           thumbUrl: `/api/uploads/${i.thumbPath}`,
         })),
         coverId: cover?.id ?? null,
+        progress: includeProgress
+          ? (
+              await db.referenceImage.findMany({
+                where: { projectId: project.id, kind: "progress", encrypted: false },
+                orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+              })
+            ).map((i) => ({
+              id: i.id,
+              caption: i.caption,
+              stage: i.stage,
+              date: (i.takenAt ?? i.createdAt).toISOString(),
+              thumbUrl: `/api/uploads/${i.thumbPath}`,
+              fullUrl: `/api/uploads/${i.filePath}`,
+            }))
+          : [],
       },
     };
   }
@@ -124,6 +141,7 @@ export async function previewOrPublish(projectId: string, _prev: PublishState, f
     ...options,
     imageMode,
     selectedImageIds: JSON.stringify(images.map((i) => i.id)),
+    includeProgress,
     // Kept for reference only; public pages are built live.
     snapshot: JSON.stringify(snapshot),
     coverImageId: null,

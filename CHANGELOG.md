@@ -4,6 +4,34 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.7.0 — 2026-10-30
+
+### Added
+- **Progress timeline:** progress photos with date, stage and caption, shown
+  oldest to newest on the project page; optional on the public page
+  ("Show progress timeline", off by default).
+- **Events:** type, status (announced / tickets on sale / confirmed /
+  cancelled), time, tickets, country and provenance (source link, date found).
+  IberAnime Santarém 2027 added.
+- **Organisers**, with "Next edition not announced yet" for recurring events.
+- **Instagram (official API):** organisers' business/creator accounts are
+  checked daily; dates, venues, addresses and tickets are read from the post
+  text and queued for review. Needs INSTAGRAM_USER_ID / INSTAGRAM_ACCESS_TOKEN.
+- **Fill in from post text** in the event forms.
+- **Change detection:** built-in list updates refresh events you haven't
+  edited; other source changes wait for review ("Changes reported").
+- **Data quality:** Portuguese address/city tidying, fuzzy duplicate checks
+  (name + venue + dates), review flags (no venue/source, implausible dates).
+
+### Changed
+- Community pages show the main picture as a square beside the title, like
+  the project page.
+- Built-in events now live in the database, so admins can edit them.
+
+### Upgrading
+- Additive migration. Optional new settings INSTAGRAM_USER_ID and
+  INSTAGRAM_ACCESS_TOKEN.
+
 ## 1.6.0 — 2026-10-29
 
 ### Added
