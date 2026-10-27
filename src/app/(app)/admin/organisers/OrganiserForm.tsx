@@ -9,7 +9,6 @@ import type { FormState } from "@/lib/validation";
 
 export type OrganiserValues = {
   name: string;
-  instagram: string;
   website: string;
   city: string;
   usualVenue: string;
@@ -29,14 +28,15 @@ export function OrganiserForm({
 }) {
   const { t } = useI18n();
   const O = t.organisers;
-  const [state, formAction] = useFormState(action, {});
+  const [formState, formAction] = useFormState(action, {});
+  // Saving redirects back to this same page, where the state can come back undefined.
+  const state = formState ?? {};
   const e = state.errors ?? {};
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <FormMessage state={state} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={O.name} name="name" required defaultValue={initial?.name} errors={e.name} placeholder="Quimera Art Market" />
-        <Field label={O.instagram} name="instagram" defaultValue={initial?.instagram} errors={e.instagram} placeholder="@username" hint={O.instagramHint} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={O.website} name="website" type="url" inputMode="url" defaultValue={initial?.website} errors={e.website} placeholder="https://" />

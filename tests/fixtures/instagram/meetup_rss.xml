@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>meetup_rss</title>
+    <link>https://www.instagram.com/meetup_rss/</link>
+    <item>
+      <title><![CDATA[Cosplay meetup no Jardim]]></title>
+      <link>https://www.instagram.com/p/MeetRss01/</link>
+      <guid isPermaLink="false">meetup-guid-01</guid>
+      <pubDate>Tue, 06 Oct 2099 10:00:00 GMT</pubDate>
+      <description><![CDATA[Encontro cosplay! Photoshoot em grupo.<br>Jardim da Estrela, Lisboa<br>Mais info em breve]]></description>
+      <media:content url="https://example.invalid/meet.jpg" medium="image"/>
+    </item>
+  </channel>
+</rss>

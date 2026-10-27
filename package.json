@@ -1,6 +1,6 @@
 {
   "name": "cosplay-build-planner",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "private": true,
   "engines": {
     "node": ">=20.9.0"

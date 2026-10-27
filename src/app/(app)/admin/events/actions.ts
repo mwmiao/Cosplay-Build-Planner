@@ -90,12 +90,20 @@ async function organiserOrNull(id: string | undefined) {
   return (await db.organiser.findUnique({ where: { id }, select: { id: true } }))?.id ?? null;
 }
 
+/** Keeps Instagram posts in step with their event's review decision. */
+async function syncPosts(eventId: string, reviewStatus: "approved" | "rejected") {
+  await db.instagramPost.updateMany({ where: { eventId, reviewStatus: "pending_review" }, data: { reviewStatus } });
+}
+
 export async function createEvent(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
   const { t } = getI18n();
   const parsed = eventSchema(t).safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
-  await db.event.create({
+  // "Create event from post": link the Instagram post the admin started from.
+  const fromPost = idSchema.safeParse(formData.get("postId"));
+  const post = fromPost.success ? await db.instagramPost.findUnique({ where: { id: fromPost.data }, select: { id: true } }) : null;
+  const event = await db.event.create({
     data: {
       ...data(parsed.data),
       sourceUrl: parsed.data.sourceUrl ?? parsed.data.url ?? null,
@@ -107,6 +115,7 @@ export async function createEvent(_prev: FormState, formData: FormData): Promise
       createdBy: admin.id,
     },
   });
+  if (post) await db.instagramPost.update({ where: { id: post.id }, data: { eventId: event.id, reviewStatus: "approved" } });
   revalidate();
   redirect("/events");
 }
@@ -130,6 +139,7 @@ export async function updateEvent(id: string, _prev: FormState, formData: FormDa
     },
   });
   if (result.count !== 1) notFound();
+  await syncPosts(eventId.data, "approved");
   revalidate();
   redirect("/events");
 }
@@ -145,6 +155,7 @@ export async function deleteEvent(id: string): Promise<void> {
   const event = await db.event.findUnique({ where: { id: eventId.data }, select: { externalKey: true } });
   if (event?.externalKey) {
     await db.event.update({ where: { id: eventId.data }, data: { status: "rejected", pendingChange: null } });
+    await syncPosts(eventId.data, "rejected");
   } else {
     await db.event.deleteMany({ where: { id: eventId.data } });
   }
@@ -166,7 +177,7 @@ export async function suggestEvent(_prev: FormState, formData: FormData): Promis
       mapUrl: null,
       sourceUrl: parsed.data.sourceUrl ?? null,
       capturedAt: new Date(),
-      status: "needs_review",
+      status: "pending_review",
       source: "user",
       createdBy: user.id,
     },
@@ -181,9 +192,10 @@ export async function reviewEvent(id: string, approve: boolean): Promise<void> {
   const eventId = idSchema.safeParse(id);
   if (!eventId.success) notFound();
   await db.event.updateMany({
-    where: { id: eventId.data, status: "needs_review" },
+    where: { id: eventId.data, status: "pending_review" },
     data: { status: approve ? "approved" : "rejected" },
   });
+  await syncPosts(eventId.data, approve ? "approved" : "rejected");
   revalidate();
 }
 
@@ -229,10 +241,6 @@ function organiserSchema(t: ReturnType<typeof getI18n>["t"]) {
   const optional = (max: number) => z.preprocess(blank, z.string().max(max, v.tooLong(max)).optional());
   return z.object({
     name: z.string().trim().min(1, v.required(O.name)).max(120, v.tooLong(120)),
-    instagram: z.preprocess(
-      (x) => (typeof x === "string" ? x.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "") || undefined : x),
-      z.string().regex(/^[A-Za-z0-9._]{1,30}$/, O.instagramInvalid).optional(),
-    ),
     website: z.preprocess(blank, z.string().max(2000).url(v.url).refine((u) => /^https?:\/\//i.test(u), v.urlScheme).optional()),
     city: optional(80),
     usualVenue: optional(120),
@@ -250,7 +258,6 @@ export async function saveOrganiser(id: string | null, _prev: FormState, formDat
   const d = parsed.data;
   const values = {
     name: d.name,
-    instagram: d.instagram?.toLowerCase() ?? null,
     website: d.website ?? null,
     city: d.city ? normaliseCity(d.city) : null,
     usualVenue: d.usualVenue ? normaliseVenue(d.usualVenue) : null,
@@ -258,10 +265,6 @@ export async function saveOrganiser(id: string | null, _prev: FormState, formDat
     eventType: d.eventType ?? "other",
     active: d.active,
   };
-  const clash = values.instagram
-    ? await db.organiser.findFirst({ where: { instagram: values.instagram, ...(id ? { id: { not: id } } : {}) } })
-    : null;
-  if (clash) return { ok: false, errors: { instagram: [t.organisers.instagramTaken(clash.name)] } };
   if (id) {
     const organiserId = idSchema.safeParse(id);
     if (!organiserId.success) notFound();

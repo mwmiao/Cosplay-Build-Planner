@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getI18n } from "@/i18n/server";
+import { SubmitButton } from "@/components/FormBits";
+import { adminCounts } from "@/lib/adminCounts";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { markNotificationsRead } from "./instagram/actions";
 import { RemoveForm } from "./RemoveForm";
+
+type NotificationDetail = { date?: string | null; location?: string | null; username?: string | null; permalink?: string | null; preview?: string };
 
 export function generateMetadata(): Metadata {
   return { title: getI18n().t.admin.title };
@@ -13,8 +18,9 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
   await requireAdmin();
   const { t, f } = getI18n();
   const A = t.admin;
-  const [pendingEvents, publications, log] = await Promise.all([
-    db.event.count({ where: { status: "pending" } }),
+  const [counts, notifications, publications, log] = await Promise.all([
+    adminCounts(),
+    db.adminNotification.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
     db.publication.findMany({
       where: { project: { deletedAt: null } },
       orderBy: { versionAt: "desc" },
@@ -29,8 +35,67 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
       <h1 className="page-title">{A.title}</h1>
       <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{A.intro}</p>
       <Link href="/admin/events" className="card mb-6 flex items-center justify-between gap-3 p-3 text-sm font-medium hover:border-brand-400">
-        {pendingEvents ? t.events.pendingBanner(pendingEvents) : t.events.queueTitle} <span aria-hidden="true">→</span>
+        {counts.toReview ? t.events.pendingBanner(counts.toReview) : t.events.queueTitle} <span aria-hidden="true">→</span>
       </Link>
+
+      <section aria-labelledby="notifications-title" className="mb-8" data-testid="notifications">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="notifications-title" className="section-title">
+            {A.notifications} {counts.unread ? <span className="text-sm font-normal text-zinc-500">({A.unread(counts.unread)})</span> : null}
+          </h2>
+          {counts.unread ? (
+            <form action={markNotificationsRead}>
+              <SubmitButton className="btn-ghost min-h-9" pendingText="…">
+                {A.markAllRead}
+              </SubmitButton>
+            </form>
+          ) : null}
+        </div>
+        {notifications.length === 0 ? (
+          <p className="text-sm text-zinc-500">{A.noNotifications}</p>
+        ) : (
+          <ul className="space-y-2">
+            {notifications.map((n) => {
+              let d: NotificationDetail = {};
+              try {
+                d = JSON.parse(n.detail);
+              } catch {
+                d = {};
+              }
+              return (
+                <li
+                  key={n.id}
+                  data-testid="notification"
+                  className={`card space-y-1 p-3 ${n.readAt ? "" : "border-brand-300 dark:border-brand-700"}`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {n.readAt ? null : <span className="h-2 w-2 rounded-full bg-brand-500" aria-label={A.unreadLabel} />}
+                    <span className="font-semibold">{n.title}</span>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                      {(A.notificationKinds as Record<string, string>)[n.kind] ?? n.kind}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                    {[d.date, d.location, d.username ? `@${d.username}` : null].filter(Boolean).join(" · ")}
+                  </p>
+                  {d.preview ? <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.preview}</p> : null}
+                  <div className="flex flex-wrap gap-x-4 text-sm">
+                    <Link href="/admin/events" className="link">
+                      {A.review}
+                    </Link>
+                    {d.permalink ? (
+                      <a href={d.permalink} target="_blank" rel="noopener noreferrer nofollow" className="link">
+                        {t.instagram.openPost}
+                      </a>
+                    ) : null}
+                    <span className="text-zinc-500">{f.dateTime(n.createdAt)}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
       {searchParams.removed === "1" && (
         <p role="status" className="mb-4 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {A.removed}

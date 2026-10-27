@@ -1,0 +1,8 @@
+# OPTIONAL, for debugging only: exposes RSS-Bridge's web UI on the NAS itself
+# (127.0.0.1:3000, not the network). Off by default. Use it with:
+#   docker compose -f docker-compose.yml -f docker-compose.rss-bridge-debug.yml up -d
+# and remove it again afterwards with a plain `docker compose up -d`.
+services:
+  rss-bridge:
+    ports:
+      - "127.0.0.1:3000:80"

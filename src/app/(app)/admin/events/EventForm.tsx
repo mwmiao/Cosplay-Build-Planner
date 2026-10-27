@@ -40,12 +40,15 @@ export function EventForm({
   submitLabel,
   suggest = false,
   organisers = [],
+  postId,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   initial?: Partial<EventFormValues>;
   submitLabel: string;
   suggest?: boolean;
   organisers?: { id: string; name: string }[];
+  /** Instagram post this event is being created from */
+  postId?: string;
 }) {
   const { t } = useI18n();
   const E = t.events;
@@ -81,6 +84,7 @@ export function EventForm({
   return (
     <form ref={formRef} action={formAction} className="space-y-4" noValidate>
       <FormMessage state={state} />
+      {postId ? <input type="hidden" name="postId" value={postId} /> : null}
       <details className="rounded-xl border border-dashed border-zinc-300 p-3 dark:border-zinc-700" open={suggest}>
         <summary className="cursor-pointer text-sm font-semibold">{E.fillFromPost}</summary>
         <div className="mt-2 space-y-2">

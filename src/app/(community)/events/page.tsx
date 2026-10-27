@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LinkIcon, PinIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
+import { adminCounts } from "@/lib/adminCounts";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { type EventView, listEvents, mapsLink, today } from "@/lib/events";
@@ -14,9 +15,7 @@ export function generateMetadata(): Metadata {
 
 export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string; suggested?: string } }) {
   const [user, all] = await Promise.all([getCurrentUser(), listEvents()]);
-  const pendingCount = user?.isAdmin
-    ? await db.event.count({ where: { OR: [{ status: "needs_review" }, { pendingChange: { not: null }, status: { not: "rejected" } }] } })
-    : 0;
+  const pendingCount = user?.isAdmin ? (await adminCounts()).toReview : 0;
   const { t, f } = getI18n();
   const E = t.events;
   const past = searchParams.when === "past";

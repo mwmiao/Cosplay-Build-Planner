@@ -38,7 +38,13 @@ async function syncOrganisers() {
   if (flag) return;
   for (const o of BUILTIN_ORGANISERS) {
     const exists = await db.organiser.findFirst({ where: { name: o.name } });
-    if (!exists) await db.organiser.create({ data: { ...o } });
+    if (exists) continue;
+    const { instagram, ...fields } = o;
+    const organiser = await db.organiser.create({ data: fields });
+    // Its Instagram account is watched by the Instagram monitor.
+    if (instagram && !(await db.instagramSource.findUnique({ where: { username: instagram } }))) {
+      await db.instagramSource.create({ data: { username: instagram, displayName: o.name, organiserId: organiser.id } });
+    }
   }
   await db.setting.create({ data: { key: "organisers.seeded", value: new Date().toISOString() } });
 }

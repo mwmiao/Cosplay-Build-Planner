@@ -3,16 +3,13 @@ import pkg from "../../../package.json";
 import { db } from "../db";
 import { diffFields } from "./diff";
 import { findSimilarEvents, today } from "./index";
-import { InstagramError, fetchAccount, instagramConfig, postsToEvents } from "./instagram";
 import { normaliseAddress, normaliseCity, normaliseVenue } from "./names";
 import { type FoundEvent, parseJsonLd, parseViralAgenda, robotsAllows } from "./parse";
 
-// Daily check for new events. Everything found goes to the admin's review
-// queue (status "needs_review"); nothing is published without approval.
-// - Instagram: organisers' business/creator accounts through Meta's official
-//   API (see instagram.ts). Main source for small markets and meet-ups.
-// - Public listings that allow it: robots.txt honoured, one request per page,
-//   a clear User-Agent, size/time limits.
+// Daily check of public event listings. Everything found goes to the admin's
+// review queue (status "pending_review"); nothing is published without
+// approval. robots.txt honoured, one request per page, a clear User-Agent,
+// size/time limits. Instagram accounts are monitored separately (lib/instagram).
 // Events already known are re-checked: if the source now says something
 // different (date, venue…), the change is offered for review, never applied
 // silently to an approved event.
@@ -72,7 +69,7 @@ type Incoming = {
   tickets?: string;
   url?: string;
   posterUrl?: string;
-  source: "sync" | "instagram";
+  source: "sync";
   eventType?: string;
   organiserId?: string;
 };
@@ -104,7 +101,7 @@ export async function recordFound(e: Incoming): Promise<"added" | "changed" | "k
     if (existing.status === "rejected") return "known";
     const changes = diffFields(existing, { startDate: data.startDate, endDate: data.endDate, venue: data.venue, address: data.address, city: data.city, time: data.time });
     if (!Object.keys(changes).length) return "known";
-    if (existing.status === "needs_review") {
+    if (existing.status === "pending_review") {
       await db.event.update({ where: { id: existing.id }, data: { ...data, capturedAt: new Date() } });
       return "changed";
     }
@@ -122,7 +119,7 @@ export async function recordFound(e: Incoming): Promise<"added" | "changed" | "k
       sourceUrl: e.url?.slice(0, 2000) ?? null,
       posterUrl: e.posterUrl?.slice(0, 2000) ?? null,
       capturedAt: new Date(),
-      status: "needs_review",
+      status: "pending_review",
       source: e.source,
       eventType: e.eventType ?? "other",
       externalKey: e.key.slice(0, 300),
@@ -132,42 +129,9 @@ export async function recordFound(e: Incoming): Promise<"added" | "changed" | "k
   return "added";
 }
 
-async function syncInstagram(results: SyncResult[]) {
-  const organisers = await db.organiser.findMany({ where: { active: true, instagram: { not: null } }, orderBy: { name: "asc" } });
-  if (!organisers.length) return;
-  if (!instagramConfig()) {
-    results.push({ source: "instagram", label: "Instagram", ok: false, found: 0, added: 0, error: "notSetUp" });
-    return;
-  }
-  for (const o of organisers) {
-    const result: SyncResult = { source: `instagram:${o.instagram}`, label: `Instagram · @${o.instagram}`, ok: false, found: 0, added: 0, changed: 0 };
-    try {
-      const account = await fetchAccount(o.instagram!);
-      const events = postsToEvents(account, o);
-      result.found = events.length;
-      for (const ev of events) {
-        const outcome = await recordFound({ ...ev, name: ev.name ?? o.name, source: "instagram", eventType: o.eventType, organiserId: o.id });
-        if (outcome === "added") result.added += 1;
-        if (outcome === "changed") result.changed! += 1;
-      }
-      result.ok = true;
-      await db.organiser.update({ where: { id: o.id }, data: { lastCheckedAt: new Date(), lastError: null } });
-    } catch (err) {
-      result.error = err instanceof InstagramError ? err.message : "Failed";
-      await db.organiser.update({ where: { id: o.id }, data: { lastCheckedAt: new Date(), lastError: result.error } });
-      results.push(result);
-      if (err instanceof InstagramError && (err.kind === "token" || err.kind === "rateLimit")) break; // no point continuing
-      continue;
-    }
-    results.push(result);
-    await new Promise((r) => setTimeout(r, 1500)); // gentle pacing between accounts
-  }
-}
-
-/** Checks every source once: Instagram organisers first, then public listings. */
+/** Checks every public listing once. (Instagram is monitored separately: lib/instagram.) */
 export async function syncEvents(): Promise<SyncStatus> {
   const results: SyncResult[] = [];
-  await syncInstagram(results);
   const robotsCache = new Map<string, string>();
   for (const source of SOURCES) {
     const result: SyncResult = { source: source.id, label: source.label, ok: false, found: 0, added: 0, changed: 0 };

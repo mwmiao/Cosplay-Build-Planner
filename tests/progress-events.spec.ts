@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { extractEvent } from "../src/lib/events/caption";
 import { diffFields } from "../src/lib/events/diff";
-import { InstagramError, parseBusinessDiscovery, postsToEvents } from "../src/lib/events/instagram";
 import { nameSimilarity, normaliseAddress, normaliseCity } from "../src/lib/events/names";
 import { PNG, asNewPerson, createProject, newUser, register } from "./helpers";
 
@@ -91,7 +90,7 @@ test("suggest form fills in from a pasted Instagram caption", async ({ page }) =
   await expect(field("tickets")).toHaveValue("Entrada livre");
 });
 
-test("event data helpers: captions, addresses, duplicates, change diffs, Instagram responses", () => {
+test("event data helpers: captions, addresses, duplicates, change diffs", () => {
   const ref = new Date("2026-10-07T12:00:00Z");
   expect(extractEvent("Feira\n2 a 4 Dez", ref)).toMatchObject({ start: "2026-12-02", end: "2026-12-04" });
   expect(extractEvent("Expo\nDia 21 e 22/11, 10h-18h", ref)).toMatchObject({ start: "2026-11-21", end: "2026-11-22", time: "10h–18h" });
@@ -111,43 +110,4 @@ test("event data helpers: captions, addresses, duplicates, change diffs, Instagr
     startDate: ["2026-10-29", "2026-10-30"],
   });
 
-  const account = parseBusinessDiscovery({
-    business_discovery: {
-      username: "quimera.artmarket",
-      media: {
-        data: [
-          {
-            id: "1",
-            timestamp: "2026-10-07T10:00:00+0000",
-            permalink: "https://www.instagram.com/p/abc/",
-            media_type: "IMAGE",
-            media_url: "https://cdn.example/x.jpg",
-            caption: "✨ QUIMERA ART MARKET ✨\n🗓 29, 30 e 31 de outubro\n📍 Rua de Miguel Bombarda 285, Porto",
-          },
-          { id: "2", timestamp: "2026-10-01T10:00:00+0000", caption: "Obrigado a todos! 💜" },
-          { id: "3", timestamp: "2026-01-01T10:00:00+0000", caption: "Edição de 3 de janeiro" },
-        ],
-      },
-    },
-  });
-  const events = postsToEvents(account, { name: "Quimera Art Market", city: "Porto", usualVenue: "CCBombarda", usualAddress: null }, ref);
-  expect(events).toHaveLength(1); // posts without a date, or already over, are ignored
-  expect(events[0]).toMatchObject({
-    key: "instagram:1",
-    start: "2026-10-29",
-    end: "2026-10-31",
-    address: "Rua de Miguel Bombarda 285",
-    city: "Porto",
-    url: "https://www.instagram.com/p/abc/",
-    posterUrl: "https://cdn.example/x.jpg",
-  });
-  let caught: unknown;
-  try {
-    parseBusinessDiscovery({ error: { code: 190, message: "secret token text" } }, 400);
-  } catch (err) {
-    caught = err;
-  }
-  expect(caught).toBeInstanceOf(InstagramError);
-  expect((caught as InstagramError).kind).toBe("token");
-  expect((caught as Error).message).not.toContain("secret");
 });

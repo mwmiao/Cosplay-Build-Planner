@@ -30,11 +30,14 @@ export function Sidebar({
   userName,
   isAdmin = false,
   isGuest = false,
+  adminBadge = 0,
   signOut,
 }: {
   userName: string;
   isAdmin?: boolean;
   isGuest?: boolean;
+  /** Admins: unread notifications + items to review */
+  adminBadge?: number;
   signOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
@@ -75,6 +78,15 @@ export function Sidebar({
             className="mb-1 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-red-700 hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
           >
             {t.admin.title}
+            {adminBadge ? (
+              <span
+                className="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white"
+                data-testid="admin-badge"
+                aria-label={t.admin.badgeLabel(adminBadge)}
+              >
+                {adminBadge > 99 ? "99+" : adminBadge}
+              </span>
+            ) : null}
           </Link>
         ) : null}
         <Link
@@ -106,7 +118,8 @@ export function Sidebar({
   );
 }
 
-export function BottomNav() {
+/** Phone tab bar. Admins see the number of things waiting on the Settings tab (where Moderation is). */
+export function BottomNav({ adminBadge = 0 }: { adminBadge?: number }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const items = useItems().filter((i) => !i.sidebarOnly);
@@ -127,7 +140,18 @@ export function BottomNav() {
                   active ? "text-brand-600 dark:text-brand-400" : "text-zinc-500 dark:text-zinc-400"
                 }`}
               >
-                <Icon className="h-6 w-6" />
+                <span className="relative">
+                  <Icon className="h-6 w-6" />
+                  {href === "/settings" && adminBadge ? (
+                    <span
+                      className="absolute -right-2.5 -top-1.5 rounded-full bg-red-600 px-1.5 text-[10px] font-bold leading-4 text-white"
+                      data-testid="admin-badge-mobile"
+                      aria-label={t.admin.badgeLabel(adminBadge)}
+                    >
+                      {adminBadge > 99 ? "99+" : adminBadge}
+                    </span>
+                  ) : null}
+                </span>
                 {label}
               </Link>
             </li>

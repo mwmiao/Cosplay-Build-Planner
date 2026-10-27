@@ -42,7 +42,9 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 | `PUID` / `PGID` | no | `1000` / `1000` | (Docker) The user and group that will own the files in the data folder. |
 | `BACKUP_INTERVAL_HOURS` | no | `24` | (Docker) How often to back up the database automatically. `0` turns it off. |
 | `BACKUP_KEEP` | no | `14` | How many automatic database backups to keep. |
-| `INSTAGRAM_USER_ID`, `INSTAGRAM_ACCESS_TOKEN` | no | empty | Instagram API for the Events tab (see [Instagram](#instagram-optional-one-time-setup)). Keep the token secret. |
+| `RSS_BRIDGE_BASE_URL` | no | `http://rss-bridge:80` in Docker Compose | RSS-Bridge used by the [Instagram monitor](#instagram-monitor). |
+| `INSTAGRAM_POLL_INTERVAL_MINUTES` | no | `30` | How often each Instagram source is checked (minimum 5). |
+| `INSTAGRAM_MONITOR_ENABLED` | no | `true` | `false` turns off automatic Instagram checks (the admin buttons still work). |
 | `EMAIL_OUTBOX_DIR` | **testing only** | empty | Writes emails to files instead of sending them (used by the automated tests). Never set this in production. |
 
 `APP_PASSWORD`, `SESSION_SECRET` and `SEED_EXAMPLE` from 1.2, and `REGISTRATION_CODE` from 1.3, are no longer used.
@@ -90,30 +92,47 @@ The **Events** tab lists cosplay-friendly events in Portugal (Lisboa Games Week,
 
 - **What an event holds:** dates (multi-day up to 14 days), time, venue, address, city, country, tickets, type (convention, market, gaming, workshop, other), status (**announced**, **tickets on sale**, **confirmed**, **cancelled**) and its source with the date it was found. The year and "past" come from the dates. Past events stay in the **Past** archive.
 - **Built-in list:** researched from organisers' websites and event press (`src/lib/events/builtin.ts`), copied into the database. When an update changes the list, events you haven't edited are refreshed automatically; for events you edited, the change waits under **Suggested events → Changes reported** instead of overwriting your edit. Deleting a built-in or found event hides it for good.
-- **Organisers** (**Suggested events → Organisers**): recurring events and who runs them, with their Instagram username, usual venue and city. Organisers with no upcoming date are listed under **Next edition not announced yet**; no dates are guessed.
-- **Daily check:** organisers' **Instagram** posts (see below), plus public listings that allow it (Viral Agenda's cosplay and anime pages, schema.org event data such as XL Games; `robots.txt` honoured). Dates, times, venues, addresses and tickets are read from the post text. Everything new goes to **Suggested events** as *needs review*, with the post link, poster and the date it was found. If a source later reports a different date or venue for a published event, it shows up as a change to apply or dismiss.
+- **Organisers** (**Suggested events → Organisers**): recurring events and who runs them, with their usual venue and city, plus the Instagram sources watched for them. Organisers with no upcoming date are listed under **Next edition not announced yet**; no dates are guessed.
+- **Instagram:** public accounts watched every 30 minutes (see [Instagram monitor](#instagram-monitor)).
+- **Daily check:** public listings that allow it (Viral Agenda's cosplay and anime pages, schema.org event data such as XL Games; `robots.txt` honoured). Dates, times, venues, addresses and tickets are read from the post text. Everything new goes to **Suggested events** as *pending review*, with the post link, poster and the date it was found. If a source later reports a different date or venue for a published event, it shows up as a change to apply or dismiss.
 - **Data quality:** addresses are tidied ("R." → Rua, "Av." → Avenida, postal codes 0000-000), city names standardised, possible duplicates (similar name and venue within 3 days) flagged, and events missing a venue or source marked for review.
 - **Suggestions:** anyone with an account can **Suggest event**, pasting the Instagram caption into **Fill in from post text** to fill the form. An admin approves, edits or rejects it. Rejected events aren't suggested again.
 - **Maps:** each event with a venue has an **Open in Maps** button. It searches Google Maps for the venue exactly as the organiser names it (plus address and city) and opens the Maps app on phones. Admins can paste an exact map link to override the search.
 - **Admins** can also **Add event** directly and edit or delete the events they added.
 - Upcoming event names are suggested in a project's *Convention / event* field.
 
-### Instagram (optional, one-time setup)
+### Instagram monitor
 
-The app reads organisers' public posts through Meta's official Instagram API ("business discovery"); there's no scraping. It works for **business and creator accounts** only: personal and age-gated accounts can't be read. You need:
+The app watches public Instagram accounts of organisers, conventions, venues and communities for event announcements. It reads them through a **self-hosted [RSS-Bridge](https://github.com/RSS-Bridge/rss-bridge)** that runs next to the app. It uses no Instagram login, token or official API, and no browser automation.
 
-1. **Your own Instagram professional account** (Business or Creator), linked to a Facebook Page.
-2. **A Meta app** at developers.facebook.com with the Instagram API (Facebook Login) product.
-3. **An access token** for your account with the `instagram_basic` and `pages_show_list` permissions, exchanged for a **long-lived token**. Long-lived tokens expire after about 60 days unless refreshed; the Organisers page then shows "Access token expired or invalid".
-4. **Your Instagram user ID:** `GET /me/accounts` gives your Page, then `GET /{page-id}?fields=instagram_business_account`.
-5. **Add both to `.env` and redeploy:**
-   ```bash
-   INSTAGRAM_USER_ID=1784…
-   INSTAGRAM_ACCESS_TOKEN=EAAG…
-   ```
-6. **Add each organiser's username** under **Organisers**.
+**How it works**
+1. **Sources** (**Pending review → Organisers → Instagram sources**): add a username (with or without `@`, or the profile link), optionally linked to an organiser. Each source can be paused, tested or checked on demand.
+2. **Checks:** every `INSTAGRAM_POLL_INTERVAL_MINUTES` (default 30) the app asks RSS-Bridge for each due source's feed (Atom). Feed responses are cached for 5 minutes. A source is only marked up to date when its check succeeds. After a failure it waits longer each time (30 min, 1 h, 2 h… at most a day) and shows the error.
+3. **New posts** are stored first, with the original caption, link, date and image, and with duplicates skipped by post id, then by link. Then the post text is read with the same deterministic Portuguese date/place reader as **Fill in from post text**: keywords (cosplay, convenção, evento, encontro, photoshoot, concurso, workshop, bilhetes…), dates, times, venue, address, city, tickets and a ticket link. No AI service is used.
+4. **Review:** posts that look like events become events with status **pending review**, hidden until an admin approves them. Posts with weaker signals and no date appear as **Possible event — needs review**. A post about an event that already exists (same organiser or similar name, within two weeks) becomes an **update** to apply or dismiss, not a duplicate. Posts matching an event you rejected are kept but not queued again. **Pending review** shows the source post, the details read, the confidence and the reasons, with **Approve**, **Edit / Create event**, **Reject** and **Not an event**.
+5. **Notifications:** each new event, update or possible event creates one admin-only notification (on the Moderation page, with a count on the Moderation link, or on the Settings tab on phones). Approving an event doesn't notify anyone else.
 
-Each organiser costs one API request per day. Only the post link, the details read from the text and the poster URL (for review) are stored; posts aren't copied.
+**Start RSS-Bridge**
+- **Docker Compose (NAS):** `docker-compose.yml` includes an `rss-bridge` service with only the Instagram bridge enabled. It has **no host port**: only the app reaches it, at `http://rss-bridge:80`. Nothing else to set up.
+- **Local development:** run it separately and point the app to it:
+  ```bash
+  docker run -d --name rss-bridge -p 127.0.0.1:3000:80 -e RSSBRIDGE_system_enabled_bridges=Instagram rssbridge/rss-bridge:latest
+  ```
+  Then set `RSS_BRIDGE_BASE_URL=http://localhost:3000` in `.env`. Without Docker, choose the **Mock** provider for a source (development only) to get sample posts.
+- **Debugging RSS-Bridge on the NAS (optional):** `docker compose -f docker-compose.yml -f docker-compose.rss-bridge-debug.yml up -d` opens its web UI at `http://127.0.0.1:3000` on the NAS itself only. Run a plain `docker compose up -d` afterwards to close it again.
+
+**Add a source and check it works**
+1. **Pending review → Organisers → Add Instagram source**: enter the username and save.
+2. Press **Test feed**. It fetches and validates the feed without storing anything, then reports the number of posts and the latest post date, or the error (e.g. "Can't reach http://rss-bridge", "Feed returned HTTP 500: …", "isn't valid RSS/Atom").
+3. Press **Check now** to store the posts and queue any events. The source shows **Healthy**, the latest post id, and how many posts are stored.
+
+**If a feed breaks**
+The source shows **Error** with the reason and the next try; other sources keep working. Use **Add manual post** to paste a post link and its caption (and optionally date and image). It goes through the same detection and review, so nothing is missed while a feed is down.
+
+**Important: RSS-Bridge and Instagram.** RSS-Bridge reads Instagram's public web endpoints the way a browser would. Instagram often blocks such requests when they aren't logged in, sometimes per IP address and sometimes intermittently. Whether a given profile works from your NAS can only be found out with **Test feed**. This app deliberately doesn't configure an Instagram login in RSS-Bridge. When a feed doesn't work, use manual posts, or switch the source to another provider.
+
+**Replacing RSS-Bridge later**
+Feed providers are a small interface (`src/lib/instagram/types.ts`): `buildFeedUrl(username)` and `fetchRecentPosts(source)` returning normalised posts. To use RSS.app, Apify or another service, implement it in `src/lib/instagram/providers.ts`, add it to `PROVIDERS`, and pick it per source (or paste the service's feed URL into a source's **Feed URL**: any RSS/Atom feed works with the default provider). Storage, detection, review and notifications don't change.
 
 ---
 

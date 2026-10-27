@@ -4,6 +4,37 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.7.1 — 2026-10-31
+
+### Changed
+- **Instagram monitoring without Instagram login or API:** public accounts are
+  read through a self-hosted RSS-Bridge (new `rss-bridge` service in Docker
+  Compose, internal only). The Graph API integration and
+  INSTAGRAM_USER_ID / INSTAGRAM_ACCESS_TOKEN are removed.
+- Events waiting for review now have status `pending_review`.
+
+### Added
+- **Instagram sources** (username, type, organiser, provider, feed URL,
+  health, latest post) with Check now, Check all, **Test feed** (validates
+  only) and **Add manual post** as a fallback.
+- Monitor every INSTAGRAM_POLL_INTERVAL_MINUTES (30): per-source lock,
+  exponential backoff after failures, 5-minute feed cache, duplicate checks
+  by post id then permalink, raw posts stored with the original caption.
+- Deterministic event detection with confidence and reasons; new events are
+  **pending review**, weak matches are "Possible event — needs review",
+  posts about known events become **updates**; rejected events don't come back.
+- Admin-only **notifications** with an unread badge (Moderation link; Settings
+  tab on phones).
+- Provider interface for swapping RSS-Bridge for RSS.app/Apify later; mock
+  provider and an RSS-Bridge stand-in for tests.
+
+### Fixed
+- The Moderation page's "waiting for review" count was always 0.
+
+### Upgrading
+- Additive migration. Instagram usernames saved on organisers become sources.
+  Add the new `rss-bridge` service by updating `docker-compose.yml` (see README).
+
 ## 1.7.0 — 2026-10-30
 
 ### Added

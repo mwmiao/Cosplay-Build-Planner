@@ -26,7 +26,7 @@ export default async function EditEventPage({ params }: { params: { id: string }
     <>
       <BackLink href="/events">{E.title}</BackLink>
       <h1 className="page-title mb-4">{E.edit}</h1>
-      {event.status === "needs_review" ? (
+      {event.status === "pending_review" ? (
         <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
           {E.pendingEditNote}
           {event.sourceUrl ? (
@@ -42,7 +42,7 @@ export default async function EditEventPage({ params }: { params: { id: string }
       <div className="card">
         <EventForm
           action={updateEvent.bind(null, event.id)}
-          submitLabel={event.status === "needs_review" ? E.saveAndApprove : E.save}
+          submitLabel={event.status === "pending_review" ? E.saveAndApprove : E.save}
           organisers={await db.organiser.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })}
           initial={{
             name: event.name,

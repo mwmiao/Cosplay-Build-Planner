@@ -44,17 +44,38 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_SECURE: ${SMTP_SECURE:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
-      # Optional: Instagram API for the Events tab (see README → Events → Instagram).
-      INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-}
-      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+      # Instagram monitor (Events): reads public accounts through the rss-bridge
+      # service below. See README → Events → Instagram monitor.
+      RSS_BRIDGE_BASE_URL: ${RSS_BRIDGE_BASE_URL:-http://rss-bridge:80}
+      INSTAGRAM_POLL_INTERVAL_MINUTES: ${INSTAGRAM_POLL_INTERVAL_MINUTES:-30}
+      INSTAGRAM_MONITOR_ENABLED: ${INSTAGRAM_MONITOR_ENABLED:-true}
     ports:
       - "1337:1337"
     volumes:
       # Everything the app stores: cosplay.db, uploads/, backups/.
       # Relative to this file's folder, so it works on any volume.
       - ${DATA_PATH:-./data}:/app/data
+    depends_on:
+      - rss-bridge
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Self-hosted RSS-Bridge (https://github.com/RSS-Bridge/rss-bridge): turns public
+  # Instagram accounts into feeds for the Events monitor. Internal only: no host
+  # port, so only the app (http://rss-bridge:80) can reach it. To open its web UI
+  # for debugging, add docker-compose.rss-bridge-debug.yml (see README).
+  rss-bridge:
+    image: rssbridge/rss-bridge:latest
+    container_name: cosplay-rss-bridge
+    restart: unless-stopped
+    environment:
+      # Only the Instagram bridge is enabled.
+      RSSBRIDGE_system_enabled_bridges: Instagram
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

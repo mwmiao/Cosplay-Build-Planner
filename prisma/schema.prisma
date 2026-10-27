@@ -380,10 +380,14 @@ model Event {
   eventType      String     @default("other")
   /// announced | tickets | confirmed | cancelled (how firm the date is)
   announceStatus String     @default("announced")
-  /// Review: approved | needs_review | rejected (rejected = hidden, and never re-added)
+  /// Review: approved | pending_review | rejected (rejected = hidden, and never re-added).
+  /// Only "approved" events are ever shown publicly.
   status         String     @default("approved")
   /// builtin | admin | user | sync | instagram
   source         String     @default("admin")
+  /// Instagram-detected events: how sure the detection was (0–100) and why
+  confidence     Int?
+  confidenceNote String?
   /// Provenance: where it was found and when
   sourceUrl      String?
   capturedAt     DateTime?
@@ -403,7 +407,9 @@ model Event {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  organiser Organiser? @relation(fields: [organiserId], references: [id], onDelete: SetNull)
+  organiser Organiser?      @relation(fields: [organiserId], references: [id], onDelete: SetNull)
+  posts     InstagramPost[]
+  updates   EventUpdate[]
 
   @@index([status, startDate])
 }
@@ -414,7 +420,7 @@ model Event {
 model Organiser {
   id            String    @id @default(cuid())
   name          String
-  /// Instagram username (business/creator account), without @
+  /// Before 1.7.1 (Graph API). Copied into InstagramSource; no longer used.
   instagram     String?   @unique
   website       String?
   city          String?
@@ -428,5 +434,110 @@ model Organiser {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  events Event[]
+  events  Event[]
+  sources InstagramSource[]
+}
+
+/// Public Instagram accounts watched for event announcements (through a feed
+/// provider such as a self-hosted RSS-Bridge; no Instagram login or API).
+model InstagramSource {
+  id                     String    @id @default(cuid())
+  /// Without the leading "@", lowercase
+  username               String    @unique
+  displayName            String?
+  /// organiser | convention | venue | photographer | community | other
+  sourceType             String    @default("organiser")
+  active                 Boolean   @default(true)
+  /// Manual feed URL; when empty the provider builds one (e.g. RSS-Bridge)
+  feedUrl                String?
+  /// rss-bridge | mock (development only)
+  providerName           String    @default("rss-bridge")
+  organiserId            String?
+  lastCheckedAt          DateTime?
+  lastSuccessfulCheckAt  DateTime?
+  lastError              String?
+  latestSeenPostId       String?
+  /// Failed checks in a row (backoff) and when the next automatic check is due
+  consecutiveFailures    Int       @default(0)
+  nextCheckAt            DateTime?
+  /// Per-source lock so overlapping runs never check the same source twice
+  lockedUntil            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  organiser Organiser?      @relation(fields: [organiserId], references: [id], onDelete: SetNull)
+  posts     InstagramPost[]
+}
+
+/// Every post seen from a source (or added by hand), stored before any
+/// detection, with the original caption and link kept for review.
+model InstagramPost {
+  id            String    @id @default(cuid())
+  sourceId      String?
+  /// Post id / feed GUID (first choice for duplicates)
+  externalId    String?
+  /// Fallback identity for duplicates
+  permalink     String?
+  title         String?
+  caption       String?
+  publishedAt   DateTime?
+  imageUrl      String?
+  /// The raw feed entry (XML), for debugging the provider
+  raw           String?
+  /// rss-bridge | manual | mock
+  provider      String
+  /// pending_review | approved | rejected | not_event | ignored | update
+  reviewStatus  String    @default("pending_review")
+  /// 0–100 and the reasons, from the deterministic detector
+  confidence    Int       @default(0)
+  reason        String?
+  /// JSON of the fields the detector read (name, dates, venue…)
+  extracted     String?
+  eventId       String?
+  createdAt     DateTime  @default(now())
+
+  source        InstagramSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  event         Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  update        EventUpdate?
+  notifications AdminNotification[]
+
+  @@unique([sourceId, externalId])
+  @@index([permalink])
+  @@index([reviewStatus, createdAt])
+}
+
+/// A post about an event that already exists: the proposed changes wait for an admin.
+model EventUpdate {
+  id        String    @id @default(cuid())
+  eventId   String
+  postId    String    @unique
+  /// JSON: { field: [current, proposed] }
+  changes   String
+  /// pending_review | applied | dismissed
+  status    String    @default("pending_review")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  event Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  post  InstagramPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+/// In-app notifications for admins only (Instagram monitor results).
+model AdminNotification {
+  id        String    @id @default(cuid())
+  /// new_event | event_update | possible_event
+  kind      String
+  /// One notification per post at most
+  postId    String?   @unique
+  title     String
+  /// JSON: { date, location, username, permalink, preview }
+  detail    String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  post InstagramPost? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([readAt, createdAt])
 }

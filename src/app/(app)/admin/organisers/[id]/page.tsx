@@ -31,7 +31,6 @@ export default async function EditOrganiserPage({ params }: { params: { id: stri
           submitLabel={t.common.save}
           initial={{
             name: o.name,
-            instagram: o.instagram ?? "",
             website: o.website ?? "",
             city: o.city ?? "",
             usualVenue: o.usualVenue ?? "",

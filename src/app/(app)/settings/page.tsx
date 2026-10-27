@@ -4,6 +4,7 @@ import { ThemePicker } from "@/components/ThemePicker";
 import pkg from "../../../../package.json";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
+import { adminCounts } from "@/lib/adminCounts";
 import { requireUser } from "@/lib/auth";
 import { getMoneyContext } from "@/lib/queries";
 import { crossRate } from "@/lib/rates";
@@ -18,6 +19,7 @@ export function generateMetadata(): Metadata {
 
 export default async function SettingsPage() {
   const user = await requireUser();
+  const adminWaiting = user.isAdmin ? Object.values(await adminCounts()).reduce((a, b) => a + b, 0) : 0;
   const { t, f } = getI18n();
   const S = t.settings;
   const [deleted, counts] = await Promise.all([
@@ -182,8 +184,13 @@ export default async function SettingsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {user.isAdmin ? (
-            <Link href="/admin" className="btn-secondary">
+            <Link href="/admin" className="btn-secondary" data-testid="settings-admin-link">
               {t.admin.title}
+              {adminWaiting ? (
+                <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white" aria-label={t.admin.badgeLabel(adminWaiting)}>
+                  {adminWaiting > 99 ? "99+" : adminWaiting}
+                </span>
+              ) : null}
             </Link>
           ) : null}
           <Link href="/account" className="btn-secondary">
