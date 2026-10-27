@@ -13,6 +13,24 @@ export const dynamic = "force-dynamic";
 
 const KINDS = ["reference", "part", "cover", "progress"] as const;
 type Kind = (typeof KINDS)[number];
+const MB = 1024 * 1024;
+
+/** The request with its body stopped past `max` bytes (for bodies sent without a Content-Length). */
+function capped(req: Request, max: number, onExceeded: () => void): Request {
+  let seen = 0;
+  const body = req.body?.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (seen > max) {
+          onExceeded();
+          controller.error(new Error("Request too large"));
+        } else controller.enqueue(chunk);
+      },
+    }),
+  );
+  return new Request(req.url, { method: "POST", headers: req.headers, body, duplex: "half" } as RequestInit);
+}
 
 /**
  * Multipart upload of project images: reference images (several), a part's
@@ -36,10 +54,36 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { t } = getI18n();
   const E = t.refs.errors;
 
+  // Refuse an oversized request before reading it: formData() holds the whole
+  // body in memory. Up to 20 images of MAX_UPLOAD_MB each, plus 1 MB for the
+  // other fields; for guests, no more than their remaining storage.
+  const accountMax = 20 * env().MAX_UPLOAD_MB * MB + MB;
+  const guestMax = user.isGuest ? Math.max(0, GUEST_MAX_BYTES - (await guestUsage(user.id)).bytes) + MB : Number.POSITIVE_INFINITY;
+  const maxBody = Math.min(accountMax, guestMax);
+  const tooLarge = () => {
+    const message = guestMax < accountMax ? t.guest.storageFull(Math.round(GUEST_MAX_BYTES / MB)) : E.requestTooLarge(Math.round(accountMax / MB));
+    // The kind of upload is in the body, so go back to the page the form was on
+    // (only its path, and only a page of this project).
+    let path: string | null = null;
+    try {
+      const { pathname } = new URL(req.headers.get("referer") ?? "");
+      if (pathname.startsWith(`/projects/${projectId}`)) path = pathname;
+    } catch {
+      path = null;
+    }
+    return path
+      ? new NextResponse(null, { status: 303, headers: { Location: `${path}?${new URLSearchParams({ uploadError: message })}` } })
+      : NextResponse.json({ error: message }, { status: 413 });
+  };
+  const length = req.headers.get("content-length");
+  if (length !== null && Number(length) > maxBody) return tooLarge();
+
   let form: FormData;
+  let exceeded = false;
   try {
-    form = await req.formData();
+    form = await (length === null ? capped(req, maxBody, () => (exceeded = true)) : req).formData();
   } catch {
+    if (exceeded) return tooLarge();
     form = new FormData();
   }
   const kindValue = form.get("kind");

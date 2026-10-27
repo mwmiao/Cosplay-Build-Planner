@@ -98,7 +98,7 @@ test("monitor: test feed stores nothing; check creates a pending event + notific
   await a.reload();
   await expect(source).toContainText("Posts stored0");
   await ready(a, "/admin");
-  await expect(a.getByTestId("notification")).toHaveCount(0);
+  await expect(a.getByTestId("notification").filter({ hasText: "@quimera_test" })).toHaveCount(0);
 
   // Check now: posts stored, event detected, pending (not public), admin notified.
   await ready(a, "/admin/organisers");

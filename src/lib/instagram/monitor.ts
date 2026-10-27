@@ -1,6 +1,7 @@
 import "server-only";
 import type { InstagramPost, InstagramSource } from "@prisma/client";
 import { db } from "../db";
+import { safeHttpUrl } from "../safeUrl";
 import { today } from "../events";
 import { diffFields } from "../events/diff";
 import { nameSimilarity, normaliseAddress, normaliseCity, normaliseName, normaliseVenue } from "../events/names";
@@ -55,11 +56,11 @@ export async function storePost(sourceId: string | null, input: InstagramPostInp
       data: {
         sourceId,
         externalId: input.externalId?.slice(0, 300) ?? null,
-        permalink: input.permalink?.slice(0, 2000) ?? null,
+        permalink: safeHttpUrl(input.permalink)?.slice(0, 2000) ?? null,
         title: input.title?.slice(0, 300) ?? null,
         caption: input.caption?.slice(0, 10_000) ?? null,
         publishedAt: input.publishedAt,
-        imageUrl: input.imageUrl?.slice(0, 2000) ?? null,
+        imageUrl: safeHttpUrl(input.imageUrl)?.slice(0, 2000) ?? null,
         raw: input.raw,
         provider,
         reviewStatus: "pending_review",

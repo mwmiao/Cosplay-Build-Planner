@@ -133,6 +133,9 @@ model ReferenceImage {
 
   @@index([projectId, kind, position])
   @@index([partId])
+  /// Image requests look the file up by path
+  @@index([filePath])
+  @@index([thumbPath])
 }
 
 model ShoppingListItem {

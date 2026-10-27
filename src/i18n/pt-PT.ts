@@ -329,6 +329,7 @@ export const ptPT: Dict = {
       notSaved: "não foi possível guardar.",
       noUpload: "O carregamento falhou. Tente novamente.",
       tooMany: "Carregue até 20 imagens de cada vez.",
+      requestTooLarge: (mb: number) => `O envio é demasiado grande (mais de ${mb} MB no total). Carregue menos imagens de cada vez.`,
       checkFields: "Verifique a legenda e a ligação.",
     },
   },

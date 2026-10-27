@@ -24,5 +24,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|icons/|manifest.webmanifest).*)"],
+  // Not the image upload route: when middleware runs on a POST, Next.js holds
+  // the whole body in memory until it has all arrived, before the route can
+  // refuse an oversized upload. The route checks the session itself.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|icons/|manifest.webmanifest|api/projects/[^/]+/references).*)"],
 };

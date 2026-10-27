@@ -1,4 +1,5 @@
 import { normaliseName } from "./names";
+import { safeHttpUrl } from "../safeUrl";
 
 // Pure parsing helpers for the daily events check (no server or database
 // access, so they can be tested on their own).
@@ -38,7 +39,8 @@ export function parseViralAgenda(html: string, pageUrl: string): FoundEvent[] {
     const title = /class="viral-linked"[^>]*aria-label="([^"]+)"/.exec(item)?.[1] ?? /viral-event-title[^>]*>[\s\S]*?<span>([\s\S]*?)<\/span>/.exec(item)?.[1];
     const city = /<span class="varios node-name">([\s\S]*?)<\/span>/.exec(item)?.[1];
     const venue = /class="viral-event-place"[^>]*>\s*<span>([\s\S]*?)<\/span>/.exec(item)?.[1];
-    if (!id || !path || !start || !title || !city) continue;
+    const link = safeHttpUrl(path, pageUrl);
+    if (!id || !link || !start || !title || !city) continue;
     out.push({
       key: `viralagenda:${id}`,
       name: decodeHtml(title),
@@ -46,7 +48,7 @@ export function parseViralAgenda(html: string, pageUrl: string): FoundEvent[] {
       end: end && end !== start ? end : undefined,
       city: decodeHtml(city),
       venue: venue ? decodeHtml(venue) : undefined,
-      url: new URL(path, pageUrl).toString(),
+      url: link,
     });
   }
   return out;
@@ -84,7 +86,8 @@ export function parseJsonLd(html: string, pageUrl: string): FoundEvent[] {
       end: end && end !== start && /^\d{4}-\d{2}-\d{2}$/.test(end) ? end : undefined,
       city: decodeHtml(city),
       venue: typeof loc?.name === "string" ? decodeHtml(loc.name) : undefined,
-      url: typeof o.url === "string" ? new URL(o.url, pageUrl).toString() : pageUrl,
+      // Only http(s) links: a "javascript:" url must never become a clickable link.
+      url: safeHttpUrl(o.url, pageUrl) ?? pageUrl,
     });
   };
   for (const m of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {

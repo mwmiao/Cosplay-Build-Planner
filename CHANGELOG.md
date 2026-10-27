@@ -4,6 +4,25 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.7.2 — 2026-11-01
+
+### Fixed
+- **Links from outside the app are http(s) only.** Event listings, JSON-LD
+  and feeds could carry `javascript:` or `data:` links that became clickable
+  links on the Events and admin pages. They are now dropped when read and
+  when stored, and a migration clears any already stored (http/https links
+  are kept).
+- **"Next edition not announced yet"** shows the organiser's Instagram
+  accounts from Admin › Organisers (it still read the pre-1.7.1 field).
+- **Oversized uploads are refused before they're read.** The image upload
+  route no longer runs through middleware (Next.js held the whole body in
+  memory first) and refuses requests over 20 × MAX_UPLOAD_MB + 1 MB (for
+  guests, their remaining storage), with a clear message.
+
+### Changed
+- Image file paths are indexed, so loading an image no longer scans every
+  image row.
+
 ## 1.7.1 — 2026-10-31
 
 ### Changed

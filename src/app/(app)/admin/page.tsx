@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/FormBits";
 import { adminCounts } from "@/lib/adminCounts";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { safeHttpUrl } from "@/lib/safeUrl";
 import { markNotificationsRead } from "./instagram/actions";
 import { RemoveForm } from "./RemoveForm";
 
@@ -83,8 +84,8 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
                     <Link href="/admin/events" className="link">
                       {A.review}
                     </Link>
-                    {d.permalink ? (
-                      <a href={d.permalink} target="_blank" rel="noopener noreferrer nofollow" className="link">
+                    {safeHttpUrl(d.permalink) ? (
+                      <a href={safeHttpUrl(d.permalink)!} target="_blank" rel="noopener noreferrer nofollow" className="link">
                         {t.instagram.openPost}
                       </a>
                     ) : null}

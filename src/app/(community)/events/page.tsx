@@ -23,7 +23,12 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
   const inWindow = all.filter((e) => (past ? e.end.getTime() < now : e.end.getTime() >= now));
   // Recurring organisers with no upcoming date yet (not guessed: shown as "not announced").
   const upcomingOrganisers = new Set(all.filter((e) => e.end.getTime() >= now && e.organiserId).map((e) => e.organiserId));
-  const awaiting = (await db.organiser.findMany({ where: { active: true }, orderBy: { name: "asc" } })).filter(
+  const awaiting = (await db.organiser.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    // Accounts managed under Admin › Organisers (Organiser.instagram is the pre-1.7.1 copy).
+    include: { sources: { select: { username: true }, orderBy: { username: "asc" } } },
+  })).filter(
     (o) => !upcomingOrganisers.has(o.id) && (!searchParams.city || o.city === searchParams.city),
   );
   const cities = [...new Set(inWindow.map((e) => e.city))].sort((a, b) => a.localeCompare(b, t.intl));
@@ -236,11 +241,11 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                     {[(E.types as Record<string, string>)[o.eventType], o.usualVenue, o.city].filter(Boolean).join(" · ")}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
-                    {o.instagram ? (
-                      <a href={`https://www.instagram.com/${o.instagram}/`} target="_blank" rel="noopener noreferrer" className="link">
-                        @{o.instagram}
+                    {o.sources.map((s) => (
+                      <a key={s.username} href={`https://www.instagram.com/${s.username}/`} target="_blank" rel="noopener noreferrer" className="link">
+                        @{s.username}
                       </a>
-                    ) : null}
+                    ))}
                     {o.website ? (
                       <a href={o.website} target="_blank" rel="noopener noreferrer" className="link">
                         {hostname(o.website) ?? E.website}

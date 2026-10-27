@@ -2,6 +2,7 @@
 // with fixture feeds. Reads only what the monitor needs; unknown markup is
 // ignored rather than failing the whole feed.
 import type { InstagramPostInput } from "./types";
+import { safeHttpUrl } from "../safeUrl";
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
@@ -83,7 +84,8 @@ export function parseFeed(xml: string): InstagramPostInput[] {
       ? (tagText(raw, "content:encoded") ?? tagText(raw, "description"))
       : (tagText(raw, "content") ?? tagText(raw, "summary"));
     const guid = isRss ? tagText(raw, "guid") : tagText(raw, "id");
-    const permalink = link?.trim() || null;
+    // Only http(s) links are kept (a feed could carry "javascript:" links).
+    const permalink = safeHttpUrl(link);
     const title = tagText(raw, "title");
     const caption = html ? htmlToText(html) : null;
     return {
@@ -93,11 +95,12 @@ export function parseFeed(xml: string): InstagramPostInput[] {
       title: title ? htmlToText(title).slice(0, 300) : null,
       caption: caption || (title ? htmlToText(title) : null),
       publishedAt: date(isRss ? (tagText(raw, "pubDate") ?? tagText(raw, "dc:date")) : (tagText(raw, "published") ?? tagText(raw, "updated"))),
-      imageUrl:
+      imageUrl: safeHttpUrl(
         attr(raw, "enclosure", "url", /type=["']image\//i) ??
-        attr(raw, "media:content", "url") ??
-        attr(raw, "media:thumbnail", "url") ??
-        firstImage(html),
+          attr(raw, "media:content", "url") ??
+          attr(raw, "media:thumbnail", "url") ??
+          firstImage(html),
+      ),
       raw: raw.slice(0, 20_000),
     };
   });

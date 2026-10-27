@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>unsafe_links - Instagram</title>
+  <id>https://www.instagram.com/unsafe_links/</id>
+  <updated>2099-10-07T10:00:00+00:00</updated>
+  <entry>
+    <title>UNSAFE LINKS CON</title>
+    <id>unsafe-links-001</id>
+    <link rel="alternate" type="text/html" href="javascript:alert(document.cookie)"/>
+    <published>2099-10-07T10:00:00+00:00</published>
+    <content type="html">&lt;img src="data:image/svg+xml,&lt;svg onload=alert(1)&gt;"&gt;&lt;br&gt;UNSAFE LINKS CON — evento de cosplay&lt;br&gt;🗓 14 e 15 de novembro de 2099&lt;br&gt;📍 Pavilhão Rosa Mota, Porto&lt;br&gt;#cosplay</content>
+  </entry>
+</feed>

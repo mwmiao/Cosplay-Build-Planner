@@ -1,6 +1,7 @@
 // Decides whether a post announces an event, and reads its details.
 // Deterministic (keywords + the Portuguese date/place reader); no external AI.
 import { type CaptionEvent, extractEvent } from "../events/caption";
+import { safeHttpUrl } from "../safeUrl";
 
 const KEYWORDS: [RegExp, string][] = [
   [/\bcosplay(s|ers?)?\b/i, "cosplay"],
@@ -50,7 +51,9 @@ export function detectEvent(text: string, ref: Date): Detection {
     score += 1;
     reasons.push(`city ${fields.city}`);
   }
-  const ticketUrl = text.match(URL_RE)?.find((u) => /ticket|bilhete|bol\.pt|eventbrite|seetickets|shotgun|blueticket|ticketline/i.test(u));
+  const ticketUrl = safeHttpUrl(
+    text.match(URL_RE)?.find((u) => /ticket|bilhete|bol\.pt|eventbrite|seetickets|shotgun|blueticket|ticketline/i.test(u)),
+  );
   if (ticketUrl) {
     fields.ticketUrl = ticketUrl;
     reasons.push("ticket link");

@@ -1,6 +1,7 @@
 import "server-only";
 import pkg from "../../../package.json";
 import { db } from "../db";
+import { safeHttpUrl } from "../safeUrl";
 import { diffFields } from "./diff";
 import { findSimilarEvents, today } from "./index";
 import { normaliseAddress, normaliseCity, normaliseVenue } from "./names";
@@ -115,9 +116,9 @@ export async function recordFound(e: Incoming): Promise<"added" | "changed" | "k
   await db.event.create({
     data: {
       ...data,
-      url: e.url?.slice(0, 2000) ?? null,
-      sourceUrl: e.url?.slice(0, 2000) ?? null,
-      posterUrl: e.posterUrl?.slice(0, 2000) ?? null,
+      url: safeHttpUrl(e.url)?.slice(0, 2000) ?? null,
+      sourceUrl: safeHttpUrl(e.url)?.slice(0, 2000) ?? null,
+      posterUrl: safeHttpUrl(e.posterUrl)?.slice(0, 2000) ?? null,
       capturedAt: new Date(),
       status: "pending_review",
       source: e.source,

@@ -326,6 +326,7 @@ export const en = {
       notSaved: "couldn't be saved.",
       noUpload: "The upload didn't come through. Try again.",
       tooMany: "Upload up to 20 images at a time.",
+      requestTooLarge: (mb: number) => `That upload is too large (over ${mb} MB in total). Upload fewer images at a time.`,
       checkFields: "Check the caption and link.",
     },
   },
