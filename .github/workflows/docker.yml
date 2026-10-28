@@ -25,7 +25,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.56 has no system packages for Ubuntu 26 (ubuntu-latest from Oct 2026)
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
   # the session, data and images survive. Nothing is published if it fails.
   container:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # see the test job
     timeout-minutes: 30
     env:
       DATA: ${{ github.workspace }}/ci-data
