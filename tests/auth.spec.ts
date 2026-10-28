@@ -10,9 +10,8 @@ test("register, log out, log in (generic errors, safe redirect)", async ({ page 
   await page.goto("/account");
   await expect(page.getByText(user.email)).toBeVisible();
   await page.getByRole("main").getByRole("button", { name: "Log out" }).click();
-  await expect(page).toHaveURL(/\/login$/);
-  await page.goto("/projects");
-  await expect(page).toHaveURL(/\/login\?next=%2Fprojects$/);
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByTestId("visitor-start")).toBeVisible();
 
   // Same message for a wrong password and an unknown email.
   await login(page, { email: user.email, password: "wrong-password-123" });
@@ -93,11 +92,15 @@ test("password reset by single-use email link; change display name and password"
 });
 
 test("unauthenticated requests are blocked from private pages and APIs", async ({ request }) => {
-  for (const path of ["/projects", "/shopping", "/settings", "/account", "/projects/import"]) {
+  for (const path of ["/shopping", "/settings", "/account", "/projects/import", "/projects/new"]) {
     const res = await request.get(path, { maxRedirects: 0 });
     expect(res.status(), path).toBe(307);
-    expect(res.headers().location, path).toContain("/login");
+    expect(res.headers().location, path).toContain(`/projects?next=${encodeURIComponent(path)}`);
   }
+  // Projects is the main page: visitors get the start card, never anyone's projects.
+  const main = await request.get("/projects");
+  expect(main.status()).toBe(200);
+  expect(await main.text()).toContain("Try without an account");
   for (const path of ["/api/export/shopping", "/api/export/projects/cabc123def456ghi789jkl0mn/json", "/api/uploads/x/y.webp"]) {
     expect((await request.get(path)).status(), path).toBe(401);
   }

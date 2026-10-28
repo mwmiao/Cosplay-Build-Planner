@@ -864,6 +864,9 @@ export const en = {
 
   guest: {
     tryWithout: "Try without an account",
+    visitorIntro: "Plan your cosplay builds: parts, costs, deadlines, a shopping list and reference photos. Start right away, no account needed.",
+    haveAccount: "Already have an account?",
+    explore: "Or look around first:",
     tryWithoutHint: (days: number) =>
       `Plan up to 5 projects as a guest. Everything is deleted after ${days} days unless you create an account, which keeps it all. Publishing to the Community needs an account.`,
     loginKeeps: "You're using a guest account. Log in and your guest projects move into your account.",

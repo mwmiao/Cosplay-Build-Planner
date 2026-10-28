@@ -295,7 +295,7 @@ test("admin can remove a Community project with a reason; others can't; owner's 
   await register(admin.page, adminUser);
   makeAdmin(adminUser.email);
   await admin.page.goto("/admin");
-  await expect(admin.page).toHaveURL(/\/login/); // role change signs the user out
+  await expect(admin.page).toHaveURL(/\/projects$/); // role change signs the user out
   await login(admin.page, adminUser, "/admin");
   await expect(admin.page.getByRole("heading", { name: "Moderation", level: 1 })).toBeVisible();
   const item = admin.page.getByTestId("moderation-item").filter({ hasText: title });

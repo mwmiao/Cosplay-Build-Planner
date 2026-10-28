@@ -870,6 +870,9 @@ export const ptPT: Dict = {
 
   guest: {
     tryWithout: "Experimentar sem conta",
+    visitorIntro: "Planeie os seus cosplays: peças, custos, prazos, lista de compras e imagens de referência. Comece já, sem precisar de conta.",
+    haveAccount: "Já tem conta?",
+    explore: "Ou explore primeiro:",
     tryWithoutHint: (days: number) =>
       `Planeie até 5 projetos como convidado. Tudo é eliminado ao fim de ${days} dias, a menos que crie uma conta, que guarda tudo. Publicar na Comunidade exige uma conta.`,
     loginKeeps: "Está a usar uma conta de convidado. Inicie sessão e os seus projetos de convidado passam para a sua conta.",

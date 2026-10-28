@@ -85,12 +85,13 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
 }
 
 /** "Try without an account": a guest session plus the guest's own image key (kept only in their browser). */
-export async function startGuest(): Promise<void> {
-  if (await getCurrentUser()) redirect("/projects");
+export async function startGuest(formData?: FormData): Promise<void> {
+  const next = safeNext(formData?.get("next"));
+  if (await getCurrentUser()) redirect(next);
   if (!(await rateLimit(`guest-ip:${clientIp()}`, 10, 24 * 60 * 60))) redirect("/login?error=guest-limit");
   await getAuth().api.signInAnonymous({ headers: headers() });
   issueGuestKey();
-  redirect("/projects?welcome=guest");
+  redirect(next === "/projects" ? "/projects?welcome=guest" : next);
 }
 
 export async function signOut(): Promise<void> {
@@ -105,7 +106,7 @@ export async function signOut(): Promise<void> {
     await deleteGuest(user.id);
     clearGuestKey();
   }
-  redirect("/login");
+  redirect("/projects");
 }
 
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {

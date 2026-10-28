@@ -4,6 +4,19 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.7.3 — 2026-11-02
+
+### Changed
+- **Projects is the main page for everyone.** Visitors without an account
+  land on it instead of the login page, with **Try without an account** (up
+  to 5 projects, 30 days) and links to log in, create an account, or look
+  around Community and Events first.
+- **New project** and other private pages show the same start card to
+  visitors; starting as a guest continues to the page they asked for.
+- Logging out or leaving guest mode returns to Projects.
+- Visitors get one slim header (Projects, Community, Events, Log in) on all
+  public pages.
+
 ## 1.7.2 — 2026-11-01
 
 ### Fixed

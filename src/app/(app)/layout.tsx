@@ -1,14 +1,18 @@
 import { GuestBanner } from "@/components/GuestBanner";
 import { BottomNav, Sidebar } from "@/components/Nav";
+import { VisitorShell } from "@/components/VisitorShell";
 import { adminCounts } from "@/lib/adminCounts";
 import { getI18n } from "@/i18n/server";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "../(auth)/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  // Visitors without an account only get here for the Projects page (see
+  // middleware); every private page still checks the session itself.
+  const user = await getCurrentUser();
+  if (!user) return <VisitorShell loginHref="/login">{children}</VisitorShell>;
   const adminBadge = user.isAdmin ? badge(await adminCounts()) : 0;
   return (
     <div className="flex min-h-dvh">

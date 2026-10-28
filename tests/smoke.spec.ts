@@ -13,9 +13,10 @@ test("create project, add part, shopping list, pay in another currency", async (
   const character = `Test Character ${Date.now()}`;
   const partName = `Foam pauldron ${Date.now()}`;
 
-  // Unauthenticated visits go to the login page.
-  await page.goto("/projects");
-  await expect(page).toHaveURL(/\/login\?next=%2Fprojects$/);
+  // Visitors land on Projects with a start card.
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByTestId("visitor-start")).toBeVisible();
   await register(page, newUser("Smoke"));
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
 

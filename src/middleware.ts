@@ -10,14 +10,15 @@ const PUBLIC_API = /^\/api\/(health|community)(\/|$)/;
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  if (PUBLIC_PAGES.test(pathname) || PUBLIC_API.test(pathname)) return NextResponse.next();
+  // Projects is the main page; visitors without an account get a start page there.
+  if (pathname === "/projects" || PUBLIC_PAGES.test(pathname) || PUBLIC_API.test(pathname)) return NextResponse.next();
   if (SESSION_COOKIES.some((name) => req.cookies.has(name))) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const url = req.nextUrl.clone();
-  url.pathname = "/login";
+  url.pathname = "/projects";
   url.search = "";
   if (pathname !== "/") url.searchParams.set("next", `${pathname}${search}`);
   return NextResponse.redirect(url);

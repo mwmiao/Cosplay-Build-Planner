@@ -5,11 +5,13 @@ import { EmptyState, ProgressBar, StatusBadge } from "@/components/ui";
 import { ViewControls } from "@/components/ViewControls";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser, safeNext } from "@/lib/auth";
 import { statusLabel } from "@/lib/constants";
 import { daysLabel, daysUntil } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
-import { GUEST_MAX_PROJECTS } from "@/lib/guest";
+import { GUEST_DAYS, GUEST_MAX_PROJECTS } from "@/lib/guest";
+import { SubmitButton } from "@/components/FormBits";
+import { startGuest } from "../../(auth)/actions";
 import { getMoneyContext } from "@/lib/queries";
 import { viewPrefs } from "@/lib/viewPrefs";
 
@@ -27,9 +29,10 @@ const byDate = (a: Date | null, b: Date | null) =>
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: { view?: string; sort?: string; layout?: string; welcome?: string; limit?: string };
+  searchParams: { view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string };
 }) {
-  const user = await requireUser();
+  const user = await getCurrentUser();
+  if (!user) return <VisitorStart next={safeNext(searchParams.next)} />;
   const { t, f } = getI18n();
   const archived = searchParams.view === "archived";
   const { sort, view } = viewPrefs<Sort>("projects-view", searchParams, SORTS, { sort: "deadline", view: "list" });
@@ -245,6 +248,46 @@ export default async function ProjectsPage({
           })}
         </ul>
       )}
+    </>
+  );
+}
+
+/** The main page for visitors without an account: start as a guest, or log in. */
+function VisitorStart({ next }: { next: string }) {
+  const { t } = getI18n();
+  const G = t.guest;
+  return (
+    <>
+      <h1 className="page-title mb-2">{t.projects.title}</h1>
+      <p className="mb-4 text-zinc-600 dark:text-zinc-300">{G.visitorIntro}</p>
+      <section className="card p-4" data-testid="visitor-start">
+        <form action={startGuest}>
+          {next !== "/projects" ? <input type="hidden" name="next" value={next} /> : null}
+          <SubmitButton className="btn-primary w-full" pendingText={t.common.working}>
+            {G.tryWithout}
+          </SubmitButton>
+        </form>
+        <p className="hint mt-2">{G.tryWithoutHint(GUEST_DAYS)}</p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
+          <span className="text-zinc-500 dark:text-zinc-400">{G.haveAccount}</span>
+          <Link href={`/login?next=${encodeURIComponent(next)}`} className="link">
+            {t.auth.submitLogin}
+          </Link>
+          <Link href="/register" className="link">
+            {t.auth.createAccount}
+          </Link>
+        </div>
+      </section>
+      <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+        {G.explore}{" "}
+        <Link href="/community" className="link">
+          {t.nav.community}
+        </Link>
+        {" · "}
+        <Link href="/events" className="link">
+          {t.nav.events}
+        </Link>
+      </p>
     </>
   );
 }

@@ -86,12 +86,44 @@ test("guest: leaving guest mode deletes everything right away", async ({ page, b
   await expect(page.getByText("1 of 5 projects")).toBeVisible();
   page.on("dialog", (d) => d.accept());
   await page.getByRole("main").getByRole("button", { name: "Leave guest mode" }).click();
-  await expect(page).toHaveURL(/\/login/);
+  await expect(page).toHaveURL(/\/projects$/);
   // The project is gone (another visitor, and the old browser, get nothing).
   const other = await asNewPerson(browser, "10.0.7.1");
   await other.page.goto(`/projects/${projectId}`);
-  await expect(other.page).toHaveURL(/\/login/);
+  await expect(other.page).toHaveURL(/\/projects\?next=/);
+  await expect(other.page.getByTestId("visitor-start")).toBeVisible();
   await other.context.close();
   await page.goto(`/projects/${projectId}`);
-  await expect(page).toHaveURL(/\/login/);
+  await expect(page).toHaveURL(/\/projects\?next=/);
+});
+
+test("visitors land on Projects, can look around, and New project starts a guest", async ({ page }) => {
+  await page.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.78.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  const start = page.getByTestId("visitor-start");
+  await expect(start.getByRole("button", { name: "Try without an account" })).toBeVisible();
+  await expect(start).toContainText("Plan up to 5 projects as a guest");
+  await expect(page.getByRole("link", { name: "Log in" }).first()).toBeVisible();
+
+  // The public pages are one tap away, and Projects is in their header.
+  await page.getByRole("banner").getByRole("link", { name: "Community" }).click();
+  await expect(page).toHaveURL(/\/community$/);
+  await page.getByRole("banner").getByRole("link", { name: "Projects" }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+
+  // Creating a project: the start card first, then straight into the form as a guest.
+  await page.goto("/projects/new");
+  await expect(page).toHaveURL(/\/projects\?next=%2Fprojects%2Fnew$/);
+  await page.getByTestId("visitor-start").getByRole("button", { name: "Try without an account" }).click();
+  await expect(page).toHaveURL(/\/projects\/new$/, { timeout: 30_000 });
+  await expect(page.getByLabel("Character name")).toBeVisible();
+  await expect(page.getByTestId("guest-banner")).toBeVisible();
+
+  // No horizontal scrolling on a small phone.
+  await page.context().clearCookies();
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/projects");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });

@@ -38,7 +38,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 /** Use in every page, action and route that touches private data. */
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/projects");
   return user;
 }
 
