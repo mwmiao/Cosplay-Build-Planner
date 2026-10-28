@@ -60,7 +60,8 @@ test.describe("register", () => {
     const { projectId } = load();
     expect((await page.request.get("/api/health")).status()).toBe(200);
     await page.goto(`/projects/${projectId}`);
-    await expect(page).toHaveURL(/\/login\?next=/);
+    await expect(page).toHaveURL(/\/projects\?next=/);
+    await expect(page.getByTestId("visitor-start")).toBeVisible();
     await page.goto("/register");
     await page.getByLabel("Display name").fill(OWNER.name);
     await page.getByLabel("Email").fill(OWNER.email);
