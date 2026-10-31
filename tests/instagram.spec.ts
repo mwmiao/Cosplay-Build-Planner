@@ -133,7 +133,9 @@ test("monitor: test feed stores nothing; check creates a pending event + notific
   await expect(a.getByTestId("notification").filter({ hasText: "QUIMERA TEST MARKET" })).toHaveCount(1);
 
   // Approve → public.
-  await (await postsFor(a, "https://www.instagram.com/p/QmTest001/")).getByRole("button", { name: "Approve" }).click();
+  const approving = await postsFor(a, "https://www.instagram.com/p/QmTest001/");
+  await approving.getByRole("button", { name: "Approve" }).click();
+  await expect(approving).toHaveCount(0);
   await page.goto("/events");
   await expect(page.getByTestId("event").filter({ hasText: "QUIMERA TEST MARKET" })).toBeVisible();
 
@@ -173,6 +175,7 @@ test("monitor: possible events, not-an-event, rejected events never come back, b
   let card = await postsFor(a, "https://www.instagram.com/p/MeetRss01/");
   await expect(card).toContainText("Possible event — needs review");
   await card.getByRole("button", { name: "Not an event" }).click();
+  await expect(card).toHaveCount(0); // saved before leaving the page (navigating would cancel it)
   await expect(await postsFor(a, "https://www.instagram.com/p/MeetRss01/")).toHaveCount(0);
 
   // A failing feed: error shown, source not marked up to date, next try pushed back.
@@ -195,6 +198,7 @@ test("monitor: possible events, not-an-event, rejected events never come back, b
   await expect(card).toContainText("Fórum Braga");
   // Reject it; the same event posted again later doesn't come back as pending.
   await card.getByRole("button", { name: "Reject" }).click();
+  await expect(card).toHaveCount(0);
   await ready(a, "/admin/organisers");
   await a.getByText("Add manual post").first().click();
   await a.getByLabel("Post link").fill("https://www.instagram.com/p/Manual002/");
