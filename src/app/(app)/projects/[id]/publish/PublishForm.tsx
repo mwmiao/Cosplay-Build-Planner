@@ -146,14 +146,15 @@ export function PublishForm({
             <p>{C.previewHint}</p>
           </div>
           <div className="rounded-2xl border-2 border-dashed border-sky-300 p-3 dark:border-sky-800" data-testid="publish-preview">
-            <PublicProject data={state.preview} t={t} f={f} />
+            <PublicProject data={state.preview} t={t} f={f} titleAs="h2" />
           </div>
         </section>
       ) : null}
 
       <StickyActions>
-        <SubmitButton name="intent" value="preview" className="btn-secondary" pendingText={t.common.working}>
-          {C.preview}
+        {/* Publishing always goes through the preview first: say so on the button. */}
+        <SubmitButton name="intent" value="preview" className={state.preview ? "btn-secondary" : "btn-primary flex-1 sm:flex-none"} pendingText={t.common.working}>
+          {state.preview ? C.preview : C.previewToPublish}
         </SubmitButton>
         {state.preview ? (
           <SubmitButton name="intent" value="publish" className="btn-primary flex-1 sm:flex-none" pendingText={C.publishing}>

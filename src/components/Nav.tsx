@@ -28,15 +28,16 @@ function useItems() {
 /** Desktop sidebar with an account menu (name, Account page, log out) at the bottom. */
 export function Sidebar({
   userName,
-  isAdmin = false,
+  canModerate = false,
   isGuest = false,
   adminBadge = 0,
   signOut,
 }: {
   userName: string;
-  isAdmin?: boolean;
+  /** Moderators and admins: show the Moderation link */
+  canModerate?: boolean;
   isGuest?: boolean;
-  /** Admins: unread notifications + items to review */
+  /** Open reports, plus (admins) unread notifications and items to review */
   adminBadge?: number;
   signOut: () => Promise<void>;
 }) {
@@ -71,7 +72,7 @@ export function Sidebar({
         );
       })}
       <div className="mt-auto border-t border-zinc-200 pt-3 dark:border-zinc-800">
-        {isAdmin ? (
+        {canModerate ? (
           <Link
             href="/admin"
             aria-current={pathname.startsWith("/admin") ? "page" : undefined}

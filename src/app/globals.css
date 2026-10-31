@@ -42,6 +42,30 @@
 }
 
 @layer components {
+  /* <summary> of an "Add …" section that opens in place: looks tappable, shows ＋ / × */
+  .expander {
+    @apply flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-semibold text-brand-700 dark:text-brand-300;
+  }
+  .expander::-webkit-details-marker {
+    display: none;
+  }
+  .expander::after {
+    content: "+";
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xl font-normal leading-none text-brand-700 transition-transform dark:bg-brand-900/40 dark:text-brand-200;
+  }
+  details[open] > .expander::after {
+    transform: rotate(45deg);
+  }
+  /* A row of filter chips that scrolls sideways on phones; the faded edge shows there's more. */
+  .chip-row {
+    @apply -mx-4 flex gap-2 overflow-x-auto px-4 pb-1;
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  @media (min-width: 640px) {
+    .chip-row {
+      mask-image: none;
+    }
+  }
   .card {
     @apply rounded-2xl border border-zinc-200/80 bg-white/90 p-4 shadow-sm shadow-brand-900/5 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/85 dark:shadow-black/20;
   }

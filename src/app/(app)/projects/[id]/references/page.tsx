@@ -81,7 +81,7 @@ export default async function ReferencesPage({
       ) : null}
 
       <details className="card mb-6" open={all.length === 0}>
-        <summary className="section-title flex min-h-11 cursor-pointer items-center">{R.addImages}</summary>
+        <summary className="expander section-title">{R.addImages}</summary>
         <div className="pt-3">
           <UploadForm projectId={project.id} accept={ACCEPT_ATTR} maxMb={env().MAX_UPLOAD_MB} groups={groups} />
         </div>

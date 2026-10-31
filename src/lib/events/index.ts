@@ -71,6 +71,12 @@ export async function listEvents(): Promise<EventView[]> {
   return rows.map(eventView);
 }
 
+/** One public event: approved only, so pending and rejected events have no page. */
+export async function getPublicEvent(id: string): Promise<EventView | null> {
+  const row = await db.event.findFirst({ where: { id, status: "approved" } });
+  return row ? eventView(row) : null;
+}
+
 /** Today as UTC midnight of the server's local calendar day (same rule as deadlines). */
 export function today(now = new Date()): Date {
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));

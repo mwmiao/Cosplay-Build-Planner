@@ -6,9 +6,11 @@ import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPublicProject } from "@/lib/community/view";
+import { db } from "@/lib/db";
 import { idSchema } from "@/lib/validation";
 import { RemoveForm } from "../../../(app)/admin/RemoveForm";
 import { copyToMyProjects } from "./actions";
+import { ReportForm } from "./ReportForm";
 
 async function load(id: string) {
   return idSchema.safeParse(id).success ? getPublicProject(id) : null;
@@ -35,6 +37,10 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
     );
   }
   const user = await getCurrentUser();
+  // The owner manages their own project instead of copying it.
+  const own = user
+    ? await db.publication.findFirst({ where: { id: project.id, ownerId: user.id }, select: { projectId: true } })
+    : null;
   return (
     <>
       <BackLink href="/community">{C.back}</BackLink>
@@ -55,7 +61,19 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
           coverId: project.cover?.id ?? null,
         }}
         actions={
-          user ? (
+          own ? (
+            <div className="space-y-2 pt-2" data-testid="own-publication">
+              <p className="text-sm font-medium">{C.yours}</p>
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/projects/${own.projectId}/publish`} className="btn-primary">
+                  {C.manageYours}
+                </Link>
+                <Link href={`/projects/${own.projectId}`} className="btn-secondary">
+                  {C.openYours}
+                </Link>
+              </div>
+            </div>
+          ) : user ? (
             <form action={copyToMyProjects.bind(null, project.id)} className="space-y-1 pt-2">
               <SubmitButton className="btn-primary w-full sm:w-auto" pendingText={C.copying}>
                 {C.copyToMine}
@@ -65,7 +83,15 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
           ) : null
         }
       />
-      {user?.isAdmin ? (
+      {user && !user.isGuest && !own ? (
+        <details className="card mt-8" data-testid="report">
+          <summary className="expander text-sm">{C.report.title}</summary>
+          <div className="pt-2">
+            <ReportForm publicationId={project.id} />
+          </div>
+        </details>
+      ) : null}
+      {user?.isModerator ? (
         <section className="card mt-8 space-y-2 border-red-200 dark:border-red-900" aria-label={t.admin.adminTools}>
           <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">{t.admin.adminTools}</h2>
           <RemoveForm publicationId={project.id} />

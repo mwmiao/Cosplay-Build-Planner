@@ -95,7 +95,7 @@ export default async function ShoppingPage({
       </div>
 
       <details className="card mb-6">
-        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{S.addItem}</summary>
+        <summary className="expander">{S.addItem}</summary>
         <div className="pt-3">
           <AddItemForm projects={projects} defaultCurrency={cur} />
         </div>

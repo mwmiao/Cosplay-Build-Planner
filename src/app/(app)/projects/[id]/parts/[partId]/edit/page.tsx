@@ -131,7 +131,7 @@ export default async function EditPartPage({
           <p className="hint">{F.photosHint}</p>
         )}
         <details className="card mt-3" open={photos.length === 0}>
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{F.addPhotos}</summary>
+          <summary className="expander">{F.addPhotos}</summary>
           <div className="pt-3">
             <UploadForm projectId={project.id} accept={ACCEPT_ATTR} maxMb={env().MAX_UPLOAD_MB} kind="part" partId={part.id} />
           </div>

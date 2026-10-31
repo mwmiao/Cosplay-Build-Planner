@@ -85,11 +85,13 @@ export default async function ProjectsPage({
       <header className="mb-4 flex items-center justify-between gap-3">
         <h1 className="page-title">{archived ? t.projects.archivedTitle : t.projects.title}</h1>
         <div className="flex gap-2">
-          <Link href="/projects/import" className="btn-secondary" aria-label={t.transfer.import}>
-            <DownloadIcon className="h-5 w-5 rotate-180" /> <span className="hidden sm:inline">{t.transfer.import}</span>
+          {/* Labelled on phones too (an icon alone was unclear); "New project" shortens to fit. */}
+          <Link href="/projects/import" className="btn-secondary">
+            <DownloadIcon className="hidden h-5 w-5 rotate-180 sm:block" /> {t.transfer.import}
           </Link>
-          <Link href="/projects/new" className="btn-primary">
-            <PlusIcon className="h-5 w-5" /> {t.nav.newProject}
+          <Link href="/projects/new" className="btn-primary" aria-label={t.nav.newProject}>
+            <PlusIcon className="h-5 w-5" /> <span className="sm:hidden">{t.nav.new}</span>
+            <span className="hidden sm:inline">{t.nav.newProject}</span>
           </Link>
         </div>
       </header>

@@ -30,11 +30,14 @@ export function PublicProject({
   t,
   f,
   actions,
+  titleAs: Title = "h1",
 }: {
   data: PublicProjectData;
   t: Dict;
   f: Formatters;
   actions?: React.ReactNode;
+  /** "h2" when shown inside another page (the publish preview) */
+  titleAs?: "h1" | "h2";
 }) {
   const C = t.community;
   const s = data.snapshot;
@@ -60,7 +63,7 @@ export function PublicProject({
             </div>
           ) : null}
           <div className="min-w-0 flex-1">
-            <h1 className="page-title break-words">{data.title}</h1>
+            <Title className="page-title break-words">{data.title}</Title>
             {data.series ? <p className="text-zinc-500 dark:text-zinc-400">{data.series}</p> : null}
             <p className="text-sm text-zinc-600 dark:text-zinc-300">{C.byCreator(data.creatorName)}</p>
           </div>

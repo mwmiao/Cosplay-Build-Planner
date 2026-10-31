@@ -16,10 +16,10 @@ export default async function CommunityLayout({ children }: { children: React.Re
   const user = await getCurrentUser();
   const { t } = getI18n();
   if (user) {
-    const adminBadge = user.isAdmin ? badge(await adminCounts()) : 0;
+    const adminBadge = user.isModerator ? badge(await adminCounts(user)) : 0;
     return (
       <div className="flex min-h-dvh">
-        <Sidebar userName={user.name} isAdmin={user.isAdmin} isGuest={user.isGuest} adminBadge={adminBadge} signOut={signOut} />
+        <Sidebar userName={user.name} canModerate={user.isModerator} isGuest={user.isGuest} adminBadge={adminBadge} signOut={signOut} />
         <main className="pb-safe-nav min-w-0 flex-1 md:pb-8">
           <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-8 md:py-8">
             {user.guestExpiresAt ? <GuestBanner expiresAt={user.guestExpiresAt} t={t} /> : null}
@@ -33,4 +33,4 @@ export default async function CommunityLayout({ children }: { children: React.Re
   return <VisitorShell loginHref="/login?next=%2Fcommunity">{children}</VisitorShell>;
 }
 
-const badge = (c: { toReview: number; unread: number }) => c.unread + c.toReview;
+const badge = (c: { reports: number; toReview: number; unread: number }) => c.reports + c.unread + c.toReview;

@@ -4,6 +4,30 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.8.0 — 2026-11-03
+
+### Added
+- **Report a project:** signed-in accounts can report a Community project with
+  a reason and optional note. Moderators see open reports first on the
+  Moderation page, then dismiss them or remove the project. The owner never
+  sees who reported it, and moderators don't either.
+- **Moderator role:** handles reports and removes Community projects, with no
+  access to Events, organisers or Instagram.
+- **Users and roles** (admins): find accounts by display name or exact email
+  and grant or remove the moderator role. The change signs that person out.
+  Emails are never listed, and admin is still only granted on the server.
+- **Event pages:** each approved event has its own page to open and share.
+
+### Changed
+- The project page puts parts and references first, with a compact summary.
+  Without a budget it shows one "Set a budget" link instead of empty cards.
+- Your own project in the Community offers Manage instead of Copy.
+- A field's error clears as soon as you edit it.
+- "Add …" sections look tappable, with a + that turns into ×.
+- Import is labelled on phones, and "Preview and publish" says what comes next.
+- Filter chips that scroll sideways fade at the edge on phones.
+- The notice on a removed project now says a moderator removed it.
+
 ## 1.7.3 — 2026-11-02
 
 ### Changed

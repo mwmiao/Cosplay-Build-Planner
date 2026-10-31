@@ -19,7 +19,7 @@ export function generateMetadata(): Metadata {
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const adminWaiting = user.isAdmin ? Object.values(await adminCounts()).reduce((a, b) => a + b, 0) : 0;
+  const adminWaiting = user.isModerator ? Object.values(await adminCounts(user)).reduce((a, b) => a + b, 0) : 0;
   const { t, f } = getI18n();
   const S = t.settings;
   const [deleted, counts] = await Promise.all([
@@ -183,7 +183,7 @@ export default async function SettingsPage() {
           <div className="truncate text-zinc-500 dark:text-zinc-400">{user.email}</div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {user.isAdmin ? (
+          {user.isModerator ? (
             <Link href="/admin" className="btn-secondary" data-testid="settings-admin-link">
               {t.admin.title}
               {adminWaiting ? (

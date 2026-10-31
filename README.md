@@ -15,8 +15,8 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **References and progress photos:** grouped, reorderable and shown full-screen. Location data is removed from photos.
 - **Accounts:** private projects per account, plus password reset by email when SMTP is set up.
 - **Guests:** try the app without an account (5 projects, 50 MB, 30 days, encrypted images).
-- **Community:** publish a project on purpose, choosing exactly what becomes public. Others can copy it as a private template. An admin can remove shared projects.
-- **Events:** cosplay events in Portugal, with Maps links, user suggestions and admin review. New events can be picked up from public Instagram accounts through a self-hosted RSS-Bridge.
+- **Community:** publish a project on purpose, choosing exactly what becomes public. Others can copy it as a private template. Accounts can report a project, and moderators can remove it.
+- **Events:** cosplay events in Portugal, each with its own page, Maps links, user suggestions and admin review. New events can be picked up from public Instagram accounts through a self-hosted RSS-Bridge.
 - **Export/import:** a project as a versioned JSON file, plus a budget CSV.
 - **English and European Portuguese**, dark mode, works from 360 px wide, and can be added to your home screen.
 
@@ -39,7 +39,7 @@ Next.js 14 (App Router) · TypeScript (strict) · Tailwind CSS · Prisma + SQLit
    ```bash
    sudo docker exec cosplay-planner node scripts/set-admin.js --email you@example.com
    ```
-   Log in again afterwards. A **Moderation** link appears.
+   Log in again afterwards. A **Moderation** link appears. Admins can make other accounts moderators under **Moderation → Users and roles**.
 
 The app listens on port **1337** and keeps everything in `data/`: the database, uploads, secrets and backups. Every container start backs up the database and applies migrations. It never seeds, resets or deletes data. The health check is at `/api/health`.
 

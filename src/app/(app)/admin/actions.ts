@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getI18n } from "@/i18n/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireModerator } from "@/lib/auth";
 import { removePublicationFolder } from "@/lib/community/images";
 import { db } from "@/lib/db";
 import { type FormState, idSchema } from "@/lib/validation";
@@ -15,7 +15,7 @@ import { type FormState, idSchema } from "@/lib/validation";
  * owner's private project is not modified.
  */
 export async function removePublication(publicationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requireAdmin();
+  const admin = await requireModerator();
   const { t } = getI18n();
   const A = t.admin;
   if (!idSchema.safeParse(publicationId).success) return { ok: false, message: A.alreadyGone };
@@ -45,4 +45,32 @@ export async function removePublication(publicationId: string, _prev: FormState,
   revalidatePath(`/projects/${removed.projectId}`, "layout");
   // The public page is gone now, so always land on the moderation page with a confirmation.
   redirect("/admin?removed=1");
+}
+
+/** Close a project's open reports without removing it (moderators and admins). */
+export async function dismissReports(publicationId: string): Promise<void> {
+  await requireModerator();
+  if (!idSchema.safeParse(publicationId).success) redirect("/admin");
+  await db.report.updateMany({ where: { publicationId, status: "open" }, data: { status: "dismissed", handledAt: new Date() } });
+  revalidatePath("/admin");
+  redirect("/admin?dismissed=1#reports");
+}
+
+/**
+ * Admins grant or remove the moderator role. Admin itself can't be granted or
+ * removed here (only with the set-admin command on the server), guests can't be
+ * moderators, and the change signs the person out so it applies right away.
+ */
+export async function setModerator(userId: string, on: boolean): Promise<void> {
+  await requireAdmin();
+  // Better Auth user ids (not cuids)
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(userId)) redirect("/admin/users?error=1");
+  const target = await db.user.findUnique({ where: { id: userId }, select: { role: true, isAnonymous: true } });
+  if (!target || target.isAnonymous || target.role === "admin") redirect("/admin/users?error=1");
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { role: on ? "moderator" : "user" } }),
+    db.session.deleteMany({ where: { userId } }),
+  ]);
+  revalidatePath("/admin/users");
+  redirect(`/admin/users?changed=${encodeURIComponent(userId)}`);
 }

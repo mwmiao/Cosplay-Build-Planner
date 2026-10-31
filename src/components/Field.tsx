@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 
 type BaseProps = {
   label: string;
@@ -23,7 +23,11 @@ type SelectProps = BaseProps &
 /** Labelled form control with hint + error text wired up via aria attributes. */
 export function Field(props: InputProps | TextareaProps | SelectProps) {
   const id = useId();
-  const { label, name, errors, hint, className } = props;
+  const { label, name, hint, className } = props;
+  // Once the user edits the field, its error is out of date: hide it until the
+  // next submit returns new errors.
+  const [editedFor, setEditedFor] = useState<string[] | undefined>();
+  const errors = props.errors?.length && props.errors !== editedFor ? props.errors : undefined;
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
   const describedBy = [errors?.length ? errorId : null, hint ? hintId : null]
@@ -57,7 +61,7 @@ export function Field(props: InputProps | TextareaProps | SelectProps) {
   }
 
   return (
-    <div className={className}>
+    <div className={className} onInput={() => props.errors?.length && setEditedFor(props.errors)}>
       <label htmlFor={id} className="label">
         {label}
         {props.required ? <span className="text-brand-600"> *</span> : null}

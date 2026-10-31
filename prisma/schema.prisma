@@ -203,8 +203,10 @@ model User {
   image           String?
   /// Base currency for new projects and shopping-list totals
   defaultCurrency String?
-  /// "user" or "admin". Admins can remove Community publications. Only set
-  /// with the set-admin command on the server, never through the app.
+  /// "user", "moderator" or "admin". Moderators handle reports and can remove
+  /// Community publications; admins also run Events and grant/remove the
+  /// moderator role in the app. Admin itself is only set with the set-admin
+  /// command on the server, never through the app.
   role            String    @default("user")
   /// Guest ("try without an account"): no email/password, private only, can't
   /// publish, deleted 30 days after creation unless they register (which moves
@@ -218,6 +220,7 @@ model User {
   projects      Project[]
   shoppingItems ShoppingListItem[]
   publications  Publication[]
+  reports       Report[]
 
   @@map("user")
 }
@@ -316,6 +319,7 @@ model Publication {
   project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   owner   User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   images  PublicImage[]
+  reports Report[]
 
   @@index([publishedAt])
   @@index([versionAt])
@@ -338,6 +342,28 @@ model PublicImage {
   publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([publicationId])
+}
+
+/// A Community project reported by a signed-in account. The owner never sees who
+/// reported it. Removing the publication deletes its reports (the removal itself
+/// is kept in ModerationAction); dismissing keeps them as "dismissed".
+model Report {
+  id            String    @id @default(cuid())
+  publicationId String
+  reporterId    String
+  /// inappropriate | copyright | spam | other
+  reason        String
+  note          String?
+  /// open | dismissed
+  status        String    @default("open")
+  handledAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  reporter    User        @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([publicationId, reporterId])
 }
 
 /// Admin removals of Community publications (the owner sees the reason).

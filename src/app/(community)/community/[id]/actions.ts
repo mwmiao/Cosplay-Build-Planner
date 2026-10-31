@@ -3,7 +3,9 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { z } from "zod";
+import { getI18n } from "@/i18n/server";
+import { getCurrentUser, requireUser } from "@/lib/auth";
 import { copyImageToProject } from "@/lib/community/images";
 import { getPublicProject } from "@/lib/community/view";
 import { CATEGORIES } from "@/lib/constants";
@@ -13,7 +15,9 @@ import { GUEST_MAX_PROJECTS, guestKey, guestUsage } from "@/lib/guest";
 import { getDefaultCurrency } from "@/lib/settings";
 import { syncShoppingItemForPart } from "@/lib/shopping";
 import { removeProjectFiles } from "@/lib/uploads";
-import { idSchema } from "@/lib/validation";
+import { rateLimit } from "@/lib/rateLimit";
+import { type FormState, idSchema } from "@/lib/validation";
+import { REPORT_REASONS } from "@/lib/community/reports";
 
 const newId = () => `c${randomBytes(12).toString("hex")}`;
 
@@ -132,4 +136,32 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
   revalidatePath("/projects");
   revalidatePath("/shopping");
   redirect(`/projects/${projectId}?copied=1`);
+}
+
+/**
+ * Report a Community project to the moderators. Accounts only (not guests or
+ * visitors), never your own project, one open report per person per project,
+ * and a daily limit. The owner never learns who reported it.
+ */
+export async function reportPublication(publicationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t } = getI18n();
+  const R = t.community.report;
+  const user = await getCurrentUser();
+  if (!user || user.isGuest) return { ok: false, message: R.needsAccount };
+  if (!idSchema.safeParse(publicationId).success) return { ok: false, message: t.admin.alreadyGone };
+  const publication = await db.publication.findUnique({ where: { id: publicationId }, select: { ownerId: true } });
+  if (!publication) return { ok: false, message: t.admin.alreadyGone };
+  if (publication.ownerId === user.id) return { ok: false, message: R.own };
+  const input = z
+    .object({ reason: z.enum(REPORT_REASONS), note: z.string().trim().max(500).optional() })
+    .safeParse({ reason: formData.get("reason"), note: formData.get("note") || undefined });
+  if (!input.success) return { ok: false, errors: { reason: [R.reason] } };
+  const open = await db.report.findFirst({ where: { publicationId, reporterId: user.id, status: "open" }, select: { id: true } });
+  if (open) return { ok: true, message: R.already };
+  if (!(await rateLimit(`report:${user.id}`, 10, 24 * 60 * 60))) return { ok: false, message: R.tooMany };
+  await db.report.create({
+    data: { publicationId, reporterId: user.id, reason: input.data.reason, note: input.data.note || null },
+  });
+  revalidatePath("/admin");
+  return { ok: true, message: R.sent };
 }

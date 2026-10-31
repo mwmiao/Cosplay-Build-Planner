@@ -178,7 +178,7 @@ export default async function ProjectPage({
         </div>
       </header>
 
-      <section aria-label={P.summary} className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <section aria-label={P.summary} className="mb-3 grid grid-cols-3 gap-2 sm:gap-3">
         <Stat
           label={P.startDate}
           value={project.startDate ? f.date(project.startDate) : P.noStart}
@@ -189,9 +189,7 @@ export default async function ProjectPage({
           value={<span className={days !== null && days < 14 && days >= 0 ? "text-amber-600 dark:text-amber-400" : ""}>{daysLabel(days, t)}</span>}
           sub={f.date(project.deadline)}
         />
-        <div className="col-span-2 sm:col-span-1">
-          <Stat label={P.partsDone} value={`${stats.done} / ${stats.count}`} sub={P.percentComplete(stats.completion)} />
-        </div>
+        <Stat label={P.partsDone} value={`${stats.done} / ${stats.count}`} sub={P.percentComplete(stats.completion)} />
       </section>
 
       <section aria-labelledby="budget-title" className="mb-6">
@@ -205,6 +203,13 @@ export default async function ProjectPage({
             value={`${stats.plannedConverted ? "≈ " : ""}${f.money(stats.planned, base)}`}
             sub={stats.plannedConverted ? P.stillToPayRates : P.stillToPay}
           />
+          {stats.budget === null ? (
+            <Link href={`/projects/${project.id}/edit`} className="card col-span-2 flex flex-col justify-center p-3 hover:border-brand-300" data-testid="set-budget">
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{P.noBudget}</span>
+              <span className="link mt-1 font-semibold">{P.setBudget}</span>
+            </Link>
+          ) : (
+            <>
           <Stat
             label={P.budgetLeft}
             value={stats.remaining === null ? "—" : f.money(stats.remaining, base)}
@@ -224,6 +229,8 @@ export default async function ProjectPage({
             }
             sub={P.ifPlannedHolds(f.money(stats.projected, base))}
           />
+            </>
+          )}
         </div>
         <p className="hint mt-2">
           {P.totalsNote(base)}
@@ -266,7 +273,7 @@ export default async function ProjectPage({
 
         {allParts.length > 0 ? (
           <div className="mb-3 space-y-2">
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={P.filterStatus}>
+            <div className="chip-row" role="group" aria-label={P.filterStatus}>
               <Link href={filterHref(project.id, filter, { status: undefined })} className={!filter.status ? "chip-on" : "chip-off"}>
                 {P.allStatuses}
               </Link>
@@ -277,7 +284,7 @@ export default async function ProjectPage({
               ))}
             </div>
             {usedCategories.length > 1 ? (
-              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={P.filterCategory}>
+              <div className="chip-row" role="group" aria-label={P.filterCategory}>
                 <Link href={filterHref(project.id, filter, { category: undefined })} className={!filter.category ? "chip-on" : "chip-off"}>
                   {P.allCategories}
                 </Link>
@@ -401,6 +408,37 @@ export default async function ProjectPage({
         )}
       </section>
 
+      <section aria-labelledby="refs-title" className="mb-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="refs-title" className="section-title">
+            {P.references}
+          </h2>
+          <Link href={`/projects/${project.id}/references`} className="btn-secondary">
+            <ImageIcon className="h-5 w-5" /> {referenceCount ? P.allPhotosCount(referenceCount) : P.addPhotos}
+          </Link>
+        </div>
+        {references.length === 0 ? (
+          <EmptyState title={P.noRefs}>{P.noRefsText}</EmptyState>
+        ) : (
+          <LightboxGroup images={lightboxImages(references)}>
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {references.map((r, i) => (
+                <li key={r.id}>
+                  <LightboxThumb index={i} label={t.lightbox.open(r.caption ?? P.refAlt)}>
+                    <img
+                      src={`/api/uploads/${r.thumbPath}`}
+                      alt={r.caption ?? P.refAlt}
+                      loading="lazy"
+                      className="aspect-square w-full object-cover"
+                    />
+                  </LightboxThumb>
+                </li>
+              ))}
+            </ul>
+          </LightboxGroup>
+        )}
+      </section>
+
       <section id="progress" aria-labelledby="progress-title" className="mb-8 scroll-mt-4">
         <h2 id="progress-title" className="section-title mb-1">
           {P.progress} {progress.length ? <span className="text-sm font-normal text-zinc-500">({progress.length})</span> : null}
@@ -443,7 +481,7 @@ export default async function ProjectPage({
           />
         ) : null}
         <details className="card mt-3" open={progress.length === 0}>
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{P.addProgress}</summary>
+          <summary className="expander">{P.addProgress}</summary>
           <div className="pt-3">
             <UploadForm projectId={project.id} accept={ACCEPT_ATTR} maxMb={env().MAX_UPLOAD_MB} kind="progress" groups={stages} submitLabel={P.addProgress} />
           </div>
@@ -509,36 +547,6 @@ export default async function ProjectPage({
         </div>
       </section>
 
-      <section aria-labelledby="refs-title" className="mb-8">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 id="refs-title" className="section-title">
-            {P.references}
-          </h2>
-          <Link href={`/projects/${project.id}/references`} className="btn-secondary">
-            <ImageIcon className="h-5 w-5" /> {referenceCount ? P.allPhotosCount(referenceCount) : P.addPhotos}
-          </Link>
-        </div>
-        {references.length === 0 ? (
-          <EmptyState title={P.noRefs}>{P.noRefsText}</EmptyState>
-        ) : (
-          <LightboxGroup images={lightboxImages(references)}>
-            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {references.map((r, i) => (
-                <li key={r.id}>
-                  <LightboxThumb index={i} label={t.lightbox.open(r.caption ?? P.refAlt)}>
-                    <img
-                      src={`/api/uploads/${r.thumbPath}`}
-                      alt={r.caption ?? P.refAlt}
-                      loading="lazy"
-                      className="aspect-square w-full object-cover"
-                    />
-                  </LightboxThumb>
-                </li>
-              ))}
-            </ul>
-          </LightboxGroup>
-        )}
-      </section>
     </>
   );
 }

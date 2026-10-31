@@ -15,7 +15,7 @@ export function generateMetadata(): Metadata {
 
 export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string; suggested?: string } }) {
   const [user, all] = await Promise.all([getCurrentUser(), listEvents()]);
-  const pendingCount = user?.isAdmin ? (await adminCounts()).toReview : 0;
+  const pendingCount = user?.isAdmin ? (await adminCounts(user)).toReview : 0;
   const { t, f } = getI18n();
   const E = t.events;
   const past = searchParams.when === "past";
@@ -112,7 +112,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
         </Link>
       </div>
       {cities.length > 1 ? (
-        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={E.filterCity}>
+        <div className="chip-row mb-4" role="group" aria-label={E.filterCity}>
           <Link href={href({ city: null })} className={!city ? "chip-on" : "chip-off"}>
             {E.allCities}
           </Link>
@@ -149,7 +149,11 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className={`font-semibold ${e.announceStatus === "cancelled" ? "line-through" : ""}`}>{e.name}</h3>
+                          <h3 className={`font-semibold ${e.announceStatus === "cancelled" ? "line-through" : ""}`}>
+                            <Link href={`/events/${e.id}`} className="hover:underline">
+                              {e.name}
+                            </Link>
+                          </h3>
                           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                             {(E.types as Record<string, string>)[e.eventType] ?? e.eventType}
                           </span>

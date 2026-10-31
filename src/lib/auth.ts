@@ -12,6 +12,8 @@ export type CurrentUser = {
   /** Empty for guests */
   email: string;
   isAdmin: boolean;
+  /** Moderators and admins: handle reports and remove Community projects */
+  isModerator: boolean;
   /** "Try without an account" user: private only, removed at guestExpiresAt unless they register */
   isGuest: boolean;
   guestExpiresAt: Date | null;
@@ -30,6 +32,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     name: session.user.name,
     email: isGuest ? "" : session.user.email,
     isAdmin: !isGuest && session.user.role === "admin",
+    isModerator: !isGuest && (session.user.role === "admin" || session.user.role === "moderator"),
     isGuest,
     guestExpiresAt: isGuest ? guestExpiresAt(new Date(session.user.createdAt)) : null,
   };
@@ -53,6 +56,13 @@ export async function requireAccount(): Promise<CurrentUser> {
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await requireUser();
   if (!user.isAdmin) notFound();
+  return user;
+}
+
+/** Community moderation (reports, removals): moderators and admins. Others get a 404. */
+export async function requireModerator(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!user.isModerator) notFound();
   return user;
 }
 

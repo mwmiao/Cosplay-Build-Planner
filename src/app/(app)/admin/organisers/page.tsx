@@ -128,13 +128,13 @@ export default async function OrganisersPage() {
         )}
 
         <details className="card mb-3">
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{S.addSource}</summary>
+          <summary className="expander">{S.addSource}</summary>
           <div className="pt-3">
             <SourceForm action={saveSource.bind(null, null)} organisers={organiserOptions} providers={providers} submitLabel={S.addSource} />
           </div>
         </details>
         <details className="card">
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{S.addManualPost}</summary>
+          <summary className="expander">{S.addManualPost}</summary>
           <div className="space-y-2 pt-3">
             <p className="hint">{S.manualHint}</p>
             <ManualPostForm action={addManualPostAction} sources={sources.map((s) => ({ id: s.id, username: s.username }))} />
@@ -163,7 +163,7 @@ export default async function OrganisersPage() {
           ))}
         </ul>
         <details className="card">
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold">{O.add}</summary>
+          <summary className="expander">{O.add}</summary>
           <div className="pt-3">
             <OrganiserForm action={saveOrganiser.bind(null, null)} submitLabel={O.add} />
           </div>
