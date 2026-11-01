@@ -65,20 +65,20 @@ export default async function SettingsPage() {
           {S.currency}
         </h2>
         <DefaultCurrencyForm current={base} />
-        <div className="border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
-          <h3 className="mb-1 font-semibold">{S.rates}</h3>
+        <details className="border-t border-zinc-200 pt-2 text-sm dark:border-zinc-800">
+          <summary className="expander">{S.rates}</summary>
           <p className="hint mb-3">{S.ratesHint}</p>
           {ctx.rates.fetchedAt ? (
             <dl className="mb-3 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
-              <dt className="text-zinc-500 dark:text-zinc-400">{S.source}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{S.source}</dt>
               <dd>{ctx.rates.source}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{S.ratesFor}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{S.ratesFor}</dt>
               <dd>{ctx.rates.rateDate}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{S.checked}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{S.checked}</dt>
               <dd>{f.dateTime(ctx.rates.fetchedAt)}</dd>
               {[...used].sort().map((c) => (
                 <div key={c} className="contents">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{c}</dt>
+                  <dt className="text-zinc-600 dark:text-zinc-400">{c}</dt>
                   <dd className="tabular-nums">{f.rate(crossRate(ctx.rates, c, base), c, base)}</dd>
                 </div>
               ))}
@@ -96,7 +96,7 @@ export default async function SettingsPage() {
               Frankfurter
             </a>
           </p>
-        </div>
+        </details>
       </section>
 
       <section className="card mb-6" aria-labelledby="deleted-title">
@@ -105,14 +105,14 @@ export default async function SettingsPage() {
         </h2>
         <p className="hint mb-3">{S.deletedHint}</p>
         {deleted.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{S.nothing}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{S.nothing}</p>
         ) : (
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {deleted.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{p.characterName}</div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400">
                     {p.series ? `${p.series} · ` : ""}{S.deletedOn(f.date(p.deletedAt))}
                   </div>
                 </div>
@@ -132,12 +132,10 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="card mb-6 text-sm" aria-labelledby="about-title">
-        <h2 id="about-title" className="section-title mb-2">
-          {S.about}
-        </h2>
-        <dl className="grid grid-cols-2 gap-y-1">
-          <dt className="text-zinc-500 dark:text-zinc-400">{S.version}</dt>
+      <details className="card mb-6 text-sm">
+        <summary className="expander">{S.about}</summary>
+        <dl className="mt-2 grid grid-cols-2 gap-y-1">
+          <dt className="text-zinc-600 dark:text-zinc-400">{S.version}</dt>
           <dd>
             <a
               href="https://github.com/mwmiao/Cosplay-Build-Planner/releases"
@@ -163,24 +161,24 @@ export default async function SettingsPage() {
           </dd>
           {builtAt && !Number.isNaN(builtAt.getTime()) ? (
             <>
-              <dt className="text-zinc-500 dark:text-zinc-400">{S.built}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{S.built}</dt>
               <dd>{f.dateTime(builtAt)}</dd>
             </>
           ) : null}
-          <dt className="text-zinc-500 dark:text-zinc-400">{S.projects}</dt>
+          <dt className="text-zinc-600 dark:text-zinc-400">{S.projects}</dt>
           <dd className="tabular-nums">{projectCount}</dd>
-          <dt className="text-zinc-500 dark:text-zinc-400">{S.parts}</dt>
+          <dt className="text-zinc-600 dark:text-zinc-400">{S.parts}</dt>
           <dd className="tabular-nums">{partCount}</dd>
-          <dt className="text-zinc-500 dark:text-zinc-400">{S.images}</dt>
+          <dt className="text-zinc-600 dark:text-zinc-400">{S.images}</dt>
           <dd className="tabular-nums">{imageCount}</dd>
         </dl>
         <p className="hint mt-3">{S.dataHint}</p>
-      </section>
+      </details>
 
       <section className="card mb-6 flex flex-wrap items-center justify-between gap-3" aria-label={t.auth.account}>
         <div className="min-w-0 text-sm">
           <div className="font-semibold">{t.auth.signedInAs(user.name)}</div>
-          <div className="truncate text-zinc-500 dark:text-zinc-400">{user.email}</div>
+          <div className="truncate text-zinc-600 dark:text-zinc-400">{user.email}</div>
         </div>
         <div className="flex flex-wrap gap-2">
           {user.isModerator ? (

@@ -25,7 +25,7 @@ export function LoginForm({ next }: { next: string }) {
         <Link href="/forgot-password" className="link">
           {A.forgot}
         </Link>
-        <p className="text-zinc-500 dark:text-zinc-400">
+        <p className="text-zinc-600 dark:text-zinc-400">
           {A.noAccount}{" "}
           <Link href="/register" className="link">
             {A.createAccount}
@@ -54,13 +54,13 @@ export function RegisterForm() {
         autoComplete="new-password"
         minLength={PASSWORD_MIN}
         errors={e.password}
-        hint={A.passwordHint(PASSWORD_MIN)}
+        hint={e.password?.length ? undefined : A.passwordHint(PASSWORD_MIN)}
       />
       <Field label={A.confirmPassword} name="confirm" type="password" required autoComplete="new-password" errors={e.confirm} />
       <SubmitButton className="btn-primary w-full" pendingText={t.common.working}>
         {A.submitRegister}
       </SubmitButton>
-      <p className="pt-2 text-center text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="pt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
         {A.haveAccount}{" "}
         <Link href="/login" className="link">
           {A.submitLogin}
@@ -112,7 +112,7 @@ export function ResetForm({ token }: { token: string }) {
             required
             autoComplete="new-password"
             errors={e.password}
-            hint={A.passwordHint(PASSWORD_MIN)}
+            hint={e.password?.length ? undefined : A.passwordHint(PASSWORD_MIN)}
           />
           <Field label={A.confirmPassword} name="confirm" type="password" required autoComplete="new-password" errors={e.confirm} />
           <SubmitButton className="btn-primary w-full" pendingText={t.common.working}>

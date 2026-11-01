@@ -53,19 +53,29 @@ export function Timeline({
             <h3 className="mb-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300">
               <time dateTime={d.day}>{f.date(new Date(`${d.day}T00:00:00.000Z`))}</time>
             </h3>
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <ul className={d.items.length === 1 ? "grid grid-cols-2 gap-3 sm:grid-cols-1" : "grid grid-cols-2 gap-3 sm:grid-cols-3"}>
               {d.items.map((item) => (
-                <li key={item.id} className="card flex flex-col gap-1.5 p-2" data-testid="timeline-item">
-                  <LightboxThumb index={item.index} label={t.lightbox.open(item.caption ?? item.stage ?? t.refs.progressAlt)}>
+                <li
+                  key={item.id}
+                  className={`card flex flex-col gap-1.5 p-2 ${d.items.length === 1 ? "sm:max-w-xl sm:flex-row sm:gap-3" : ""}`}
+                  data-testid="timeline-item"
+                >
+                  <LightboxThumb
+                    index={item.index}
+                    label={t.lightbox.open(item.caption ?? item.stage ?? t.refs.progressAlt)}
+                    className={d.items.length === 1 ? "sm:w-40 sm:shrink-0" : undefined}
+                  >
                     <img src={item.thumbUrl} alt={item.caption ?? item.stage ?? ""} loading="lazy" className="aspect-square w-full object-cover" />
                   </LightboxThumb>
-                  {item.stage ? (
-                    <span className="self-start rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
-                      {item.stage}
-                    </span>
-                  ) : null}
-                  {item.caption ? <p className="break-words px-0.5 text-sm">{item.caption}</p> : null}
-                  {actions ? actions(item) : null}
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    {item.stage ? (
+                      <span className="self-start rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">
+                        {item.stage}
+                      </span>
+                    ) : null}
+                    {item.caption ? <p className="break-words px-0.5 text-sm">{item.caption}</p> : null}
+                    {actions ? actions(item) : null}
+                  </div>
                 </li>
               ))}
             </ul>

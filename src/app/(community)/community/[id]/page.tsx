@@ -9,7 +9,7 @@ import { getPublicProject } from "@/lib/community/view";
 import { db } from "@/lib/db";
 import { idSchema } from "@/lib/validation";
 import { RemoveForm } from "../../../(app)/admin/RemoveForm";
-import { copyToMyProjects } from "./actions";
+import { copyToMyProjects, toggleBookmark, toggleReaction } from "./actions";
 import { ReportForm } from "./ReportForm";
 
 async function load(id: string) {
@@ -31,7 +31,7 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
         <BackLink href="/community">{C.back}</BackLink>
         <div className="rounded-2xl border-2 border-dashed border-zinc-300 px-6 py-10 text-center dark:border-zinc-700">
           <h1 className="font-semibold">{C.notFoundTitle}</h1>
-          <p className="mt-1 text-sm text-zinc-500">{C.notFoundText}</p>
+          <p className="mt-1 text-sm text-zinc-600">{C.notFoundText}</p>
         </div>
       </>
     );
@@ -41,11 +41,19 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
   const own = user
     ? await db.publication.findFirst({ where: { id: project.id, ownerId: user.id }, select: { projectId: true } })
     : null;
+  const canEngage = !!user && !user.isGuest;
+  const [reactions, reacted, bookmarked] = await Promise.all([
+    db.reaction.count({ where: { publicationId: project.id } }),
+    canEngage ? db.reaction.findUnique({ where: { userId_publicationId: { userId: user.id, publicationId: project.id } }, select: { userId: true } }) : null,
+    canEngage ? db.bookmark.findUnique({ where: { userId_publicationId: { userId: user.id, publicationId: project.id } }, select: { userId: true } }) : null,
+  ]);
   return (
     <>
       <BackLink href="/community">{C.back}</BackLink>
       <PublicProject
         t={t}
+        creatorHref={`/community/creator/${project.id}`}
+        searchLinks
         f={f}
         data={{
           title: project.title,
@@ -83,6 +91,27 @@ export default async function CommunityProjectPage({ params }: { params: { id: s
           ) : null
         }
       />
+      <div className="mt-6 flex flex-wrap items-center gap-2" data-testid="engagement">
+        {canEngage && !own ? (
+          <form action={toggleReaction.bind(null, project.id)}>
+            <SubmitButton className={reacted ? "btn-primary" : "btn-secondary"} pendingText="…" aria-pressed={!!reacted}>
+              ♥ {C.react}
+            </SubmitButton>
+          </form>
+        ) : null}
+        {canEngage ? (
+          <form action={toggleBookmark.bind(null, project.id)}>
+            <SubmitButton className={bookmarked ? "btn-primary" : "btn-secondary"} pendingText="…" aria-pressed={!!bookmarked}>
+              {bookmarked ? C.saved : C.save}
+            </SubmitButton>
+          </form>
+        ) : null}
+        {reactions ? (
+          <span className="text-sm text-zinc-600 dark:text-zinc-400" data-testid="reaction-count">
+            ♥ {C.reactionCount(reactions)}
+          </span>
+        ) : null}
+      </div>
       {user && !user.isGuest && !own ? (
         <details className="card mt-8" data-testid="report">
           <summary className="expander text-sm">{C.report.title}</summary>

@@ -176,29 +176,29 @@ export function ImportWizard({ projects }: { projects: ProjectOption[] }) {
               {T.fileInfo(preview.schemaVersion, f.dateTime(new Date(preview.exportedAt)), preview.appVersion)}
             </p>
             <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-sm" data-testid="import-preview">
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.project}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.project}</dt>
               <dd className="font-semibold">
                 {preview.projectName}
-                {preview.series ? <span className="font-normal text-zinc-500"> · {preview.series}</span> : null}
+                {preview.series ? <span className="font-normal text-zinc-600"> · {preview.series}</span> : null}
               </dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.expenses}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.expenses}</dt>
               <dd className="tabular-nums">{preview.partCount}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.paidExpenses}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.paidExpenses}</dt>
               <dd className="tabular-nums">{preview.paidCount}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.shoppingItems}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.shoppingItems}</dt>
               <dd className="tabular-nums">{preview.shoppingItemCount}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.currencies}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.currencies}</dt>
               <dd>{preview.currencies.join(", ")}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.baseCurrency}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.baseCurrency}</dt>
               <dd>{preview.base}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.paidTotal}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.paidTotal}</dt>
               <dd className="tabular-nums">{f.money(preview.paidCents, preview.base)}</dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.plannedTotal}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.plannedTotal}</dt>
               <dd className="tabular-nums">
                 {preview.plannedConverted ? "≈ " : ""}
                 {f.money(preview.plannedCents, preview.base)}
               </dd>
-              <dt className="text-zinc-500 dark:text-zinc-400">{T.budget}</dt>
+              <dt className="text-zinc-600 dark:text-zinc-400">{T.budget}</dt>
               <dd className="tabular-nums">{f.money(preview.budgetCents, preview.base)}</dd>
             </dl>
             <div>

@@ -52,7 +52,7 @@ export function EmptyState({
   return (
     <div className="rounded-2xl border-2 border-dashed border-zinc-300 px-6 py-10 text-center dark:border-zinc-700">
       <h3 className="font-semibold">{title}</h3>
-      {children ? <div className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{children}</div> : null}
+      {children ? <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{children}</div> : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
@@ -73,9 +73,9 @@ export function BackLink({ href, children }: { href: string; children: React.Rea
 export function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="card p-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{label}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{label}</div>
       <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
-      {sub ? <div className="text-xs text-zinc-500 dark:text-zinc-400">{sub}</div> : null}
+      {sub ? <div className="text-xs text-zinc-600 dark:text-zinc-400">{sub}</div> : null}
     </div>
   );
 }

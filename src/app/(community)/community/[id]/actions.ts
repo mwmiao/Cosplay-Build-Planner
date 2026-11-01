@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { getI18n } from "@/i18n/server";
-import { getCurrentUser, requireUser } from "@/lib/auth";
+import { getCurrentUser, requireAccount, requireUser } from "@/lib/auth";
 import { copyImageToProject } from "@/lib/community/images";
 import { getPublicProject } from "@/lib/community/view";
 import { CATEGORIES } from "@/lib/constants";
@@ -164,4 +164,32 @@ export async function reportPublication(publicationId: string, _prev: FormState,
   });
   revalidatePath("/admin");
   return { ok: true, message: R.sent };
+}
+
+/** Save or unsave a Community project (accounts only; private to that account). */
+export async function toggleBookmark(publicationId: string): Promise<void> {
+  const user = await requireAccount();
+  if (!idSchema.safeParse(publicationId).success) return;
+  const key = { userId_publicationId: { userId: user.id, publicationId } };
+  if (await db.bookmark.findUnique({ where: key })) await db.bookmark.delete({ where: key });
+  else if (await db.publication.findUnique({ where: { id: publicationId }, select: { id: true } })) {
+    await db.bookmark.upsert({ where: key, create: { userId: user.id, publicationId }, update: {} });
+  }
+  revalidatePath(`/community/${publicationId}`);
+  revalidatePath("/community");
+}
+
+/** One reaction per account, on other people's projects. Only the count is public. */
+export async function toggleReaction(publicationId: string): Promise<void> {
+  const user = await requireAccount();
+  if (!idSchema.safeParse(publicationId).success) return;
+  const key = { userId_publicationId: { userId: user.id, publicationId } };
+  if (await db.reaction.findUnique({ where: key })) await db.reaction.delete({ where: key });
+  else {
+    const publication = await db.publication.findUnique({ where: { id: publicationId }, select: { ownerId: true } });
+    if (publication && publication.ownerId !== user.id) {
+      await db.reaction.upsert({ where: key, create: { userId: user.id, publicationId }, update: {} });
+    }
+  }
+  revalidatePath(`/community/${publicationId}`);
 }

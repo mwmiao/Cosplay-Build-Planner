@@ -46,10 +46,10 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
   return (
     <>
       <h1 className="page-title">{A.title}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{A.intro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{A.intro}</p>
       <section id="reports" aria-labelledby="mod-reports" className="mb-8 scroll-mt-4" data-testid="reports">
         <h2 id="mod-reports" className="section-title mb-2">
-          {A.reports} {counts.reports ? <span className="text-sm font-normal text-zinc-500">({counts.reports})</span> : null}
+          {A.reports} {counts.reports ? <span className="text-sm font-normal text-zinc-600">({counts.reports})</span> : null}
         </h2>
         {searchParams.dismissed === "1" && (
           <p role="status" className="mb-2 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
@@ -57,7 +57,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
           </p>
         )}
         {reported.length === 0 ? (
-          <p className="text-sm text-zinc-500">{A.reportsEmpty}</p>
+          <p className="text-sm text-zinc-600">{A.reportsEmpty}</p>
         ) : (
           <ul className="space-y-3">
             {reported.map(({ publication: p, reports }) => (
@@ -66,7 +66,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
                   <Link href={`/community/${p.id}`} className="link font-semibold">
                     {p.title}
                   </Link>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
                     {A.by(p.owner.name)} · {A.reportCount(reports.length)}
                   </p>
                 </div>
@@ -74,7 +74,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
                   {reports.map((r) => (
                     <li key={r.id}>
                       <span className="font-medium">{(R.reasons as Record<string, string>)[r.reason] ?? r.reason}</span>
-                      <span className="text-zinc-500"> · {f.date(r.createdAt)}</span>
+                      <span className="text-zinc-600"> · {f.date(r.createdAt)}</span>
                       {r.note ? <p className="whitespace-pre-wrap break-words text-zinc-600 dark:text-zinc-300">{r.note}</p> : null}
                     </li>
                   ))}
@@ -108,7 +108,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
       <section aria-labelledby="notifications-title" className="mb-8" data-testid="notifications">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 id="notifications-title" className="section-title">
-            {A.notifications} {counts.unread ? <span className="text-sm font-normal text-zinc-500">({A.unread(counts.unread)})</span> : null}
+            {A.notifications} {counts.unread ? <span className="text-sm font-normal text-zinc-600">({A.unread(counts.unread)})</span> : null}
           </h2>
           {counts.unread ? (
             <form action={markNotificationsRead}>
@@ -119,7 +119,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
           ) : null}
         </div>
         {notifications.length === 0 ? (
-          <p className="text-sm text-zinc-500">{A.noNotifications}</p>
+          <p className="text-sm text-zinc-600">{A.noNotifications}</p>
         ) : (
           <ul className="space-y-2">
             {notifications.map((n) => {
@@ -145,7 +145,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
                   <p className="text-sm text-zinc-600 dark:text-zinc-300">
                     {[d.date, d.location, d.username ? `@${d.username}` : null].filter(Boolean).join(" · ")}
                   </p>
-                  {d.preview ? <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.preview}</p> : null}
+                  {d.preview ? <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.preview}</p> : null}
                   <div className="flex flex-wrap gap-x-4 text-sm">
                     <Link href="/admin/events" className="link">
                       {A.review}
@@ -155,7 +155,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
                         {t.instagram.openPost}
                       </a>
                     ) : null}
-                    <span className="text-zinc-500">{f.dateTime(n.createdAt)}</span>
+                    <span className="text-zinc-600">{f.dateTime(n.createdAt)}</span>
                   </div>
                 </li>
               );
@@ -176,7 +176,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
           {A.published}
         </h2>
         {publications.length === 0 ? (
-          <p className="text-sm text-zinc-500">{A.none}</p>
+          <p className="text-sm text-zinc-600">{A.none}</p>
         ) : (
           <ul className="space-y-3">
             {publications.map((p) => (
@@ -185,7 +185,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
                   <Link href={`/community/${p.id}`} className="link font-semibold">
                     {p.title}
                   </Link>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
                     {A.by(p.owner.name)} · {A.published_on(f.date(p.versionAt))}
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { remo
           {A.log}
         </h2>
         {log.length === 0 ? (
-          <p className="text-sm text-zinc-500">{A.logEmpty}</p>
+          <p className="text-sm text-zinc-600">{A.logEmpty}</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {log.map((m) => (

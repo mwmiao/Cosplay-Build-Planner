@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
       <h1 className="mb-2 text-center text-xl font-bold">{A.forgotTitle}</h1>
       {emailConfigured() ? (
         <>
-          <p className="mb-6 text-center text-sm text-zinc-500 dark:text-zinc-400">{A.forgotIntro}</p>
+          <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">{A.forgotIntro}</p>
           <ForgotForm />
         </>
       ) : (

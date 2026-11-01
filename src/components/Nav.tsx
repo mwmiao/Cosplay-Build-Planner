@@ -100,7 +100,7 @@ export function Sidebar({
           </span>
           <span className="min-w-0">
             <span className="block truncate font-medium">{userName}</span>
-            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{isGuest ? t.guest.guestAccount : t.auth.account}</span>
+            <span className="block text-xs text-zinc-600 dark:text-zinc-400">{isGuest ? t.guest.guestAccount : t.auth.account}</span>
           </span>
         </Link>
         <form action={signOut}>
@@ -138,7 +138,7 @@ export function BottomNav({ adminBadge = 0 }: { adminBadge?: number }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${
-                  active ? "text-brand-600 dark:text-brand-400" : "text-zinc-500 dark:text-zinc-400"
+                  active ? "text-brand-600 dark:text-brand-400" : "text-zinc-600 dark:text-zinc-400"
                 }`}
               >
                 <span className="relative">

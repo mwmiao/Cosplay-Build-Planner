@@ -128,7 +128,7 @@ export function EventForm({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={E.city} name="city" required defaultValue={initial?.city} errors={e.city} placeholder="Lisboa" />
-        <Field label={E.country} name="country" defaultValue={initial?.country ?? "Portugal"} errors={e.country} />
+        {suggest ? null : <Field label={E.country} name="country" defaultValue={initial?.country ?? "Portugal"} errors={e.country} />}
       </div>
       {suggest ? null : (
         <Field label={E.mapUrl} name="mapUrl" type="url" inputMode="url" defaultValue={initial?.mapUrl} errors={e.mapUrl} placeholder="https://maps.app.goo.gl/…" hint={E.mapUrlHint} />
@@ -154,7 +154,17 @@ export function EventForm({
           defaultValue={initial?.organiserId ?? ""}
         />
       )}
-      <Field as="textarea" label={E.notes} name="notes" defaultValue={initial?.notes} errors={e.notes} rows={3} />
+      {suggest ? (
+        <details open={!!(e.country?.length || e.notes?.length)}>
+          <summary className="expander">{t.projectForm.moreDetails}</summary>
+          <div className="space-y-4 pt-2">
+            <Field label={E.country} name="country" defaultValue={initial?.country ?? "Portugal"} errors={e.country} />
+            <Field as="textarea" label={E.notes} name="notes" defaultValue={initial?.notes} errors={e.notes} rows={3} />
+          </div>
+        </details>
+      ) : (
+        <Field as="textarea" label={E.notes} name="notes" defaultValue={initial?.notes} errors={e.notes} rows={3} />
+      )}
       <StickyActions>
         <SubmitButton className="btn-primary flex-1 sm:flex-none">{submitLabel}</SubmitButton>
         <Link href="/events" className="btn-secondary hidden sm:inline-flex">

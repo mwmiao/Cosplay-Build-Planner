@@ -2,13 +2,17 @@
 
 import { useId, useState } from "react";
 import { Field } from "@/components/Field";
+import { ProgressBar } from "@/components/ui";
 import { useI18n } from "@/i18n/client";
 
 export type UploadKind = "reference" | "part" | "cover" | "progress";
 
+/** Where each kind of upload lands back on its page. */
+const ANCHORS: Record<string, string> = { part: "#photos", cover: "#cover", progress: "#progress" };
+
 /**
- * Plain multipart form posting to the upload route (works without JS too).
- * The client side only pre-checks file sizes and shows a busy state. Used for
+ * Multipart form posting to the upload route (works without JS too). With JS
+ * it pre-checks file sizes and shows how far the upload has got. Used for
  * reference images, a part's photos and the project's main picture.
  */
 export function UploadForm({
@@ -34,7 +38,31 @@ export function UploadForm({
   const id = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chosen, setChosen] = useState(0);
+  /** Percent sent; 100 means the server is processing the images */
+  const [sent, setSent] = useState(0);
   const single = kind === "cover";
+
+  // Sent with XMLHttpRequest for its progress events; the route answers with
+  // the same redirect as a plain form post, which is followed here.
+  const send = (form: HTMLFormElement) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", form.action);
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) setSent(Math.round((ev.loaded / ev.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 400) return fail();
+      window.location.assign(`${xhr.responseURL}${ANCHORS[kind] ?? ""}`);
+    };
+    xhr.onerror = () => fail();
+    xhr.send(new FormData(form));
+  };
+  const fail = () => {
+    setBusy(false);
+    setSent(0);
+    setError(R.uploadFailed);
+  };
 
   return (
     <form
@@ -53,8 +81,10 @@ export function UploadForm({
           e.preventDefault();
           setError(R.tooBig(maxMb, tooBig.map((f) => f.name).join(", ")));
         } else {
+          e.preventDefault();
           setError(null);
           setBusy(true);
+          send(e.currentTarget);
         }
       }}
     >
@@ -72,12 +102,25 @@ export function UploadForm({
           multiple={!single}
           aria-describedby={`${id}-hint`}
           aria-invalid={error ? true : undefined}
-          className="block w-full text-sm file:mr-3 file:min-h-11 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:font-semibold file:text-brand-700 dark:file:bg-brand-900/40 dark:file:text-brand-200"
+          onChange={(e) => setChosen(e.currentTarget.files?.length ?? 0)}
+          className="peer sr-only"
         />
+        <div className="flex flex-wrap items-center gap-3 rounded-xl peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500">
+          <label htmlFor={`${id}-images`} className="btn-secondary cursor-pointer">
+            {single ? R.chooseFile : R.chooseFiles}
+          </label>
+          <span className="text-sm text-zinc-600 dark:text-zinc-400" data-testid="files-chosen">
+            {chosen ? R.filesChosen(chosen) : R.noFile}
+          </span>
+        </div>
         <p id={`${id}-hint`} className="hint">
           {single ? R.imageHint(maxMb) : R.imagesHint(maxMb)}
         </p>
-        {error ? <p className="field-error">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="field-error">
+            {error}
+          </p>
+        ) : null}
       </div>
       {kind === "progress" ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -106,6 +149,12 @@ export function UploadForm({
           <Field label={R.sourceLink} name="sourceUrl" type="url" inputMode="url" placeholder="https://" />
         </div>
       )}
+      {busy ? (
+        <div role="status" className="space-y-1" data-testid="upload-progress">
+          <ProgressBar value={sent} label={R.uploading} />
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">{sent < 100 ? R.sending(sent) : R.processing}</p>
+        </div>
+      ) : null}
       <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
         {busy ? R.uploading : (submitLabel ?? R.upload)}
       </button>

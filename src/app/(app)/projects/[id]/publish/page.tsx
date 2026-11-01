@@ -34,7 +34,7 @@ export default async function PublishPage({ params }: { params: { id: string } }
     <>
       <BackLink href={`/projects/${project.id}`}>{project.characterName}</BackLink>
       <h1 className="page-title mb-1">{C.publishTitle}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{C.publishIntro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{C.publishIntro}</p>
 
       <PublishForm
         projectId={project.id}

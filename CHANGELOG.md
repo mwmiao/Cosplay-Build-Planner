@@ -4,6 +4,38 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.9.0 — 2026-11-04
+
+### Added
+- **Saved projects:** accounts can save Community projects and find them under
+  a Saved tab. Saves are private.
+- **Reactions:** one "Inspiring" reaction per account on other people's
+  projects. Only the count is public.
+- **I'm going:** mark an event you're attending and link one of your projects
+  to it; the project shows a countdown. Private to you.
+- **Creator pages:** a page of someone's published projects, showing only
+  their display name.
+- **Search:** tags and series open a Community search, and projects can be
+  filtered by status.
+- **Event filters:** by type and by month.
+- **First project checklist:** part, reference image, deadline. It can be skipped.
+- The visitor page shows an example of a project.
+
+### Changed
+- New project starts with name and series; the rest is under "More details",
+  which opens by itself if a field there has an error. Suggest event also
+  collapses its rarely needed fields.
+- Uploads show progress, and file pickers are translated.
+- A timeline day with one photo uses the row on wider screens.
+- Exchange rates and About this install are collapsed in Settings.
+- Shopping shows "no prices yet" instead of €0.00.
+- "Suggested events" is the one name for that queue.
+
+### Fixed
+- Grey secondary text now meets the 4.5:1 contrast minimum on the page background.
+- Upload errors are announced to screen readers.
+- Admin Edit links on Events are easier to tap.
+
 ## 1.8.0 — 2026-11-03
 
 ### Added

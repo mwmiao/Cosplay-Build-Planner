@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { next
   return (
     <>
       <h1 className="mb-1 text-center text-xl font-bold">{t.auth.loginTitle}</h1>
-      <p className="mb-6 text-center text-sm text-zinc-500 dark:text-zinc-400">{t.auth.loginSubtitle}</p>
+      <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">{t.auth.loginSubtitle}</p>
       {user?.isGuest ? (
         <p role="status" className="mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900 dark:bg-brand-900/40 dark:text-brand-100">
           {G.loginKeeps}

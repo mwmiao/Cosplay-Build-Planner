@@ -29,6 +29,7 @@ test("start date: validation, shown on the project, sorting and grid/list views"
   await register(page, newUser("Dates"));
   await page.goto("/projects/new");
   await page.getByLabel("Character name").fill("Zelda");
+  await page.getByText("More details (optional)").click();
   await page.getByLabel("Start date").fill("2027-03-10");
   await page.getByLabel("Deadline").fill("2027-03-01");
   await page.getByRole("button", { name: "Create project" }).click();

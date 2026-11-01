@@ -36,7 +36,7 @@ export default async function OrganisersPage() {
     <>
       <BackLink href="/admin/events">{t.events.queueTitle}</BackLink>
       <h1 className="page-title mb-1">{O.title}</h1>
-      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">{O.intro}</p>
+      <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">{O.intro}</p>
 
       <section id="instagram" aria-labelledby="instagram-title" className="mb-10 scroll-mt-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -65,7 +65,7 @@ export default async function OrganisersPage() {
         </p>
 
         {sources.length === 0 ? (
-          <p className="card mb-4 text-sm text-zinc-500">{S.none}</p>
+          <p className="card mb-4 text-sm text-zinc-600">{S.none}</p>
         ) : (
           <ul className="mb-4 space-y-2" data-testid="instagram-sources">
             {sources.map((s) => {
@@ -77,7 +77,7 @@ export default async function OrganisersPage() {
                     <a href={`https://www.instagram.com/${s.username}/`} target="_blank" rel="noopener noreferrer" className="font-semibold">
                       @{s.username}
                     </a>
-                    {s.displayName ? <span className="text-sm text-zinc-500">{s.displayName}</span> : null}
+                    {s.displayName ? <span className="text-sm text-zinc-600">{s.displayName}</span> : null}
                     <span
                       data-testid="source-status"
                       className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -154,7 +154,7 @@ export default async function OrganisersPage() {
                   <span className="font-semibold">{o.name}</span>
                   {o.active ? null : <span className="rounded-full bg-zinc-100 px-2 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800">{O.paused}</span>}
                 </div>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">{[o.city, o.usualVenue].filter(Boolean).join(" · ") || "—"}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{[o.city, o.usualVenue].filter(Boolean).join(" · ") || "—"}</p>
               </div>
               <Link href={`/admin/organisers/${o.id}`} className="btn-secondary min-h-9">
                 {t.common.edit}

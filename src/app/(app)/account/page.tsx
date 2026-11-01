@@ -55,7 +55,7 @@ export default async function AccountPage() {
           {A.profile}
         </h2>
         <div className="text-sm">
-          <div className="text-zinc-500 dark:text-zinc-400">{A.email}</div>
+          <div className="text-zinc-600 dark:text-zinc-400">{A.email}</div>
           <div className="font-medium">{user.email}</div>
           <p className="hint">{A.emailPrivate}</p>
         </div>

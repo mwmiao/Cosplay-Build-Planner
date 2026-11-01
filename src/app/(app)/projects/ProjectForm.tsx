@@ -47,6 +47,8 @@ export function ProjectForm({
   const [state, formAction] = useFormState(action, {});
   const e = state.errors ?? {};
   const statusOptions = PROJECT_STATUSES.map((s) => ({ value: s, label: t.status[s] ?? s }));
+  // New projects start short; editing, or an error in there, shows everything.
+  const showDetails = !!initial || Object.keys(e).some((k) => k !== "characterName" && k !== "series" && e[k]?.length);
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <FormMessage state={state} />
@@ -59,10 +61,11 @@ export function ProjectForm({
         placeholder={F.characterPlaceholder}
         autoComplete="off"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label={F.series} name="series" defaultValue={initial?.series} errors={e.series} placeholder={F.seriesPlaceholder} />
-        <Field as="select" label={F.status} name="status" options={statusOptions} defaultValue={initial?.status ?? "idea"} errors={e.status} />
-      </div>
+      <Field label={F.series} name="series" defaultValue={initial?.series} errors={e.series} placeholder={F.seriesPlaceholder} />
+      <details open={showDetails} data-testid="project-details">
+        <summary className="expander">{F.moreDetails}</summary>
+        <div className="space-y-4 pt-2">
+      <Field as="select" label={F.status} name="status" options={statusOptions} defaultValue={initial?.status ?? "idea"} errors={e.status} />
       <Field
         label={F.convention}
         name="conventionName"
@@ -96,6 +99,8 @@ export function ProjectForm({
         <Field label={F.budget} name="budgetCents" inputMode="decimal" defaultValue={initial?.budget} errors={e.budgetCents} placeholder="0.00" />
       </div>
       <Field as="textarea" label={F.notes} name="notes" defaultValue={initial?.notes} errors={e.notes} rows={4} />
+        </div>
+      </details>
       <StickyActions>
         <SubmitButton className="btn-primary flex-1 sm:flex-none">{submitLabel}</SubmitButton>
         <Link href={cancelHref} className="btn-secondary hidden sm:inline-flex">

@@ -200,7 +200,7 @@ export default async function ProjectsPage({
                     {image}
                     <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
                       <h2 className="truncate font-semibold">{p.characterName}</h2>
-                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{p.series ?? "—"}</p>
+                      <p className="truncate text-xs text-zinc-600 dark:text-zinc-400">{p.series ?? "—"}</p>
                       <div className="flex flex-wrap items-center gap-1">
                         <StatusBadge status={p.status} label={statusLabel(p.status, t)} />
                         {badge}
@@ -209,7 +209,7 @@ export default async function ProjectsPage({
                         <ProgressBar value={stats.completion} label={t.projects.completionOf(p.characterName)} />
                         <span className="text-xs font-semibold tabular-nums">{stats.completion}%</span>
                       </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400">{deadline}</div>
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400">{deadline}</div>
                     </div>
                   </Link>
                 </li>
@@ -227,7 +227,7 @@ export default async function ProjectsPage({
                       <h2 className="min-w-0 truncate font-semibold">{p.characterName}</h2>
                       <span className="shrink-0"><StatusBadge status={p.status} label={statusLabel(p.status, t)} /></span>
                     </div>
-                    <p className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    <p className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                       <span className="truncate">{p.series ?? "—"}</span>
                       {badge}
                     </p>
@@ -235,7 +235,7 @@ export default async function ProjectsPage({
                       <ProgressBar value={stats.completion} label={t.projects.completionOf(p.characterName)} />
                       <span className="text-xs font-semibold tabular-nums">{stats.completion}%</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400">
                       {p.startDate ? <span>{t.projects.startShort(f.date(p.startDate))}</span> : null}
                       {deadline}
                       <span className="tabular-nums">
@@ -254,6 +254,8 @@ export default async function ProjectsPage({
   );
 }
 
+const EXAMPLE_STATUSES = ["done", "ordered", "needed"];
+
 /** The main page for visitors without an account: start as a guest, or log in. */
 function VisitorStart({ next }: { next: string }) {
   const { t } = getI18n();
@@ -271,7 +273,7 @@ function VisitorStart({ next }: { next: string }) {
         </form>
         <p className="hint mt-2">{G.tryWithoutHint(GUEST_DAYS)}</p>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
-          <span className="text-zinc-500 dark:text-zinc-400">{G.haveAccount}</span>
+          <span className="text-zinc-600 dark:text-zinc-400">{G.haveAccount}</span>
           <Link href={`/login?next=${encodeURIComponent(next)}`} className="link">
             {t.auth.submitLogin}
           </Link>
@@ -280,7 +282,23 @@ function VisitorStart({ next }: { next: string }) {
           </Link>
         </div>
       </section>
-      <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+      <section className="card mt-4 space-y-2 p-4" aria-labelledby="example-title" data-testid="visitor-example">
+        <h2 id="example-title" className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+          {G.exampleTitle}
+        </h2>
+        <p className="font-semibold">
+          Jinx <span className="font-normal text-zinc-600 dark:text-zinc-400">· Arcane</span>
+        </p>
+        <ProgressBar value={33} label={t.projects.title} />
+        <ul className="space-y-1 text-sm">
+          {G.exampleParts.map((name, i) => (
+            <li key={name} className="flex items-center justify-between gap-2">
+              {name} <StatusBadge status={EXAMPLE_STATUSES[i]!} label={statusLabel(EXAMPLE_STATUSES[i]!, t)} />
+            </li>
+          ))}
+        </ul>
+      </section>
+      <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
         {G.explore}{" "}
         <Link href="/community" className="link">
           {t.nav.community}

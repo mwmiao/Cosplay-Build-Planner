@@ -125,10 +125,22 @@ const ORDER: Record<CommunitySort, Prisma.PublicationOrderByWithRelationInput[]>
 };
 export const PAGE_SIZE = 12;
 
-export async function listPublicProjects(opts: { q?: string; sort: CommunitySort; page: number }) {
+export async function listPublicProjects(opts: {
+  q?: string;
+  sort: CommunitySort;
+  page: number;
+  status?: string;
+  /** Only what this account saved */
+  savedBy?: string;
+  /** Only this owner's publications */
+  ownerId?: string;
+}) {
   const q = opts.q?.trim().slice(0, 100);
   const where: Prisma.PublicationWhereInput = {
     ...visible,
+    ...(opts.status ? { project: { deletedAt: null, status: opts.status } } : {}),
+    ...(opts.savedBy ? { bookmarks: { some: { userId: opts.savedBy } } } : {}),
+    ...(opts.ownerId ? { ownerId: opts.ownerId } : {}),
     ...(q
       ? {
           OR: [

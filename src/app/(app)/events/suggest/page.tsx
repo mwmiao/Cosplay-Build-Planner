@@ -18,7 +18,7 @@ export default async function SuggestEventPage() {
     <>
       <BackLink href="/events">{E.title}</BackLink>
       <h1 className="page-title mb-1">{E.suggest}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{E.suggestIntro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{E.suggestIntro}</p>
       <div className="card">
         <EventForm action={suggestEvent} submitLabel={E.sendSuggestion} suggest />
       </div>

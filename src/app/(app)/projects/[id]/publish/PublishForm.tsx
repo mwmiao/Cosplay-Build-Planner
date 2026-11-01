@@ -109,7 +109,7 @@ export function PublishForm({
           ))}
         </fieldset>
         {mode === "all" ? null : images.length === 0 ? (
-          <p className="text-sm text-zinc-500">{C.noImages}</p>
+          <p className="text-sm text-zinc-600">{C.noImages}</p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {images.map((img) => {

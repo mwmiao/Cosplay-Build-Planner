@@ -36,7 +36,7 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
     <>
       <BackLink href="/admin">{A.title}</BackLink>
       <h1 className="page-title">{A.users}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{A.usersIntro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{A.usersIntro}</p>
       {changed ? (
         <p role="status" className="mb-4 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {A.roleChanged(changed.name)}
@@ -59,7 +59,7 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
         </button>
       </form>
       {users.length === 0 ? (
-        <p className="text-sm text-zinc-500">{A.usersNone}</p>
+        <p className="text-sm text-zinc-600">{A.usersNone}</p>
       ) : (
         <ul className="space-y-2">
           {users.map((u) => {
@@ -72,7 +72,7 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
                     <span className="break-words font-semibold">{u.name}</span>
                     <span className="rounded-full bg-zinc-100 px-2 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{role}</span>
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{A.joined(f.date(u.createdAt))}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{A.joined(f.date(u.createdAt))}</p>
                 </div>
                 {u.role === "admin" || u.id === admin.id ? null : (
                   <form action={setModerator.bind(null, u.id, !isModerator)}>

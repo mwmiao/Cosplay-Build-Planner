@@ -13,9 +13,12 @@ export function generateMetadata(): Metadata {
   return { title: getI18n().t.events.title };
 }
 
-export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string; suggested?: string } }) {
+export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string; type?: string; month?: string; suggested?: string } }) {
   const [user, all] = await Promise.all([getCurrentUser(), listEvents()]);
   const pendingCount = user?.isAdmin ? (await adminCounts(user)).toReview : 0;
+  const going = new Set(
+    user && !user.isGuest ? (await db.eventAttendance.findMany({ where: { userId: user.id }, select: { eventId: true } })).map((a) => a.eventId) : [],
+  );
   const { t, f } = getI18n();
   const E = t.events;
   const past = searchParams.when === "past";
@@ -33,7 +36,13 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
   );
   const cities = [...new Set(inWindow.map((e) => e.city))].sort((a, b) => a.localeCompare(b, t.intl));
   const city = cities.includes(searchParams.city ?? "") ? searchParams.city : undefined;
-  const events = inWindow.filter((e) => !city || e.city === city);
+  const inCity = inWindow.filter((e) => !city || e.city === city);
+  const types = [...new Set(inCity.map((e) => e.eventType))];
+  const type = types.includes(searchParams.type ?? "") ? searchParams.type : undefined;
+  const monthOf = (e: EventView) => e.start.toISOString().slice(0, 7);
+  const months = past ? [] : [...new Set(inCity.map(monthOf))];
+  const month = months.includes(searchParams.month ?? "") ? searchParams.month : undefined;
+  const events = inCity.filter((e) => (!type || e.eventType === type) && (!month || monthOf(e) === month));
   if (past) events.reverse();
 
   // Upcoming: one heading per month. Past: one per year.
@@ -49,12 +58,16 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
     else groups.push({ title, items: [e] });
   }
 
-  const href = (change: { when?: "past" | null; city?: string | null }) => {
+  const href = (change: { when?: "past" | null; city?: string | null; type?: string | null; month?: string | null }) => {
     const qs = new URLSearchParams();
     const when = change.when === undefined ? (past ? "past" : null) : change.when;
     const c = change.city === undefined ? city : change.city;
     if (when) qs.set("when", when);
     if (c) qs.set("city", c);
+    const ty = change.type === undefined ? type : change.type;
+    if (ty) qs.set("type", ty);
+    const mo = change.month === undefined ? month : change.month;
+    if (mo) qs.set("month", mo);
     const s = qs.toString();
     return `/events${s ? `?${s}` : ""}`;
   };
@@ -82,7 +95,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
           </Link>
         ) : null}
       </header>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{E.intro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{E.intro}</p>
       {searchParams.suggested ? (
         <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {E.suggestedThanks}
@@ -104,28 +117,52 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
       ) : null}
 
       <div className="mb-3 flex gap-2" role="group" aria-label={E.show}>
-        <Link href={href({ when: null, city: null })} className={past ? "chip-off" : "chip-on"} aria-current={!past ? "page" : undefined}>
+        <Link href={href({ when: null, city: null, type: null, month: null })} className={past ? "chip-off" : "chip-on"} aria-current={!past ? "page" : undefined}>
           {E.upcoming}
         </Link>
-        <Link href={href({ when: "past", city: null })} className={past ? "chip-on" : "chip-off"} aria-current={past ? "page" : undefined}>
+        <Link href={href({ when: "past", city: null, type: null, month: null })} className={past ? "chip-on" : "chip-off"} aria-current={past ? "page" : undefined}>
           {E.past}
         </Link>
       </div>
       {cities.length > 1 ? (
         <div className="chip-row mb-4" role="group" aria-label={E.filterCity}>
-          <Link href={href({ city: null })} className={!city ? "chip-on" : "chip-off"}>
+          <Link href={href({ city: null, month: null })} className={!city ? "chip-on" : "chip-off"}>
             {E.allCities}
           </Link>
           {cities.map((c) => (
-            <Link key={c} href={href({ city: c })} className={city === c ? "chip-on" : "chip-off"}>
+            <Link key={c} href={href({ city: c, month: null })} className={city === c ? "chip-on" : "chip-off"}>
               {c}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+      {types.length > 1 ? (
+        <div className="chip-row mb-4" role="group" aria-label={E.filterType}>
+          <Link href={href({ type: null })} className={!type ? "chip-on" : "chip-off"}>
+            {E.allTypes}
+          </Link>
+          {types.map((v) => (
+            <Link key={v} href={href({ type: v })} className={type === v ? "chip-on" : "chip-off"}>
+              {(E.types as Record<string, string>)[v] ?? v}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+      {months.length > 1 ? (
+        <div className="chip-row mb-4" role="group" aria-label={E.filterMonth}>
+          <Link href={href({ month: null })} className={!month ? "chip-on" : "chip-off"}>
+            {E.allMonths}
+          </Link>
+          {months.map((m) => (
+            <Link key={m} href={href({ month: m })} className={month === m ? "chip-on" : "chip-off"}>
+              {new Date(`${m}-01T00:00:00.000Z`).toLocaleDateString(t.intl, { timeZone: "UTC", month: "short", year: "numeric" })}
             </Link>
           ))}
         </div>
       ) : null}
 
       {events.length === 0 ? (
-        <EmptyState title={past ? E.noPast : E.noUpcoming}>{E.emptyText}</EmptyState>
+        <EmptyState title={type || month ? E.noMatch : past ? E.noPast : E.noUpcoming}>{E.emptyText}</EmptyState>
       ) : (
         <div className="space-y-6" data-testid="events-list">
           {groups.map((g) => (
@@ -138,7 +175,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                     <li key={e.id} className="card flex gap-3 p-3" data-testid="event">
                       <div
                         className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 text-center ${
-                          past ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" : "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
+                          past ? "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400" : "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
                         }`}
                         aria-hidden="true"
                       >
@@ -173,6 +210,11 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                               {(E.statuses as Record<string, string>)[e.announceStatus] ?? e.announceStatus}
                             </span>
                           ) : null}
+                          {going.has(e.id) ? (
+                            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/40 dark:text-brand-200" data-testid="going-chip">
+                              {E.goingYes}
+                            </span>
+                          ) : null}
                           {badge ? (
                             <span
                               className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -187,7 +229,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                           {range(e)}
                           {e.time ? ` · ${e.time}` : ""}
                         </p>
-                        <p className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        <p className="flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-400">
                           <PinIcon className="h-4 w-4 shrink-0" />
                           <span className="min-w-0 break-words">{[e.venue, e.address, e.city].filter(Boolean).join(" · ")}</span>
                         </p>
@@ -214,7 +256,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
                             </a>
                           ) : null}
                           {user?.isAdmin ? (
-                            <Link href={`/admin/events/${e.id}`} className="link text-sm">
+                            <Link href={`/admin/events/${e.id}`} className="link inline-flex min-h-9 items-center px-1 text-sm">
                               {t.common.edit}
                             </Link>
                           ) : null}
@@ -229,7 +271,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
         </div>
       )}
 
-      {!past && awaiting.length ? (
+      {!past && !type && !month && awaiting.length ? (
         <section className="mt-8" aria-labelledby="awaiting-title" data-testid="awaiting">
           <h2 id="awaiting-title" className="section-title mb-1">
             {E.awaitingTitle}
@@ -241,7 +283,7 @@ export default async function EventsPage({ searchParams }: { searchParams: { whe
               return (
                 <li key={o.id} className="card p-3">
                   <div className="font-semibold">{o.name}</div>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {[(E.types as Record<string, string>)[o.eventType], o.usualVenue, o.city].filter(Boolean).join(" · ")}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-4 text-sm">

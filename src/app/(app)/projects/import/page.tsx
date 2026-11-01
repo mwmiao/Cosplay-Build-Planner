@@ -21,7 +21,7 @@ export default async function ImportPage() {
     <>
       <BackLink href="/projects">{t.projects.title}</BackLink>
       <h1 className="page-title mb-1">{t.transfer.importTitle}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{t.transfer.importIntro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{t.transfer.importIntro}</p>
       <ImportWizard projects={projects.map((p) => ({ id: p.id, name: p.characterName }))} />
     </>
   );

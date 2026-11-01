@@ -193,7 +193,7 @@ test("monitor: possible events, not-an-event, rejected events never come back, b
   await a.getByLabel("Post link").fill("https://www.instagram.com/p/Manual001/");
   await a.getByLabel("Caption").fill("Concurso de cosplay\n🗓 12 de dezembro de 2099\n📍 Fórum Braga, Braga\nInscrições abertas!");
   await a.getByRole("button", { name: "Add manual post" }).click();
-  await expect(a.getByText("Added: a new event is waiting in Pending review.")).toBeVisible();
+  await expect(a.getByText("Added: a new event is waiting in Suggested events.")).toBeVisible();
   card = await postsFor(a, "https://www.instagram.com/p/Manual001/");
   await expect(card).toContainText("Fórum Braga");
   // Reject it; the same event posted again later doesn't come back as pending.

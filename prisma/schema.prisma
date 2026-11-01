@@ -47,6 +47,7 @@ model Project {
   parts         BuildPart[]
   references    ReferenceImage[]
   shoppingItems ShoppingListItem[]
+  attendances   EventAttendance[]
 
   @@index([ownerId, deletedAt, archivedAt])
   @@index([deletedAt, archivedAt])
@@ -221,6 +222,9 @@ model User {
   shoppingItems ShoppingListItem[]
   publications  Publication[]
   reports       Report[]
+  bookmarks     Bookmark[]
+  reactions     Reaction[]
+  attendances   EventAttendance[]
 
   @@map("user")
 }
@@ -320,6 +324,8 @@ model Publication {
   owner   User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   images  PublicImage[]
   reports Report[]
+  bookmarks Bookmark[]
+  reactions Reaction[]
 
   @@index([publishedAt])
   @@index([versionAt])
@@ -342,6 +348,48 @@ model PublicImage {
   publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([publicationId])
+}
+
+/// A Community project saved by an account (the Saved tab). Private to that account.
+model Bookmark {
+  userId        String
+  publicationId String
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, publicationId])
+  @@index([publicationId])
+}
+
+/// One "inspiring" reaction per account per Community project; only the count is public.
+model Reaction {
+  userId        String
+  publicationId String
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, publicationId])
+  @@index([publicationId])
+}
+
+/// "I'm going" to an event, optionally linked to one of the account's projects.
+/// Private to that account: never shown to others.
+model EventAttendance {
+  userId    String
+  eventId   String
+  projectId String?
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@id([userId, eventId])
+  @@index([projectId])
 }
 
 /// A Community project reported by a signed-in account. The owner never sees who
@@ -439,6 +487,7 @@ model Event {
   organiser Organiser?      @relation(fields: [organiserId], references: [id], onDelete: SetNull)
   posts     InstagramPost[]
   updates   EventUpdate[]
+  attendances EventAttendance[]
 
   @@index([status, startDate])
 }

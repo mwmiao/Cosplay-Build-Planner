@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { LightboxGroup, LightboxThumb } from "@/components/Lightbox";
@@ -6,7 +7,7 @@ import { Sortable } from "@/components/Sortable";
 import { Timeline } from "@/components/Timeline";
 import { CheckIcon, DownloadIcon, ImageIcon, LinkIcon, PencilIcon, PlusIcon } from "@/components/Icons";
 import { EmptyState, ProgressBar, Stat, StatusBadge } from "@/components/ui";
-import { CATEGORIES, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/constants";
+import { CATEGORIES, GUIDE_COOKIE, PART_STATUSES, categoryLabel, statusLabel } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
@@ -17,6 +18,7 @@ import { getMoneyContext, getProjectOr404 } from "@/lib/queries";
 import { ACCEPT_ATTR } from "@/lib/uploads";
 import { setProjectArchived } from "../actions";
 import { reorderParts, togglePartDone } from "./parts/actions";
+import { dismissGuide } from "../actions";
 import { deleteReference, updateProgress } from "./references/actions";
 import { lightboxImages } from "./references/ImageCard";
 import { ProgressForm } from "./references/ProgressForm";
@@ -108,6 +110,21 @@ export default async function ProjectPage({
   const over = stats.overUnder !== null && stats.overUnder < 0;
 
   const C = t.community;
+  const [linkedEvents, projectCount] = await Promise.all([
+    db.eventAttendance.findMany({
+      where: { projectId: project.id, userId: user.id, event: { status: "approved" } },
+      select: { event: { select: { id: true, name: true, startDate: true } } },
+      orderBy: { event: { startDate: "asc" } },
+    }),
+    db.project.count({ where: { ownerId: user.id, deletedAt: null } }),
+  ]);
+  // First project: a short, skippable checklist until its three steps are done.
+  const guide = [
+    { done: allParts.length > 0, label: P.guide.part, href: `/projects/${project.id}/parts/new` },
+    { done: referenceCount > 0, label: P.guide.reference, href: `/projects/${project.id}/references` },
+    { done: !!project.deadline, label: P.guide.deadline, href: `/projects/${project.id}/edit` },
+  ];
+  const showGuide = projectCount === 1 && !project.archivedAt && guide.some((g) => !g.done) && !cookies().has(GUIDE_COOKIE);
   return (
     <>
       {searchParams.published ? (
@@ -149,11 +166,11 @@ export default async function ProjectPage({
           ) : null}
           <div className="min-w-0 flex-1">
             <h1 className="page-title break-words">{project.characterName}</h1>
-            <p className="text-zinc-500 dark:text-zinc-400">
+            <p className="text-zinc-600 dark:text-zinc-400">
               {[project.series, project.conventionName].filter(Boolean).join(" · ") || P.noSeries}
             </p>
             {project.copiedFromTitle && project.copiedFromCreator ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400" data-testid="attribution">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400" data-testid="attribution">
                 {project.copiedFromPublicationId ? (
                   <Link href={`/community/${project.copiedFromPublicationId}`} className="link">
                     {C.basedOn(project.copiedFromTitle, project.copiedFromCreator)}
@@ -177,6 +194,43 @@ export default async function ProjectPage({
           </div>
         </div>
       </header>
+
+      {linkedEvents.map(({ event }) => {
+        const left = daysUntil(event.startDate);
+        return (
+          <Link key={event.id} href={`/events/${event.id}`} className="card mb-3 flex items-center justify-between gap-3 p-3 text-sm font-medium hover:border-brand-400" data-testid="linked-event">
+            <span className="min-w-0 break-words">{event.name}</span>
+            <span className="shrink-0 text-zinc-600 dark:text-zinc-400">{daysLabel(left, t)}</span>
+          </Link>
+        );
+      })}
+
+      {showGuide ? (
+        <section className="card mb-3 space-y-2" aria-labelledby="guide-title" data-testid="project-guide">
+          <h2 id="guide-title" className="font-semibold">
+            {P.guide.title}
+          </h2>
+          <ul className="space-y-1 text-sm">
+            {guide.map((g) => (
+              <li key={g.href} className="flex items-center gap-2">
+                <span aria-hidden="true">{g.done ? "✓" : "○"}</span>
+                {g.done ? (
+                  <span className="text-zinc-600 line-through dark:text-zinc-400">{g.label}</span>
+                ) : (
+                  <Link href={g.href} className="link">
+                    {g.label}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+          <form action={dismissGuide}>
+            <SubmitButton className="btn-ghost min-h-9 px-0 text-sm" pendingText="…">
+              {P.guide.skip}
+            </SubmitButton>
+          </form>
+        </section>
+      ) : null}
 
       <section aria-label={P.summary} className="mb-3 grid grid-cols-3 gap-2 sm:gap-3">
         <Stat
@@ -205,7 +259,7 @@ export default async function ProjectPage({
           />
           {stats.budget === null ? (
             <Link href={`/projects/${project.id}/edit`} className="card col-span-2 flex flex-col justify-center p-3 hover:border-brand-300" data-testid="set-budget">
-              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{P.noBudget}</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{P.noBudget}</span>
               <span className="link mt-1 font-semibold">{P.setBudget}</span>
             </Link>
           ) : (
@@ -245,7 +299,7 @@ export default async function ProjectPage({
 
       {project.notes ? (
         <section className="card mb-6">
-          <h2 className="mb-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400">{P.notes}</h2>
+          <h2 className="mb-1 text-sm font-semibold text-zinc-600 dark:text-zinc-400">{P.notes}</h2>
           <p className="whitespace-pre-wrap text-sm">{project.notes}</p>
         </section>
       ) : null}
@@ -362,11 +416,11 @@ export default async function ProjectPage({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`font-medium ${done ? "text-zinc-400 line-through dark:text-zinc-500" : ""}`}>
                         {part.name}
-                        {part.quantity > 1 ? <span className="text-zinc-500"> ×{part.quantity}</span> : null}
+                        {part.quantity > 1 ? <span className="text-zinc-600"> ×{part.quantity}</span> : null}
                       </span>
                       <StatusBadge status={part.status} label={statusLabel(part.status, t)} />
                     </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500 dark:text-zinc-400">
+                    <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
                       <span>{categoryLabel(part.category, t)}</span>
                       {part.supplier || site ? <span>{part.supplier ?? site}</span> : null}
                       {(() => {
@@ -441,7 +495,7 @@ export default async function ProjectPage({
 
       <section id="progress" aria-labelledby="progress-title" className="mb-8 scroll-mt-4">
         <h2 id="progress-title" className="section-title mb-1">
-          {P.progress} {progress.length ? <span className="text-sm font-normal text-zinc-500">({progress.length})</span> : null}
+          {P.progress} {progress.length ? <span className="text-sm font-normal text-zinc-600">({progress.length})</span> : null}
         </h2>
         <p className="hint mb-3">{P.progressHint}</p>
         {progress.length ? (

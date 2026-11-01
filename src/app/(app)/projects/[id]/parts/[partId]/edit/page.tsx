@@ -54,7 +54,7 @@ export default async function EditPartPage({
     <>
       <BackLink href={`/projects/${project.id}#parts`}>{project.characterName}</BackLink>
       <h1 className="page-title mb-1">{F.editTitle}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
         {F.addedOn(f.date(part.createdAt))}
         {part.completedAt ? F.doneOn(f.date(part.completedAt)) : ""}
       </p>
@@ -87,7 +87,7 @@ export default async function EditPartPage({
       <section id="photos" aria-labelledby="photos-title" className="mt-6 scroll-mt-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id="photos-title" className="section-title">
-            {F.photos} {photos.length ? <span className="text-sm font-normal text-zinc-500">({photos.length})</span> : null}
+            {F.photos} {photos.length ? <span className="text-sm font-normal text-zinc-600">({photos.length})</span> : null}
           </h2>
           {photos.length > 1 ? (
             <a

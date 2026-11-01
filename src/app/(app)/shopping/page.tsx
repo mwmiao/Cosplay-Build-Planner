@@ -68,9 +68,9 @@ export default async function ShoppingPage({
       <header className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="page-title">{S.title}</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {S.toBuy(open.length)} · {S.est} {openTotal.converted ? "≈ " : ""}
-            {f.money(openTotal.total, cur)}
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            {S.toBuy(open.length)} ·{" "}
+            {openTotal.total ? `${S.est} ${openTotal.converted ? "≈ " : ""}${f.money(openTotal.total, cur)}` : S.noPrices}
           </p>
         </div>
         <a href={exportHref} className="btn-secondary shrink-0" download>
@@ -107,7 +107,7 @@ export default async function ShoppingPage({
         <div className="space-y-6">
           {groups.map(([name, list]) => (
             <section key={name} aria-label={name}>
-              <h2 className="mb-2 flex items-baseline justify-between text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <h2 className="mb-2 flex items-baseline justify-between text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                 <span>{name}</span>
                 <span className="tabular-nums normal-case">
                   {(() => {
@@ -140,9 +140,9 @@ export default async function ShoppingPage({
                     <div className="min-w-0 flex-1">
                       <div className={`font-medium ${item.purchased ? "text-zinc-400 line-through dark:text-zinc-500" : ""}`}>
                         {item.name}
-                        {item.quantity > 1 ? <span className="text-zinc-500"> ×{item.quantity}</span> : null}
+                        {item.quantity > 1 ? <span className="text-zinc-600"> ×{item.quantity}</span> : null}
                       </div>
-                      <div className="flex flex-wrap gap-x-3 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="flex flex-wrap gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
                         {item.project ? (
                           <Link href={`/projects/${item.project.id}#parts`} className="hover:underline">
                             {item.project.characterName}

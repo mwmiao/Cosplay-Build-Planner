@@ -15,8 +15,8 @@ A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, 
 - **References and progress photos:** grouped, reorderable and shown full-screen. Location data is removed from photos.
 - **Accounts:** private projects per account, plus password reset by email when SMTP is set up.
 - **Guests:** try the app without an account (5 projects, 50 MB, 30 days, encrypted images).
-- **Community:** publish a project on purpose, choosing exactly what becomes public. Others can copy it as a private template. Accounts can report a project, and moderators can remove it.
-- **Events:** cosplay events in Portugal, each with its own page, Maps links, user suggestions and admin review. New events can be picked up from public Instagram accounts through a self-hosted RSS-Bridge.
+- **Community:** publish a project on purpose, choosing exactly what becomes public. Others can copy, save or react to it. Accounts can report a project, and moderators can remove it.
+- **Events:** cosplay events in Portugal, each with its own page, filters, "I'm going", Maps links, user suggestions and admin review. New events can be picked up from public Instagram accounts through a self-hosted RSS-Bridge.
 - **Export/import:** a project as a versioned JSON file, plus a budget CSV.
 - **English and European Portuguese**, dark mode, works from 360 px wide, and can be added to your home screen.
 

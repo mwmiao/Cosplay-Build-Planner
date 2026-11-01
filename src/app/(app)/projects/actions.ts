@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
+import { GUIDE_COOKIE } from "@/lib/constants";
 import { getDefaultCurrency } from "@/lib/settings";
 import { removePublicationFolder } from "@/lib/community/images";
 import { removeProjectFiles } from "@/lib/uploads";
@@ -144,4 +146,11 @@ export async function purgeProject(id: string): Promise<void> {
   // The publication row went with the project (cascade); remove its public copies too.
   if (publication) await removePublicationFolder(publication.id);
   revalidateAll();
+}
+
+/** Skip the first-project checklist on this device. */
+export async function dismissGuide(): Promise<void> {
+  await requireUser();
+  cookies().set(GUIDE_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  revalidatePath("/projects", "layout");
 }

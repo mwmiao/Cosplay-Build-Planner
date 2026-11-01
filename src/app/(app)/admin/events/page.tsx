@@ -72,14 +72,14 @@ export default async function EventQueuePage() {
           {t.organisers.title}
         </Link>
       </div>
-      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">{E.queueIntro}</p>
+      <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">{E.queueIntro}</p>
 
       <section aria-labelledby="pending-title" className="mb-8">
         <h2 id="pending-title" className="section-title mb-2">
-          {S.pendingTitle} {posts.length + otherPending.length ? <span className="text-sm font-normal text-zinc-500">({posts.length + otherPending.length})</span> : null}
+          {S.pendingTitle} {posts.length + otherPending.length ? <span className="text-sm font-normal text-zinc-600">({posts.length + otherPending.length})</span> : null}
         </h2>
         {posts.length + otherPending.length === 0 ? (
-          <p className="card text-sm text-zinc-500">{E.queueEmpty}</p>
+          <p className="card text-sm text-zinc-600">{E.queueEmpty}</p>
         ) : null}
 
         {posts.length ? (
@@ -103,7 +103,7 @@ export default async function EventQueuePage() {
                         </span>
                         <span className={`${chip} bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300`}>{S.confidence(p.confidence)}</span>
                       </div>
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         {p.source ? `@${p.source.username}` : S.manual}
                         {p.publishedAt ? ` · ${S.postedOn(f.date(p.publishedAt))}` : ""}
                       </p>
@@ -185,7 +185,7 @@ export default async function EventQueuePage() {
                     {range(e.startDate, e.endDate)}
                     {e.time ? ` · ${e.time}` : ""}
                   </p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{[e.venue, e.address, e.city].filter(Boolean).join(" · ")}</p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">{[e.venue, e.address, e.city].filter(Boolean).join(" · ")}</p>
                   {e.organiser ? <p className="hint">{E.byOrganiser(e.organiser.name)}</p> : null}
                   {e.capturedAt ? <p className="hint">{E.capturedOn(f.dateTime(e.capturedAt))}</p> : null}
                   {flags.length || dupes.length ? (
@@ -251,7 +251,7 @@ export default async function EventQueuePage() {
                     <div key={field} className="contents">
                       <dt className="font-medium">{fieldLabel(field)}</dt>
                       <dd className="break-words">
-                        <span className="text-zinc-500 line-through">{String(before ?? "—")}</span> → <span>{String(after ?? "—")}</span>
+                        <span className="text-zinc-600 line-through">{String(before ?? "—")}</span> → <span>{String(after ?? "—")}</span>
                       </dd>
                     </div>
                   ))}
@@ -304,7 +304,7 @@ export default async function EventQueuePage() {
                     <div key={field} className="contents">
                       <dt className="font-medium">{fieldLabel(field)}</dt>
                       <dd className="break-words">
-                        <span className="text-zinc-500 line-through">{String(before ?? "—")}</span> → <span>{String(after ?? "—")}</span>
+                        <span className="text-zinc-600 line-through">{String(before ?? "—")}</span> → <span>{String(after ?? "—")}</span>
                       </dd>
                     </div>
                   ))}
@@ -350,7 +350,7 @@ export default async function EventQueuePage() {
                 <li key={r.source} className="flex flex-wrap gap-x-2">
                   <span className="font-medium">{r.label}</span>
                   {r.ok ? (
-                    <span className="text-zinc-500 dark:text-zinc-400">{E.sourceOk(r.found, r.added, r.changed ?? 0)}</span>
+                    <span className="text-zinc-600 dark:text-zinc-400">{E.sourceOk(r.found, r.added, r.changed ?? 0)}</span>
                   ) : (
                     <span className="text-red-700 dark:text-red-400">{E.sourceFailed(r.error ?? "")}</span>
                   )}
@@ -359,7 +359,7 @@ export default async function EventQueuePage() {
             </ul>
           </>
         ) : (
-          <p className="text-sm text-zinc-500">{E.neverChecked}</p>
+          <p className="text-sm text-zinc-600">{E.neverChecked}</p>
         )}
         <form action={runEventSync}>
           <SubmitButton className="btn-secondary" pendingText={E.checking}>

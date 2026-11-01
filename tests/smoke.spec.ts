@@ -26,6 +26,7 @@ test("create project, add part, shopping list, pay in another currency", async (
   await expect(page.getByText("Character name is required")).toBeVisible();
   await page.getByLabel("Character name").fill(character);
   await page.getByLabel("Series / game").fill("Playwright Saga");
+  await page.getByText("More details (optional)").click();
   await page.getByLabel("Base currency").selectOption("EUR");
   await page.getByLabel("Budget").fill("200");
   await page.getByRole("button", { name: "Create project" }).click();

@@ -1,3 +1,4 @@
+import Link from "next/link";
 // Renders a public project. Used for the publish preview (client) and the
 // public Community page (server), so the preview is exactly what visitors see.
 // No hooks: the caller passes the dictionary and formatters. All user text is
@@ -31,6 +32,8 @@ export function PublicProject({
   f,
   actions,
   titleAs: Title = "h1",
+  creatorHref,
+  searchLinks = false,
 }: {
   data: PublicProjectData;
   t: Dict;
@@ -38,6 +41,10 @@ export function PublicProject({
   actions?: React.ReactNode;
   /** "h2" when shown inside another page (the publish preview) */
   titleAs?: "h1" | "h2";
+  /** The creator's page */
+  creatorHref?: string;
+  /** Tags and series open a Community search (off in the publish preview) */
+  searchLinks?: boolean;
 }) {
   const C = t.community;
   const s = data.snapshot;
@@ -64,8 +71,26 @@ export function PublicProject({
           ) : null}
           <div className="min-w-0 flex-1">
             <Title className="page-title break-words">{data.title}</Title>
-            {data.series ? <p className="text-zinc-500 dark:text-zinc-400">{data.series}</p> : null}
-            <p className="text-sm text-zinc-600 dark:text-zinc-300">{C.byCreator(data.creatorName)}</p>
+            {data.series ? (
+              <p className="text-zinc-600 dark:text-zinc-400">
+                {searchLinks ? (
+                  <Link href={`/community?q=${encodeURIComponent(data.series)}`} className="hover:underline">
+                    {data.series}
+                  </Link>
+                ) : (
+                  data.series
+                )}
+              </p>
+            ) : null}
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+              {creatorHref ? (
+                <Link href={creatorHref} className="link">
+                  {C.byCreator(data.creatorName)}
+                </Link>
+              ) : (
+                C.byCreator(data.creatorName)
+              )}
+            </p>
           </div>
         </div>
         {data.publishedAt ? (
@@ -78,8 +103,14 @@ export function PublicProject({
         {data.tags.length ? (
           <ul className="flex flex-wrap gap-2" aria-label={C.tags}>
             {data.tags.map((tag) => (
-              <li key={tag} className="chip-off min-h-7 text-xs">
-                {tag}
+              <li key={tag}>
+                {searchLinks ? (
+                  <Link href={`/community?q=${encodeURIComponent(tag)}`} className="chip-off min-h-7 text-xs">
+                    {tag}
+                  </Link>
+                ) : (
+                  <span className="chip-off min-h-7 text-xs">{tag}</span>
+                )}
               </li>
             ))}
           </ul>
@@ -96,7 +127,7 @@ export function PublicProject({
 
       {data.description ? (
         <section className="card">
-          <h2 className="mb-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400">{C.about}</h2>
+          <h2 className="mb-1 text-sm font-semibold text-zinc-600 dark:text-zinc-400">{C.about}</h2>
           <p className="whitespace-pre-wrap break-words text-sm">{data.description}</p>
         </section>
       ) : null}
@@ -104,15 +135,15 @@ export function PublicProject({
       {s.budget ? (
         <section aria-label={C.budget} className="grid grid-cols-3 gap-3">
           <div className="card p-3">
-            <div className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{C.budgetPlanned}</div>
+            <div className="text-xs font-medium uppercase text-zinc-600 dark:text-zinc-400">{C.budgetPlanned}</div>
             <div className="mt-1 font-bold tabular-nums">{f.money(s.budget.budgetCents, s.budget.currency)}</div>
           </div>
           <div className="card p-3">
-            <div className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{C.spent}</div>
+            <div className="text-xs font-medium uppercase text-zinc-600 dark:text-zinc-400">{C.spent}</div>
             <div className="mt-1 font-bold tabular-nums">{f.money(s.budget.spentCents, s.budget.currency)}</div>
           </div>
           <div className="card p-3">
-            <div className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{C.stillPlanned}</div>
+            <div className="text-xs font-medium uppercase text-zinc-600 dark:text-zinc-400">{C.stillPlanned}</div>
             <div className="mt-1 font-bold tabular-nums">{f.money(s.budget.plannedCents, s.budget.currency)}</div>
           </div>
         </section>
@@ -120,7 +151,7 @@ export function PublicProject({
 
       <section aria-labelledby="public-items">
         <h2 id="public-items" className="section-title mb-2">
-          {C.items} <span className="text-sm font-normal text-zinc-500">({C.itemCount(s.items.length)})</span>
+          {C.items} <span className="text-sm font-normal text-zinc-600">({C.itemCount(s.items.length)})</span>
         </h2>
         <ul className="space-y-2">
           {s.items.map((item, i) => (
@@ -129,11 +160,11 @@ export function PublicProject({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium break-words">
                     {item.name}
-                    {item.quantity > 1 ? <span className="text-zinc-500"> ×{item.quantity}</span> : null}
+                    {item.quantity > 1 ? <span className="text-zinc-600"> ×{item.quantity}</span> : null}
                   </span>
                   <StatusBadge status={item.status} label={t.status[item.status] ?? item.status} />
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500 dark:text-zinc-400">
+                <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
                   <span>{t.category[item.category] ?? item.category}</span>
                   {item.supplier ? <span>{item.supplier}</span> : null}
                   {item.estimatedEachCents != null && item.currency ? (

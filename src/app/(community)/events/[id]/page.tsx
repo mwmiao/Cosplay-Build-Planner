@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Field } from "@/components/Field";
+import { SubmitButton } from "@/components/FormBits";
 import { LinkIcon, PinIcon } from "@/components/Icons";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { getPublicEvent } from "@/lib/events";
 import { hostname } from "@/lib/format";
 import { idSchema } from "@/lib/validation";
+import { linkEventProject, setGoing } from "./actions";
 
 async function load(id: string) {
   return idSchema.safeParse(id).success ? getPublicEvent(id) : null;
@@ -25,6 +29,11 @@ export default async function EventPage({ params }: { params: { id: string } }) 
   const { t, f } = getI18n();
   const E = t.events;
   const user = await getCurrentUser();
+  const canAttend = !!user && !user.isGuest;
+  const [attendance, projects] = await Promise.all([
+    canAttend ? db.eventAttendance.findUnique({ where: { userId_eventId: { userId: user.id, eventId: e.id } } }) : null,
+    canAttend ? db.project.findMany({ where: { ownerId: user.id, deletedAt: null, archivedAt: null }, orderBy: { characterName: "asc" }, select: { id: true, characterName: true } }) : [],
+  ]);
   const dates = e.end.getTime() === e.start.getTime() ? f.date(e.start) : `${f.date(e.start)} – ${f.date(e.end)}`;
   return (
     <>
@@ -76,12 +85,35 @@ export default async function EventPage({ params }: { params: { id: string } }) 
             </a>
           ) : null}
           {user?.isAdmin ? (
-            <Link href={`/admin/events/${e.id}`} className="link text-sm">
+            <Link href={`/admin/events/${e.id}`} className="link inline-flex min-h-9 items-center px-1 text-sm">
               {t.common.edit}
             </Link>
           ) : null}
         </div>
       </section>
+      {canAttend ? (
+        <section className="card mt-4 space-y-3" aria-label={E.going} data-testid="attendance">
+          <form action={setGoing.bind(null, e.id, !attendance)}>
+            <SubmitButton className={attendance ? "btn-primary" : "btn-secondary"} pendingText="…" aria-pressed={!!attendance}>
+              {attendance ? E.goingYes : E.going}
+            </SubmitButton>
+          </form>
+          <p className="hint">{E.goingHint}</p>
+          {attendance && projects.length ? (
+            <form action={linkEventProject.bind(null, e.id)} className="flex flex-wrap items-end gap-2">
+              <Field
+                as="select"
+                className="min-w-0 flex-1 basis-56"
+                label={E.goingProject}
+                name="projectId"
+                defaultValue={attendance.projectId ?? ""}
+                options={[{ value: "", label: E.goingNoProject }, ...projects.map((p) => ({ value: p.id, label: p.characterName }))]}
+              />
+              <SubmitButton className="btn-secondary">{t.common.save}</SubmitButton>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
     </>
   );
 }

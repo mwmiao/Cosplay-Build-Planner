@@ -145,7 +145,7 @@ export default async function ReferencesPage({
                   <section key={s.key} aria-label={s.title ?? R.title}>
                     {s.title ? (
                       <h2 className="section-title mb-2">
-                        {s.title} <span className="text-sm font-normal text-zinc-500">({s.items.length})</span>
+                        {s.title} <span className="text-sm font-normal text-zinc-600">({s.items.length})</span>
                       </h2>
                     ) : null}
                     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

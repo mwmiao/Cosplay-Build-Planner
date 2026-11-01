@@ -31,3 +31,5 @@ export function statusLabel(value: string, t: Dict): string {
   return t.status[value] ?? value;
 }
 
+/** Set when someone skips the first-project checklist */
+export const GUIDE_COOKIE = "project-guide-skipped";

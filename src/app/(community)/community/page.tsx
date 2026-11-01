@@ -3,14 +3,16 @@ import Link from "next/link";
 import { EmptyState, ProgressBar } from "@/components/ui";
 import { ViewControls } from "@/components/ViewControls";
 import { getI18n } from "@/i18n/server";
+import { getCurrentUser } from "@/lib/auth";
 import { COMMUNITY_SORTS, type CommunitySort, listPublicProjects } from "@/lib/community/view";
+import { PROJECT_STATUSES } from "@/lib/constants";
 import { viewPrefs } from "@/lib/viewPrefs";
 
 export function generateMetadata(): Metadata {
   return { title: getI18n().t.community.title };
 }
 
-type Search = { q?: string; sort?: string; layout?: string; page?: string };
+type Search = { q?: string; sort?: string; layout?: string; page?: string; status?: string; saved?: string };
 
 export default async function CommunityPage({ searchParams }: { searchParams: Search }) {
   const { t, f } = getI18n();
@@ -18,12 +20,17 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
   const q = typeof searchParams.q === "string" ? searchParams.q.slice(0, 100) : "";
   const { sort, view } = viewPrefs<CommunitySort>("community-view", searchParams, COMMUNITY_SORTS, { sort: "newest", view: "list" });
   const page = Math.max(1, Math.min(10_000, Number.parseInt(searchParams.page ?? "1", 10) || 1));
-  const result = await listPublicProjects({ q, sort, page });
+  const user = await getCurrentUser();
+  const saved = !!searchParams.saved && !!user && !user.isGuest;
+  const status = PROJECT_STATUSES.find((s) => s === searchParams.status);
+  const result = await listPublicProjects({ q, sort, page, status, savedBy: saved ? user.id : undefined });
 
-  const href = (change: Partial<{ q: string; page: number }>) => {
-    const next = { q, page, ...change };
+  const href = (change: Partial<{ q: string; page: number; status: string | undefined; saved: boolean }>) => {
+    const next = { q, page, status, saved, ...change };
     const qs = new URLSearchParams();
     if (next.q) qs.set("q", next.q);
+    if (next.status) qs.set("status", next.status);
+    if (next.saved) qs.set("saved", "1");
     if (searchParams.sort) qs.set("sort", sort);
     if (searchParams.layout) qs.set("layout", view);
     if (next.page > 1) qs.set("page", String(next.page));
@@ -36,7 +43,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
   return (
     <>
       <h1 className="page-title">{C.title}</h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">{C.intro}</p>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{C.intro}</p>
 
       <form method="get" action="/community" className="mb-3 flex flex-wrap items-end gap-2" role="search">
         <div className="min-w-0 flex-1 basis-56">
@@ -45,6 +52,8 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
           </label>
           <input id="community-q" name="q" type="search" defaultValue={q} placeholder={C.searchPlaceholder} className="input" />
         </div>
+        {status ? <input type="hidden" name="status" value={status} /> : null}
+        {saved ? <input type="hidden" name="saved" value="1" /> : null}
         {searchParams.sort ? <input type="hidden" name="sort" value={sort} /> : null}
         {searchParams.layout ? <input type="hidden" name="layout" value={view} /> : null}
         <button type="submit" className="btn-primary">
@@ -52,8 +61,26 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
         </button>
       </form>
 
+      <div className="chip-row mb-3" role="group" aria-label={C.filterStatus}>
+        {user && !user.isGuest ? (
+          <Link href={href({ saved: !saved, page: 1 })} className={saved ? "chip-on" : "chip-off"} aria-current={saved ? "page" : undefined}>
+            {C.savedTab}
+          </Link>
+        ) : null}
+        <Link href={href({ status: undefined, page: 1 })} className={!status ? "chip-on" : "chip-off"}>
+          {C.allStatuses}
+        </Link>
+        {PROJECT_STATUSES.map((s) => (
+          <Link key={s} href={href({ status: s, page: 1 })} className={status === s ? "chip-on" : "chip-off"}>
+            {t.status[s] ?? s}
+          </Link>
+        ))}
+      </div>
+
       {result.total === 0 ? (
-        q ? (
+        saved ? (
+          <EmptyState title={C.savedEmpty}>{C.savedEmptyText}</EmptyState>
+        ) : q || status ? (
           <EmptyState
             title={C.noResults}
             action={
@@ -63,12 +90,21 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
             }
           />
         ) : (
-          <EmptyState title={C.empty}>{C.emptyText}</EmptyState>
+          <EmptyState
+            title={C.empty}
+            action={
+              <Link href="/projects/new" className="btn-primary">
+                {C.emptyAction}
+              </Link>
+            }
+          >
+            {C.emptyText}
+          </EmptyState>
         )
       ) : (
         <>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
               {C.results(result.total)}
             </p>
             <ViewControls
@@ -107,14 +143,14 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
                       {image}
                       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
                         <h2 className="truncate font-semibold">{p.title}</h2>
-                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                        <p className="truncate text-xs text-zinc-600 dark:text-zinc-400">
                           {[p.series, C.byCreator(p.creator.displayName)].filter(Boolean).join(" · ")}
                         </p>
                         <div className="mt-auto flex items-center gap-2 pt-1">
                           <ProgressBar value={p.progressPercent} label={C.progress(p.progressPercent)} />
                           <span className="text-xs font-semibold tabular-nums">{p.progressPercent}%</span>
                         </div>
-                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{dateLine(p)}</p>
+                        <p className="truncate text-xs text-zinc-600 dark:text-zinc-400">{dateLine(p)}</p>
                       </div>
                     </Link>
                   </li>
@@ -126,7 +162,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
                     {image}
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate font-semibold">{p.title}</h2>
-                      <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                      <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">
                         {[p.series, C.byCreator(p.creator.displayName)].filter(Boolean).join(" · ")}
                       </p>
                       {p.description ? (
@@ -136,7 +172,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
                         <ProgressBar value={p.progressPercent} label={C.progress(p.progressPercent)} />
                         <span className="text-xs font-semibold tabular-nums">{p.progressPercent}%</span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-zinc-600 dark:text-zinc-400">
                         <span>{dateLine(p)}</span>
                         {p.tags.slice(0, 3).map((tag) => (
                           <span key={tag}>#{tag}</span>
@@ -157,7 +193,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
               ) : (
                 <span />
               )}
-              <span className="text-sm text-zinc-500">{C.pageOf(page, result.pages)}</span>
+              <span className="text-sm text-zinc-600">{C.pageOf(page, result.pages)}</span>
               {page < result.pages ? (
                 <Link href={href({ page: page + 1 })} className="btn-secondary" rel="next">
                   {C.next}

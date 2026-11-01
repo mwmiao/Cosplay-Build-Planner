@@ -107,7 +107,7 @@ export function Sortable({
                   type="button"
                   disabled={!ready}
                   aria-label={S.drag(item.label)}
-                  className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 active:cursor-grabbing dark:hover:bg-zinc-800"
+                  className="flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 active:cursor-grabbing dark:hover:bg-zinc-800"
                   onPointerDown={(e) => {
                     e.currentTarget.setPointerCapture(e.pointerId);
                     dragStartOrder.current = order;
