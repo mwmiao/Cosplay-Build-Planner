@@ -1,123 +1,101 @@
 # Cosplay Build Planner
 
-A self-hosted, mobile-first planner for cosplay builds: projects, parts, costs, deadlines, a shopping list and reference photos.
+[![CI](https://github.com/mwmiao/Cosplay-Build-Planner/actions/workflows/docker.yml/badge.svg)](https://github.com/mwmiao/Cosplay-Build-Planner/actions/workflows/docker.yml)
+[![Docker image](https://img.shields.io/docker/v/eazyeight/cosplay-build-planner?sort=semver&label=docker)](https://hub.docker.com/r/eazyeight/cosplay-build-planner)
 
-**Who it's for:** cosplayers who want to plan their builds privately on their own hardware (for example a home NAS) and optionally share them with a small group. No cloud services are required.
+**Plan your cosplay builds: parts, budget, deadlines and reference photos in one place, on your own server.**
 
-**Repo:** https://github.com/mwmiao/Cosplay-Build-Planner · **Image:** [`eazyeight/cosplay-build-planner`](https://hub.docker.com/r/eazyeight/cosplay-build-planner) (also `ghcr.io/mwmiao/cosplay-build-planner`) · **Changes:** [CHANGELOG.md](CHANGELOG.md)
+Cosplay Build Planner is a mobile-first web app you run yourself, for example on a home NAS. Your projects stay private unless you choose to publish one. No cloud account is needed.
 
-## Highlights
+<!-- ![Project page on a phone](docs/screenshot-project.png) -->
 
-- **Projects:** character, series, convention, start date, deadline, status, budget, notes and a main picture. Shows progress, days left and paid / planned / budget left.
-- **Build parts:** category, status (needed → ordered → arrived → building → done), costs, supplier, link and photos. Drag to reorder.
-- **Shopping list:** built automatically from parts marked *Needed*, plus items you add yourself. Exports to CSV.
-- **Multiple currencies:** each part keeps its own currency. Payments are converted once at the rate for the payment date and never recalculated.
-- **References and progress photos:** grouped, reorderable and shown full-screen. Location data is removed from photos.
-- **Accounts:** private projects per account, plus password reset by email when SMTP is set up.
-- **Guests:** try the app without an account (5 projects, 50 MB, 30 days, encrypted images).
-- **Community:** publish a project on purpose, choosing exactly what becomes public. Others can copy, save or react to it. Accounts can report a project, and moderators can remove it.
-- **Events:** cosplay events in Portugal, each with its own page, filters, "I'm going", Maps links, user suggestions and admin review. New events can be picked up from public Instagram accounts through a self-hosted RSS-Bridge.
-- **Export/import:** a project as a versioned JSON file, plus a budget CSV.
-- **English and European Portuguese**, dark mode, works from 360 px wide, and can be added to your home screen.
+## Features
 
-## Tech stack
+- **Projects:** character, series, convention, deadline and budget, with progress and days left.
+- **Build parts:** track each part from *needed* to *done*, with cost, supplier and photos.
+- **Shopping list:** built from the parts you still need. Export it as CSV.
+- **Multiple currencies:** each part keeps its own currency, and past payments are never recalculated.
+- **Photos:** reference and progress images, shown full-screen. Location data is removed.
+- **Try it first:** use the app as a guest without an account.
+- **Community:** publish a project on purpose and choose what becomes public. Others can save, react to or copy it.
+- **Events:** cosplay events in Portugal, with "I'm going" and suggestions.
+- **Backup and move:** export a project as a file, or the budget as CSV.
+- English and European Portuguese, dark mode, and installable on a phone's home screen.
 
-Next.js 14 (App Router) · TypeScript (strict) · Tailwind CSS · Prisma + SQLite · Better Auth · Zod · sharp · Playwright
+## Quick start
 
-## Quick Docker setup
-
-1. Create a folder with an empty `data/` folder inside it, and copy [`docker-compose.yml`](docker-compose.yml) into it.
-2. Create a `.env` next to it with at least:
-   ```bash
-   APP_URL=https://cosplay-planner.example.com
-   ```
-3. Start it:
-   ```bash
-   docker compose up -d
-   ```
-4. Open `APP_URL`, register, then make yourself admin:
-   ```bash
-   sudo docker exec cosplay-planner node scripts/set-admin.js --email you@example.com
-   ```
-   Log in again afterwards. A **Moderation** link appears. Admins can make other accounts moderators under **Moderation → Users and roles**.
-
-The app listens on port **1337** and keeps everything in `data/`: the database, uploads, secrets and backups. Every container start backs up the database and applies migrations. It never seeds, resets or deletes data. The health check is at `/api/health`.
-
-On a UGREEN NAS, put the files in `docker/cosplay-planner` and create the project in **Docker → Project → Create**. Keep the data path relative (`./data`).
-
-## Basic configuration
-
-Set these in `.env` (all options are in [`.env.example`](.env.example)):
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `APP_URL` | `http://localhost:1337` | The address you open the app at. An `https://` value makes login cookies *Secure*. |
-| `AUTH_SECRET` | generated once | Signs session cookies. Saved in `data/secrets/` if empty. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | empty | Email for password-reset links (optional). |
-| `TZ` | container default | Time zone for "days left". |
-| `DEFAULT_CURRENCY` | `EUR` | Starting currency for new accounts. |
-| `MAX_UPLOAD_MB` | `15` | Maximum size per image. |
-| `PUID` / `PGID` | `1000` | Owner of the files in `data/`. |
-| `BACKUP_INTERVAL_HOURS` / `BACKUP_KEEP` | `24` / `14` | Automatic database backups (`0` turns them off). |
-| `INSTAGRAM_MONITOR_ENABLED` | `true` | Automatic Instagram checks for Events. |
-
-Without email, reset a password on the server:
+You need Docker. Copy and paste:
 
 ```bash
-sudo docker exec -it cosplay-planner node scripts/reset-password.js --email user@example.com
+mkdir cosplay-planner && cd cosplay-planner && mkdir data
+curl -O https://raw.githubusercontent.com/mwmiao/Cosplay-Build-Planner/main/docker-compose.yml
+echo "APP_URL=http://localhost:1337" > .env
+docker compose up -d
 ```
 
-## Access from outside your home
+Open http://localhost:1337. If you serve it from another address, set `APP_URL` to that address instead.
 
-**Cloudflare Tunnel (public HTTPS):**
-- Add a public hostname pointing to `http://<nas-ip>:1337`.
-- Set `APP_URL` to that https address.
-- Anyone on the internet can then register and read the Community tab. Add **Cloudflare Access** to restrict who can reach it.
+To become admin, register first, then run:
 
-**Tailscale (private):**
-- Run `sudo tailscale serve --bg 1337` on the NAS. This needs MagicDNS and HTTPS Certificates enabled.
-- Set `APP_URL=https://<nas-name>.<tailnet>.ts.net`.
-- Always open the app at that https address.
-- Don't forward port 1337 on your router, and don't use Tailscale Funnel.
+```bash
+docker exec cosplay-planner node scripts/set-admin.js --email you@example.com
+```
 
-## Backups and updates
+Log in again afterwards. A **Moderation** link appears.
 
-**Backups:**
-- The container writes database snapshots to `data/backups/` at every start and every `BACKUP_INTERVAL_HOURS`.
-- Take one now:
-  ```bash
-  sudo docker exec cosplay-planner node scripts/backup.mjs
-  ```
-- Keep an off-NAS copy of the whole `data/` folder, for example with a UGOS **Sync & Backup** job.
+## Basic usage
 
-**Restore:** stop the app, then replace `data/cosplay.db` with a snapshot from `data/backups/` (remove any `cosplay.db-journal`, `-wal` and `-shm` files). Start it again.
+1. Register, or choose **Try without an account**.
+2. Press **New project** and enter the character.
+3. Add parts, set their status and prices, and upload reference photos.
+4. Check **Shopping** for what is left to buy.
+5. Optional: **Publish** a project to the Community tab.
 
-**Updates:**
-- Apply the image update in the UGOS Docker app, or run:
-  ```bash
-  sudo docker compose pull && sudo docker compose up -d
-  ```
-- The running version is shown in **Settings → About this install**.
-- To roll back, pin an earlier image tag (e.g. `:1.7.1`) and restore the snapshot taken before the update if needed.
+## Configuration
 
-## Local development
+Set these in `.env`. All options are listed in [`.env.example`](.env.example).
 
-Requires **Node.js 20+**.
+| Variable | Default | What it does |
+|---|---|---|
+| `APP_URL` | `http://localhost:1337` | The address you open the app at. Use `https://` when served over HTTPS. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | empty | Email settings, used only for password-reset links. |
+| `DEFAULT_CURRENCY` | `EUR` | Starting currency for new accounts. |
+| `MAX_UPLOAD_MB` | `15` | Maximum size per image. |
+| `TZ` | container default | Time zone for "days left". |
+| `BACKUP_INTERVAL_HOURS` / `BACKUP_KEEP` | `24` / `14` | Automatic database backups (`0` turns them off). |
+
+Everything lives in `data/`: the database, uploads, secrets and backups. Starting the container backs up the database and applies updates. It never resets your data.
+
+**Updating:** `docker compose pull && docker compose up -d`. The version is shown in **Settings → About**.
+
+**Restoring:** stop the app, copy a file from `data/backups/` over `data/cosplay.db`, and start it again.
+
+**Forgot your password without email?**
+
+```bash
+docker exec -it cosplay-planner node scripts/reset-password.js --email user@example.com
+```
+
+**Reaching it from outside your home:** use a Cloudflare Tunnel or Tailscale, and set `APP_URL` to the https address. Don't forward port 1337 on your router. Anyone who can reach a public address can register, so consider Cloudflare Access.
+
+## Roadmap
+
+Email reminders for events you're going to.
+
+## Contributing
+
+Issues and pull requests are welcome. Please open an issue first for anything bigger than a small fix. Built with Next.js, TypeScript, Prisma (SQLite) and Playwright.
 
 ```bash
 npm install
-cp .env.example .env          # APP_URL=http://localhost:1337
-npx prisma migrate dev        # creates the database
-npm run dev                   # http://localhost:1337
+cp .env.example .env
+npx prisma migrate dev
+npm run dev            # http://localhost:1337
+npm run typecheck && npm run test:e2e
 ```
 
-Other commands:
-- `npm run typecheck`: TypeScript check.
-- `npx playwright install chromium`, then `npm run test:e2e`: end-to-end tests, on their own database on port 3100.
-- `npm run set-admin -- --email you@example.com`: make yourself admin.
-
-Releases: bump the version in `package.json`, add a [CHANGELOG.md](CHANGELOG.md) entry, then push a `vX.Y.Z` tag. CI tests the tag, then publishes the image.
+See [CHANGELOG.md](CHANGELOG.md) for what has changed.
 
 ## License
 
-No license has been chosen yet: the repository has no LICENSE file.
+No licence has been chosen yet, so all rights are reserved.
