@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "extends": ["next/core-web-vitals", "plugin:jsx-a11y/recommended"],
+  "rules": {
+    // Labels that wrap a checkbox and its text in nested spans are fine; look three levels deep for the text.
+    "jsx-a11y/label-has-associated-control": ["error", { "assert": "either", "depth": 3 }],
+    // Images are already resized thumbnails served by the app's own routes; next/image would add nothing.
+    "@next/next/no-img-element": "off"
+  },
+  "ignorePatterns": ["node_modules/", ".next/", "data/", "dist/", "test-results/", "prisma/", "public/"]
+}

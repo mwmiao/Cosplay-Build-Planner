@@ -314,7 +314,6 @@ export default async function ProjectPage({
               <Link
                 href={filterHref(project.id, { ...filter, reorder: reorder ? undefined : "1" }, {})}
                 className={reorder ? "btn-primary" : "btn-secondary"}
-                aria-pressed={reorder}
               >
                 {reorder ? P.doneReordering : P.reorderParts}
               </Link>

@@ -93,7 +93,6 @@ export default async function EditPartPage({
             <a
               href={reorder ? `${editHref}#photos` : `${editHref}?reorder=1#photos`}
               className={reorder ? "btn-primary" : "btn-secondary"}
-              aria-pressed={reorder}
             >
               {reorder ? t.refs.doneReordering : t.refs.reorder}
             </a>

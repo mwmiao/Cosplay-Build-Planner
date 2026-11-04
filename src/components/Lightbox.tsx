@@ -96,6 +96,8 @@ function Viewer({
   }, [go, many, onClose]);
 
   return (
+    // Clicking the dark backdrop closes it; the keyboard equivalents are Escape and the Close button.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
       role="dialog"
       aria-modal="true"
@@ -131,6 +133,7 @@ function Viewer({
         </button>
       </div>
 
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- same backdrop click; Escape closes */}
       <div
         className="relative flex min-h-0 flex-1 items-center justify-center px-2 py-3 sm:px-16"
         onClick={(e) => {

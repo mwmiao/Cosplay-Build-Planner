@@ -112,7 +112,7 @@ export default async function ReferencesPage({
               <p className="hint">{R.groupsHint}</p>
             )}
             {images.length > 1 ? (
-              <Link href={href({ reorder: !reorder })} className={reorder ? "btn-primary" : "btn-secondary"} aria-pressed={reorder}>
+              <Link href={href({ reorder: !reorder })} className={reorder ? "btn-primary" : "btn-secondary"}>
                 {reorder ? R.doneReordering : R.reorder}
               </Link>
             ) : null}

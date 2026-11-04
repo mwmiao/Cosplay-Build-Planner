@@ -16,6 +16,8 @@ export function LoginForm({ next }: { next: string }) {
     <form action={action} className="space-y-4">
       <FormMessage state={state} />
       <input type="hidden" name="next" value={next} />
+      {/* The email field is the only thing to do on this page, so it starts focused. */}
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
       <Field label={A.email} name="email" type="email" autoComplete="email" required autoFocus />
       <Field label={A.password} name="password" type="password" autoComplete="current-password" required />
       <SubmitButton className="btn-primary w-full" pendingText={t.common.working}>
