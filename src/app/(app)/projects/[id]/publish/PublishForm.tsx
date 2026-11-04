@@ -117,7 +117,7 @@ export function PublishForm({
               return (
                 <li key={img.id} className={`rounded-xl border-2 p-1 ${on ? "border-brand-500" : "border-transparent"}`}>
                   <label className="block cursor-pointer">
-                    <img src={img.thumbUrl} alt={img.caption ?? ""} className="aspect-square w-full rounded-lg object-cover" />
+                    <img decoding="async" loading="lazy" src={img.thumbUrl} alt={img.caption ?? ""} className="aspect-square w-full rounded-lg object-cover" />
                     <span className="mt-1 flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"

@@ -377,7 +377,7 @@ export default async function ProjectPage({
               content: (
                 <div className="flex min-w-0 items-center gap-2">
                   {partThumb.get(part.id) ? (
-                    <img src={`/api/uploads/${partThumb.get(part.id)}`} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" draggable={false} />
+                    <img decoding="async" loading="lazy" src={`/api/uploads/${partThumb.get(part.id)}`} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" draggable={false} />
                   ) : null}
                   <span className="truncate font-medium">{part.name}</span>
                   <StatusBadge status={part.status} label={statusLabel(part.status, t)} />
@@ -408,7 +408,7 @@ export default async function ProjectPage({
                   </form>
                   {partThumb.get(part.id) ? (
                     <Link href={`/projects/${project.id}/parts/${part.id}/edit#photos`} className="shrink-0" tabIndex={-1} aria-hidden="true">
-                      <img src={`/api/uploads/${partThumb.get(part.id)}`} alt="" loading="lazy" className="h-12 w-12 rounded-xl object-cover" />
+                      <img decoding="async" src={`/api/uploads/${partThumb.get(part.id)}`} alt="" loading="lazy" className="h-12 w-12 rounded-xl object-cover" />
                     </Link>
                   ) : null}
                   <Link href={`/projects/${project.id}/parts/${part.id}/edit`} className="min-w-0 flex-1 py-1">
@@ -478,7 +478,7 @@ export default async function ProjectPage({
               {references.map((r, i) => (
                 <li key={r.id}>
                   <LightboxThumb index={i} label={t.lightbox.open(r.caption ?? P.refAlt)}>
-                    <img
+                    <img decoding="async"
                       src={`/api/uploads/${r.thumbPath}`}
                       alt={r.caption ?? P.refAlt}
                       loading="lazy"

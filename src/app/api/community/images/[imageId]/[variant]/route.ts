@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { parseIds } from "@/lib/community/view";
 import { db } from "@/lib/db";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  * guests' encrypted images never are. Unpublishing, deleting the image or
  * switching it off makes this 404 immediately.
  */
-export async function GET(_req: Request, { params }: { params: { imageId: string; variant: string } }) {
+export async function GET(req: Request, { params }: { params: { imageId: string; variant: string } }) {
   if (!idSchema.safeParse(params.imageId).success || (params.variant !== "thumb" && params.variant !== "full")) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -44,16 +44,21 @@ export async function GET(_req: Request, { params }: { params: { imageId: string
   const full = resolveUploadPath(params.variant === "thumb" ? image.thumbPath : image.filePath);
   if (!full) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
+    // The publication check above runs on every request. The ETag only saves re-sending
+    // the bytes: after the short cache expires, a browser that already has the file gets a 304.
+    const { size, mtimeMs } = await stat(full);
+    const etag = `"${size.toString(16)}-${Math.round(mtimeMs).toString(16)}"`;
+    const headers = {
+      "Content-Type": mimeForPath(full),
+      // Short cache so unpublishing or removing an image takes effect quickly in browsers.
+      "Cache-Control": "public, max-age=60",
+      ETag: etag,
+      "Content-Security-Policy": "default-src 'none'",
+      "X-Content-Type-Options": "nosniff",
+    };
+    if (req.headers.get("if-none-match") === etag) return new NextResponse(null, { status: 304, headers });
     const data = await readFile(full);
-    return new NextResponse(new Uint8Array(data), {
-      headers: {
-        "Content-Type": mimeForPath(full),
-        // Short cache so unpublishing or removing an image takes effect quickly in browsers.
-        "Cache-Control": "public, max-age=60",
-        "Content-Security-Policy": "default-src 'none'",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return new NextResponse(new Uint8Array(data), { headers });
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

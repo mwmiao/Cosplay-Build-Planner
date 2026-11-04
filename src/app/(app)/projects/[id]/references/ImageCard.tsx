@@ -28,7 +28,7 @@ export function ImageCard({
   return (
     <li id={`ref-${image.id}`} className="card flex scroll-mt-4 flex-col gap-2 p-2" data-testid="image-card">
       <LightboxThumb index={index} label={t.lightbox.open(image.caption ?? image.originalName)}>
-        <img
+        <img decoding="async"
           src={`/api/uploads/${image.thumbPath}`}
           alt={image.caption ?? image.originalName}
           loading="lazy"

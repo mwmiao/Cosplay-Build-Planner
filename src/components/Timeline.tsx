@@ -65,7 +65,7 @@ export function Timeline({
                     label={t.lightbox.open(item.caption ?? item.stage ?? t.refs.progressAlt)}
                     className={d.items.length === 1 ? "sm:w-40 sm:shrink-0" : undefined}
                   >
-                    <img src={item.thumbUrl} alt={item.caption ?? item.stage ?? ""} loading="lazy" className="aspect-square w-full object-cover" />
+                    <img decoding="async" src={item.thumbUrl} alt={item.caption ?? item.stage ?? ""} loading="lazy" className="aspect-square w-full object-cover" />
                   </LightboxThumb>
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     {item.stage ? (

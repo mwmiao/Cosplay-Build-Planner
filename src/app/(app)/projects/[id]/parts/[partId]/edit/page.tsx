@@ -115,7 +115,7 @@ export default async function EditPartPage({
             items={photos.map((img) => ({
               id: img.id,
               label: img.caption ?? img.originalName,
-              content: <img src={`/api/uploads/${img.thumbPath}`} alt="" className="aspect-square w-full rounded-lg object-cover" draggable={false} />,
+              content: <img decoding="async" loading="lazy" src={`/api/uploads/${img.thumbPath}`} alt="" className="aspect-square w-full rounded-lg object-cover" draggable={false} />,
             }))}
           />
         ) : photos.length ? (

@@ -151,7 +151,7 @@ export default async function ProjectsPage({
             const days = daysUntil(p.deadline);
             const thumb = p.references[0]?.thumbPath;
             const image = thumb ? (
-              <img
+              <img decoding="async"
                 src={`/api/uploads/${thumb}`}
                 alt=""
                 className={view === "grid" ? "aspect-[4/3] w-full object-cover" : "h-20 w-20 shrink-0 rounded-xl object-cover"}

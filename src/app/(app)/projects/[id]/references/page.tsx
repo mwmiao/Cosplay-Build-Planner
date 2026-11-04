@@ -127,7 +127,7 @@ export default async function ReferencesPage({
                 label: img.caption ?? img.originalName,
                 content: (
                   <div>
-                    <img
+                    <img decoding="async" loading="lazy"
                       src={`/api/uploads/${img.thumbPath}`}
                       alt=""
                       className="aspect-square w-full rounded-lg object-cover"

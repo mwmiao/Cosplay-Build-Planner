@@ -197,7 +197,7 @@ export function PublicProject({
             {data.images.map((img, i) => (
               <li key={img.id}>
                 <LightboxThumb index={i} label={t.lightbox.open(img.caption ?? data.title)}>
-                  <img
+                  <img decoding="async"
                     src={img.thumbUrl}
                     alt={img.caption ?? data.title}
                     loading="lazy"

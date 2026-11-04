@@ -39,7 +39,7 @@ export default async function CreatorPage({ params, searchParams }: { params: { 
           <li key={p.id} className="min-w-0">
             <Link href={`/community/${p.id}`} className="card flex h-full flex-col overflow-hidden p-0 transition-colors hover:border-brand-400">
               {p.cover ? (
-                <img src={p.cover.thumbUrl} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
+                <img decoding="async" src={p.cover.thumbUrl} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
               ) : (
                 <div className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-brand-100 to-accent-100 text-4xl font-bold text-brand-700 dark:from-brand-900/60 dark:to-accent-700/30 dark:text-brand-200">
                   {p.title.slice(0, 1).toUpperCase()}

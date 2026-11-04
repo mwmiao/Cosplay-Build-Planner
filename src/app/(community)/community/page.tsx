@@ -121,7 +121,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Se
           >
             {result.items.map((p) => {
               const image = p.cover ? (
-                <img
+                <img decoding="async"
                   src={p.cover.thumbUrl}
                   alt=""
                   loading="lazy"

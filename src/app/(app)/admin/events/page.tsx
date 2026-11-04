@@ -93,7 +93,7 @@ export default async function EventQueuePage() {
                   <div className="flex gap-3">
                     {p.imageUrl ? (
                       // The post's image from the feed, only shown here while reviewing (it may expire).
-                      <img src={p.imageUrl} alt="" referrerPolicy="no-referrer" className="h-20 w-20 shrink-0 rounded-xl object-cover" />
+                      <img decoding="async" loading="lazy" src={p.imageUrl} alt="" referrerPolicy="no-referrer" className="h-20 w-20 shrink-0 rounded-xl object-cover" />
                     ) : null}
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
