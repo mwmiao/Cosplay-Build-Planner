@@ -4,7 +4,7 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
-## Unreleased
+## 1.9.1 — 2026-11-04
 
 ### Added
 - **Download my data:** one JSON file with your profile, projects, parts,
