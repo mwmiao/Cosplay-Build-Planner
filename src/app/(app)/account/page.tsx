@@ -5,7 +5,7 @@ import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { GUEST_MAX_BYTES, GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
 import { signOut } from "../../(auth)/actions";
-import { ChangePasswordForm, DisplayNameForm } from "./AccountForms";
+import { ChangePasswordForm, DeleteAccountForm, DisplayNameForm } from "./AccountForms";
 
 export function generateMetadata(): Metadata {
   return { title: getI18n().t.auth.accountTitle };
@@ -69,11 +69,29 @@ export default async function AccountPage() {
         <ChangePasswordForm />
       </section>
 
-      <form action={signOut}>
+      <section className="card mb-6 space-y-3" aria-labelledby="data-title">
+        <h2 id="data-title" className="section-title">
+          {A.yourData}
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{A.yourDataText}</p>
+        <a href="/api/export/account" className="btn-secondary w-full sm:w-auto" data-testid="export-account">
+          {A.exportData}
+        </a>
+      </section>
+
+      <form action={signOut} className="mb-6">
         <SubmitButton className="btn-secondary w-full sm:w-auto" pendingText={A.loggingOut}>
           {A.logout}
         </SubmitButton>
       </form>
+
+      <section className="card space-y-3 border-red-300 dark:border-red-900" aria-labelledby="delete-title" data-testid="delete-account">
+        <h2 id="delete-title" className="section-title text-red-700 dark:text-red-400">
+          {A.deleteTitle}
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{A.deleteText}</p>
+        {user.isAdmin ? <p className="text-sm">{A.deleteAdminBlocked}</p> : <DeleteAccountForm />}
+      </section>
     </>
   );
 }

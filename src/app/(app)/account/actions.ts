@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getI18n } from "@/i18n/server";
-import { requireUser } from "@/lib/auth";
+import { deleteAccountData } from "@/lib/account";
+import { requireAccount, requireUser } from "@/lib/auth";
 import { getAuth } from "@/lib/betterAuth";
 import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/passwordRules";
 import { rateLimit } from "@/lib/rateLimit";
@@ -50,4 +52,29 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
     return { ok: false, errors: { current: [A.wrongPassword] } };
   }
   return { ok: true, message: A.passwordChanged };
+}
+
+/**
+ * Permanently deletes the signed-in account and all its data. Needs the current
+ * password. Admins can't do it here (the server owner removes admin rights first
+ * with the set-admin command), so the app can't be left without one by accident.
+ */
+export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireAccount();
+  const { t } = getI18n();
+  const A = t.auth;
+  if (user.isAdmin) return { ok: false, message: A.deleteAdminBlocked };
+  if (!(await rateLimit(`delete-account:${user.id}`, 5, 15 * 60))) return { ok: false, message: A.tooMany };
+  try {
+    await getAuth().api.verifyPassword({ body: { password: field(formData, "password") }, headers: headers() });
+  } catch {
+    return { ok: false, errors: { password: [A.wrongPassword] } };
+  }
+  await deleteAccountData(user.id);
+  try {
+    await getAuth().api.signOut({ headers: headers() }); // clears the browser's cookie; the session itself is gone
+  } catch {
+    /* already signed out */
+  }
+  redirect("/projects?deleted=1");
 }

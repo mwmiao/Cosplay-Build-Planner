@@ -29,10 +29,21 @@ const byDate = (a: Date | null, b: Date | null) =>
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: { view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string };
+  searchParams: { view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string; deleted?: string };
 }) {
   const user = await getCurrentUser();
-  if (!user) return <VisitorStart next={safeNext(searchParams.next)} />;
+  if (!user) {
+    return (
+      <>
+        {searchParams.deleted ? (
+          <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+            {getI18n().t.auth.accountDeleted}
+          </div>
+        ) : null}
+        <VisitorStart next={safeNext(searchParams.next)} />
+      </>
+    );
+  }
   const { t, f } = getI18n();
   const archived = searchParams.view === "archived";
   const { sort, view } = viewPrefs<Sort>("projects-view", searchParams, SORTS, { sort: "deadline", view: "list" });

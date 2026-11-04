@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useFormState } from "react-dom";
 import { Field } from "@/components/Field";
-import { FormMessage, SubmitButton } from "@/components/FormBits";
+import { ConfirmButton, FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
 import { PASSWORD_MIN } from "@/lib/passwordRules";
-import { changePassword, updateDisplayName } from "./actions";
+import { changePassword, deleteAccount, updateDisplayName } from "./actions";
 
 export function DisplayNameForm({ name }: { name: string }) {
   const { t } = useI18n();
@@ -52,6 +52,21 @@ export function ChangePasswordForm() {
       />
       <Field label={A.confirmPassword} name="confirm" type="password" autoComplete="new-password" required errors={e.confirm} />
       <SubmitButton className="btn-secondary">{A.changePassword}</SubmitButton>
+    </form>
+  );
+}
+
+export function DeleteAccountForm() {
+  const { t } = useI18n();
+  const A = t.auth;
+  const [state, action] = useFormState(deleteAccount, {});
+  return (
+    <form action={action} className="space-y-3" noValidate>
+      <FormMessage state={state} />
+      <Field label={A.currentPassword} name="password" type="password" autoComplete="current-password" required errors={state.errors?.password} />
+      <ConfirmButton className="btn-danger" message={A.deleteConfirm}>
+        {A.deleteAccount}
+      </ConfirmButton>
     </form>
   );
 }
