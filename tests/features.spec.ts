@@ -123,7 +123,20 @@ test("part photos, in-app viewer and manual order for parts and images", async (
   await expect(viewer).toContainText("1 of 2");
   await page.keyboard.press("ArrowRight");
   await expect(viewer).toContainText("Second");
+  // Keyboard focus stays inside the open viewer, forwards and backwards.
+  const focusInViewer = () => page.evaluate(() => !!document.activeElement?.closest('[data-testid="lightbox"]'));
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    expect(await focusInViewer(), `Tab ${i + 1}`).toBe(true);
+  }
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Shift+Tab");
+    expect(await focusInViewer(), `Shift+Tab ${i + 1}`).toBe(true);
+  }
   await page.keyboard.press("Escape");
+  await expect(viewer).toHaveCount(0);
+  // ...and goes back to the photo that opened it.
+  await expect(cards.first().getByRole("button", { name: /View image/ })).toBeFocused();
 
   // Reorder photos.
   await page.getByRole("link", { name: "Reorder" }).click();

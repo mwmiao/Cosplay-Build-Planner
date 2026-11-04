@@ -413,7 +413,7 @@ export default async function ProjectPage({
                   ) : null}
                   <Link href={`/projects/${project.id}/parts/${part.id}/edit`} className="min-w-0 flex-1 py-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`font-medium ${done ? "text-zinc-400 line-through dark:text-zinc-500" : ""}`}>
+                      <span className={`font-medium ${done ? "text-zinc-500 line-through dark:text-zinc-400" : ""}`}>
                         {part.name}
                         {part.quantity > 1 ? <span className="text-zinc-600"> ×{part.quantity}</span> : null}
                       </span>

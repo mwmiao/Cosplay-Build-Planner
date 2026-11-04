@@ -138,7 +138,7 @@ export default async function ShoppingPage({
                       </button>
                     </form>
                     <div className="min-w-0 flex-1">
-                      <div className={`font-medium ${item.purchased ? "text-zinc-400 line-through dark:text-zinc-500" : ""}`}>
+                      <div className={`font-medium ${item.purchased ? "text-zinc-500 line-through dark:text-zinc-400" : ""}`}>
                         {item.name}
                         {item.quantity > 1 ? <span className="text-zinc-600"> ×{item.quantity}</span> : null}
                       </div>
@@ -172,7 +172,7 @@ export default async function ShoppingPage({
                       <form action={deleteShoppingItem.bind(null, item.id)}>
                         <ConfirmButton
                           message={S.removeConfirm(item.name)}
-                          className="btn-ghost h-11 w-11 shrink-0 px-0 text-zinc-400"
+                          className="btn-ghost h-11 w-11 shrink-0 px-0 text-zinc-600 dark:text-zinc-400"
                           aria-label={S.remove(item.name)}
                         >
                           ✕

@@ -68,6 +68,7 @@ function Viewer({
   const many = images.length > 1;
   const closeRef = useRef<HTMLButtonElement>(null);
   const touchX = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const go = useCallback(
     (step: number) => onIndex((index + step + images.length) % images.length),
@@ -88,6 +89,24 @@ function Viewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      else if (e.key === "Tab") {
+        // Keep keyboard focus inside the dialog (the page behind it is inert for the user).
+        const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>("button") ?? []).filter((b) => b.offsetParent !== null);
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (!first || !last) return;
+        const active = document.activeElement;
+        if (!dialogRef.current?.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
       else if (e.key === "ArrowRight" && many) go(1);
       else if (e.key === "ArrowLeft" && many) go(-1);
     };
@@ -99,6 +118,7 @@ function Viewer({
     // Clicking the dark backdrop closes it; the keyboard equivalents are Escape and the Close button.
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={img.caption || img.alt}
