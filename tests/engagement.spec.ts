@@ -198,3 +198,26 @@ test("upload form and event filters", async ({ page }) => {
   await ready(page, "/events");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
+
+test("community search ignores case and accents", async ({ browser }) => {
+  const owner = await person(browser, "10.0.14.9", "Accent");
+  const stamp = Date.now();
+  const { publicationId } = await publish(owner.page, `Armadura Ámbar ${stamp}`);
+  await publish(owner.page, `Outra coisa ${stamp}`);
+  const visitor = await asNewPerson(browser, "10.0.14.10");
+
+  // Same project whether typed with accents, without them, or in capitals.
+  for (const q of [`ámbar ${stamp}`, `AMBAR ${stamp}`, `Ámbar ${stamp}`, `armadura ambar`]) {
+    await ready(visitor.page, `/community?q=${encodeURIComponent(q)}`);
+    await expect(visitor.page.getByTestId("community-list"), q).toContainText(`Armadura Ámbar ${stamp}`);
+    await expect(visitor.page.getByTestId("community-list"), q).not.toContainText(`Outra coisa ${stamp}`);
+  }
+  // The API uses the same search.
+  const api = await visitor.page.request.get(`/api/community?q=${encodeURIComponent(`AMBAR ${stamp}`)}`);
+  const body = await api.json();
+  expect(body.total).toBe(1);
+  expect(body.items[0].id).toBe(publicationId);
+  // No match, nothing listed.
+  const none = await (await visitor.page.request.get(`/api/community?q=${encodeURIComponent(`zzz${stamp}`)}`)).json();
+  expect(none.total).toBe(0);
+});

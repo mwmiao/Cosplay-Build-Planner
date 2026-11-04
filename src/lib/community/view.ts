@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "../db";
 import { getMoneyContext } from "../queries";
+import { searchKey } from "../searchText";
 import { type PublicSnapshot, buildPublicSnapshot, parseTags } from "./snapshot";
 
 // Public read model. Published projects are LIVE: every view is built from
@@ -124,6 +125,8 @@ const ORDER: Record<CommunitySort, Prisma.PublicationOrderByWithRelationInput[]>
   title: [{ title: "asc" }, { id: "asc" }],
 };
 export const PAGE_SIZE = 12;
+/** A search matching more than this is too broad to be useful; the rest is cut off. */
+const MAX_SEARCH_MATCHES = 2000;
 
 export async function listPublicProjects(opts: {
   q?: string;
@@ -136,23 +139,27 @@ export async function listPublicProjects(opts: {
   ownerId?: string;
 }) {
   const q = opts.q?.trim().slice(0, 100);
-  const where: Prisma.PublicationWhereInput = {
+  const base: Prisma.PublicationWhereInput = {
     ...visible,
     ...(opts.status ? { project: { deletedAt: null, status: opts.status } } : {}),
     ...(opts.savedBy ? { bookmarks: { some: { userId: opts.savedBy } } } : {}),
     ...(opts.ownerId ? { ownerId: opts.ownerId } : {}),
-    ...(q
-      ? {
-          OR: [
-            { title: { contains: q } },
-            { project: { series: { contains: q } } },
-            { tags: { contains: q.toLowerCase() } },
-            { description: { contains: q } },
-            { owner: { name: { contains: q } } },
-          ],
-        }
-      : {}),
   };
+  let where = base;
+  if (q) {
+    // Matching ignores case and accents, which the database can't do for non-ASCII
+    // letters, so the searchable text is compared here and only the matches are listed.
+    const needle = searchKey(q);
+    const candidates = await db.publication.findMany({
+      where: base,
+      select: { id: true, title: true, description: true, tags: true, owner: { select: { name: true } }, project: { select: { series: true } } },
+    });
+    const ids = candidates
+      .filter((c) => searchKey([c.title, c.project.series, c.tags, c.description, c.owner.name].join("\n")).includes(needle))
+      .slice(0, MAX_SEARCH_MATCHES)
+      .map((c) => c.id);
+    where = { ...base, id: { in: ids } };
+  }
   const [total, rows] = await Promise.all([
     db.publication.count({ where }),
     db.publication.findMany({
