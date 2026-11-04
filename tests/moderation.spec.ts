@@ -194,3 +194,49 @@ test("forms and project page: errors clear on edit; budget prompt; references be
   await expect(page.getByTestId("publish-preview")).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
 });
+
+test("suspend: signed out, can't log in, projects hidden; restore brings it all back; admins can't be suspended", async ({ browser }) => {
+  const admin = await asAdmin(browser, "10.0.13.20");
+  const target = await person(browser, "10.0.13.21", "Suspendee");
+  const title = `Suspended build ${Date.now()}`;
+  const { publicationId } = await publish(target.page, title);
+  const visitor = await asNewPerson(browser, "10.0.13.22");
+  await ready(visitor.page, `/community/${publicationId}`);
+  await expect(visitor.page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+
+  // Admin suspends.
+  await ready(admin.page, `/admin/users?q=${encodeURIComponent(target.user.email)}`);
+  const row = admin.page.getByTestId("user-row").filter({ hasText: target.user.name });
+  admin.page.once("dialog", (d) => d.accept());
+  await row.getByRole("button", { name: "Suspend" }).click();
+  await expect(row.getByTestId("suspended-badge")).toBeVisible();
+  await expect(admin.page.getByTestId("role-log")).toContainText(`${admin.user.name} changed ${target.user.name} to Suspended`);
+  await expect(row.getByRole("button", { name: "Make moderator" })).toHaveCount(0);
+
+  // Their session is gone, they can't log in (right password, clear message), and the project is hidden everywhere.
+  await target.page.goto("/projects");
+  await expect(target.page.getByRole("link", { name: "New project" })).toHaveCount(0);
+  await login(target.page, target.user);
+  await expect(target.page.getByText("This account is suspended.")).toBeVisible();
+  await ready(visitor.page, `/community/${publicationId}`);
+  await expect(visitor.page.getByRole("heading", { name: "Not available" })).toBeVisible();
+  await ready(visitor.page, `/community?q=${encodeURIComponent(title)}`);
+  await expect(visitor.page.getByTestId("community-list")).toHaveCount(0);
+  const api = await (await visitor.page.request.get(`/api/community?q=${encodeURIComponent(title)}`)).json();
+  expect(api.total).toBe(0);
+
+  // Restore: log in again and the project is back, nothing was lost.
+  await ready(admin.page, `/admin/users?q=${encodeURIComponent(target.user.email)}`);
+  admin.page.once("dialog", (d) => d.accept());
+  await row.getByRole("button", { name: "Restore" }).click();
+  await expect(row.getByTestId("suspended-badge")).toHaveCount(0);
+  await login(target.page, target.user);
+  await expect(target.page).toHaveURL(/\/projects$/);
+  await expect(target.page.getByText(title.replace("Suspended build", "Suspended build")).first()).toBeVisible();
+  await ready(visitor.page, `/community/${publicationId}`);
+  await expect(visitor.page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+
+  // Admins can't be suspended (no button, and the action refuses).
+  await ready(admin.page, `/admin/users?q=${encodeURIComponent(admin.user.name)}`);
+  await expect(admin.page.getByTestId("user-row").filter({ hasText: admin.user.name }).getByRole("button")).toHaveCount(0);
+});

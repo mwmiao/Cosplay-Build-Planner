@@ -40,6 +40,8 @@ function create() {
         // Read-only for the app: input:false means sign-up/update requests can't set it.
         // Granted only with scripts/admin/set-admin on the server.
         role: { type: "string", required: false, defaultValue: "user", input: false },
+        // Set by admins in the app (Users and roles). A suspended person is treated as signed out.
+        suspendedAt: { type: "date", required: false, input: false },
       },
     },
     session: {

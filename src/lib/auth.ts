@@ -26,6 +26,7 @@ export type CurrentUser = {
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await getAuth().api.getSession({ headers: headers() });
   if (!session) return null;
+  if (session.user.suspendedAt) return null;
   const isGuest = session.user.isAnonymous === true;
   return {
     id: session.user.id,

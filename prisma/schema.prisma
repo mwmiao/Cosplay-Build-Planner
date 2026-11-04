@@ -213,6 +213,9 @@ model User {
   /// publish, deleted 30 days after creation unless they register (which moves
   /// their data into the new account). Managed by Better Auth's anonymous plugin.
   isAnonymous     Boolean   @default(false)
+  /// Set by an admin to suspend the account: no sign-in, and its Community
+  /// projects are hidden. Cleared to restore everything. Nothing is deleted.
+  suspendedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

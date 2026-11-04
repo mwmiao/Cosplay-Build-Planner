@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { imageId: string;
       id: params.imageId,
       kind: { in: ["cover", "reference", "progress"] },
       encrypted: false,
-      project: { deletedAt: null, publication: { isNot: null } },
+      project: { deletedAt: null, publication: { is: { owner: { suspendedAt: null } } } },
     },
     select: {
       id: true,

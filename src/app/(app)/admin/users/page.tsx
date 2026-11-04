@@ -4,7 +4,7 @@ import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { setModerator } from "../actions";
+import { setModerator, setSuspended } from "../actions";
 
 export function generateMetadata(): Metadata {
   return { title: getI18n().t.admin.users };
@@ -29,7 +29,7 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
     },
     orderBy: [{ role: "asc" }, { name: "asc" }],
     take: PAGE_SIZE,
-    select: { id: true, name: true, role: true, createdAt: true },
+    select: { id: true, name: true, role: true, createdAt: true, suspendedAt: true },
   });
   const recent = await db.roleChange.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
   const changed = searchParams.changed ? users.find((u) => u.id === searchParams.changed) : undefined;
@@ -72,18 +72,35 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="break-words font-semibold">{u.name}</span>
                     <span className="rounded-full bg-zinc-100 px-2 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{role}</span>
+                    {u.suspendedAt ? (
+                      <span className="rounded-full bg-red-100 px-2 text-[11px] font-semibold text-red-800 dark:bg-red-950 dark:text-red-300" data-testid="suspended-badge">
+                        {A.roles.suspended}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">{A.joined(f.date(u.createdAt))}</p>
                 </div>
                 {u.role === "admin" || u.id === admin.id ? null : (
-                  <form action={setModerator.bind(null, u.id, !isModerator)}>
-                    <ConfirmButton
-                      message={isModerator ? A.removeModeratorConfirm(u.name) : A.makeModeratorConfirm(u.name)}
-                      className={isModerator ? "btn-danger" : "btn-secondary"}
-                    >
-                      {isModerator ? A.removeModerator : A.makeModerator}
-                    </ConfirmButton>
-                  </form>
+                  <div className="flex flex-wrap gap-2">
+                    {u.suspendedAt ? null : (
+                      <form action={setModerator.bind(null, u.id, !isModerator)}>
+                        <ConfirmButton
+                          message={isModerator ? A.removeModeratorConfirm(u.name) : A.makeModeratorConfirm(u.name)}
+                          className={isModerator ? "btn-danger" : "btn-secondary"}
+                        >
+                          {isModerator ? A.removeModerator : A.makeModerator}
+                        </ConfirmButton>
+                      </form>
+                    )}
+                    <form action={setSuspended.bind(null, u.id, !u.suspendedAt)}>
+                      <ConfirmButton
+                        message={u.suspendedAt ? A.restoreConfirm(u.name) : A.suspendConfirm(u.name)}
+                        className={u.suspendedAt ? "btn-secondary" : "btn-danger"}
+                      >
+                        {u.suspendedAt ? A.restore : A.suspend}
+                      </ConfirmButton>
+                    </form>
+                  </div>
                 )}
               </li>
             );

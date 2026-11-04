@@ -41,7 +41,7 @@ const imageView = (img: { id: string; caption: string | null }): PublicImageView
 });
 
 /** Visible publications: the project still exists (soft-deleted projects drop out). */
-const visible: Prisma.PublicationWhereInput = { project: { deletedAt: null } };
+const visible: Prisma.PublicationWhereInput = { project: { deletedAt: null }, owner: { suspendedAt: null } };
 
 export function parseIds(json: string): string[] {
   try {

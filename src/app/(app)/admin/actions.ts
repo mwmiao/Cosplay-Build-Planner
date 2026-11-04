@@ -57,6 +57,38 @@ export async function dismissReports(publicationId: string): Promise<void> {
 }
 
 /**
+ * Admins suspend or restore an account: the person is signed out everywhere,
+ * can't sign in, and their Community projects are hidden until restored.
+ * Nothing is deleted. Admins and yourself can't be suspended. Recorded in the
+ * role-change history.
+ */
+export async function setSuspended(userId: string, on: boolean): Promise<void> {
+  const admin = await requireAdmin();
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(userId) || userId === admin.id) redirect("/admin/users?error=1");
+  const target = await db.user.findUnique({ where: { id: userId }, select: { name: true, role: true, isAnonymous: true, suspendedAt: true } });
+  if (!target || target.isAnonymous || target.role === "admin") redirect("/admin/users?error=1");
+  if (Boolean(target.suspendedAt) !== on) {
+    await db.$transaction([
+      db.user.update({ where: { id: userId }, data: { suspendedAt: on ? new Date() : null } }),
+      db.session.deleteMany({ where: { userId } }),
+      db.roleChange.create({
+        data: {
+          targetId: userId,
+          targetName: target.name,
+          actorId: admin.id,
+          actorName: admin.name,
+          fromRole: target.role,
+          toRole: on ? "suspended" : "unsuspended",
+        },
+      }),
+    ]);
+  }
+  revalidatePath("/community", "layout");
+  revalidatePath("/admin/users");
+  redirect(`/admin/users?changed=${encodeURIComponent(userId)}`);
+}
+
+/**
  * Admins grant or remove the moderator role. Admin itself can't be granted or
  * removed here (only with the set-admin command on the server), guests can't be
  * moderators, and the change signs the person out so it applies right away.
