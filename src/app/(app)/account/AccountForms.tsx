@@ -63,7 +63,7 @@ export function DeleteAccountForm() {
   return (
     <form action={action} className="space-y-3" noValidate>
       <FormMessage state={state} />
-      <Field label={A.currentPassword} name="password" type="password" autoComplete="current-password" required errors={state.errors?.password} />
+      <Field label={A.deletePassword} name="password" type="password" autoComplete="current-password" required errors={state.errors?.password} />
       <ConfirmButton className="btn-danger" message={A.deleteConfirm}>
         {A.deleteAccount}
       </ConfirmButton>

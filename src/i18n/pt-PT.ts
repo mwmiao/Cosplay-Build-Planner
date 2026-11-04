@@ -618,6 +618,7 @@ export const ptPT: Dict = {
     deleteText: "Elimina definitivamente a sua conta, todos os seus projetos e imagens, e tudo o que publicou. Não pode ser anulado. Descarregue primeiro os seus dados se os quiser guardar.",
     deleteConfirm: "Eliminar a sua conta e tudo o que ela contém? Não pode ser anulado.",
     deleteAccount: "Eliminar a minha conta",
+    deletePassword: "A sua palavra-passe, para confirmar",
     deleteAdminBlocked: "As contas de administrador não podem ser eliminadas aqui. Peça a quem gere o servidor para remover primeiro a sua função de administrador.",
     accountDeleted: "A sua conta e os respetivos dados foram eliminados.",
     wrongPassword: "A palavra-passe atual não está correta.",

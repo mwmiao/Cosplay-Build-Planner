@@ -612,6 +612,7 @@ export const en = {
     deleteText: "Permanently deletes your account, all your projects and their images, and anything you published. This can't be undone. Download your data first if you want to keep it.",
     deleteConfirm: "Delete your account and everything in it? This can't be undone.",
     deleteAccount: "Delete my account",
+    deletePassword: "Your password, to confirm",
     deleteAdminBlocked: "Admin accounts can't be deleted here. Ask whoever runs the server to remove your admin role first.",
     accountDeleted: "Your account and its data were deleted.",
     wrongPassword: "The current password isn't right.",

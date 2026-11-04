@@ -66,14 +66,14 @@ test("delete account: needs the password, removes everything, leaves other peopl
     // Wrong password: nothing happens.
     await ready(doomed.page, "/account");
     const section = doomed.page.getByTestId("delete-account");
-    await section.getByLabel("Current password").fill("not-the-password-123");
+    await section.getByLabel("Your password, to confirm").fill("not-the-password-123");
     doomed.page.once("dialog", (d) => d.accept());
     await section.getByRole("button", { name: "Delete my account" }).click();
     await expect(section.getByText("The current password isn't right.")).toBeVisible();
     expect(await db.user.count({ where: { email: doomed.user.email } })).toBe(1);
 
     // Right password: gone.
-    await section.getByLabel("Current password").fill(doomed.user.password);
+    await section.getByLabel("Your password, to confirm").fill(doomed.user.password);
     doomed.page.once("dialog", (d) => d.accept());
     await section.getByRole("button", { name: "Delete my account" }).click();
     await expect(doomed.page).toHaveURL(/\/projects\?deleted=1$/);
