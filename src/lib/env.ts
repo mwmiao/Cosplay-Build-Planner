@@ -12,6 +12,8 @@ const schema = z.object({
   APP_URL: optional(z.string().url().optional()),
   /** Override the Secure cookie flag (defaults to true when APP_URL is https). */
   COOKIE_SECURE: optional(z.enum(["true", "false"]).optional()),
+  /** Which header carries the visitor's address for rate limiting: cloudflare = CF-Connecting-IP only, proxy = last X-Forwarded-For entry only. Unset = any of them (fine on a private network). */
+  TRUSTED_PROXY: optional(z.enum(["cloudflare", "proxy"]).optional()),
 });
 
 let cached: z.infer<typeof schema> | null = null;

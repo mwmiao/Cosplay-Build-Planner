@@ -2,6 +2,7 @@ import { ensureBuiltinData } from "./events/builtinSync";
 import { cleanupExpiredGuests } from "./guest";
 import { getSyncStatus, syncEvents } from "./events/sync";
 import { checkSources, monitorEnabled } from "./instagram/monitor";
+import { purgeRateLimits } from "./rateLimit";
 
 // Background jobs inside the app process:
 // - every hour: delete guests older than 30 days (and their files);
@@ -27,6 +28,11 @@ export function startJobs() {
   // Built-in events: add new ones / refresh changed ones from this release.
   setTimeout(() => void ensureBuiltinData(), 5_000);
   setInterval(cleanup, HOUR);
+
+  // Login/registration counters are only needed for their window (at most an hour).
+  const purge = () => purgeRateLimits().catch((err) => console.error("Rate limit cleanup failed", err));
+  setTimeout(purge, 45_000);
+  setInterval(purge, HOUR);
 
   // Instagram monitor: every few minutes, check the sources that are due (each
   // source's own schedule handles the interval and the backoff after failures).

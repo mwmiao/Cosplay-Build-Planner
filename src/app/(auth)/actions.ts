@@ -37,8 +37,15 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   const email = field(formData, "email").trim().toLowerCase();
   const password = field(formData, "password");
   const ip = clientIp();
-  // Per address and per account, so neither guessing many passwords nor many accounts works.
-  if (!(await rateLimit(`login-ip:${ip}`, 20, 15 * 60)) || !(await rateLimit(`login-email:${email}`, 8, 15 * 60))) {
+  // Per address, per address+account, and a looser cap per account. A stranger
+  // can therefore not lock you out by guessing from their own address (the
+  // address+account limit only blocks them), while spread-out guessing against
+  // one account still hits the account-wide cap.
+  if (
+    !(await rateLimit(`login-ip:${ip}`, 20, 15 * 60)) ||
+    !(await rateLimit(`login-email-ip:${email}:${ip}`, 8, 15 * 60)) ||
+    !(await rateLimit(`login-email:${email}`, 60, 15 * 60))
+  ) {
     return { ok: false, message: A.tooMany };
   }
   if (!email || !password) return { ok: false, message: A.invalidCredentials };

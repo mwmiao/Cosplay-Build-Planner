@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { COMMUNITY_SORTS, type CommunitySort, listPublicProjects } from "@/lib/community/view";
 
 export const dynamic = "force-dynamic";
 
 /** Public list of published projects (same data as the Community page). */
 export async function GET(req: Request) {
+  if (!(await rateLimit(`community-api:${clientIp()}`, 120, 60))) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "60" } });
+  }
   const params = new URL(req.url).searchParams;
   const requested = params.get("sort");
   const sort: CommunitySort = (COMMUNITY_SORTS as readonly (string | null)[]).includes(requested) ? (requested as CommunitySort) : "newest";
