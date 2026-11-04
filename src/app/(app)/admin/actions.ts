@@ -62,14 +62,18 @@ export async function dismissReports(publicationId: string): Promise<void> {
  * moderators, and the change signs the person out so it applies right away.
  */
 export async function setModerator(userId: string, on: boolean): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   // Better Auth user ids (not cuids)
   if (!/^[A-Za-z0-9_-]{8,64}$/.test(userId)) redirect("/admin/users?error=1");
-  const target = await db.user.findUnique({ where: { id: userId }, select: { role: true, isAnonymous: true } });
+  const target = await db.user.findUnique({ where: { id: userId }, select: { name: true, role: true, isAnonymous: true } });
   if (!target || target.isAnonymous || target.role === "admin") redirect("/admin/users?error=1");
+  const toRole = on ? "moderator" : "user";
   await db.$transaction([
-    db.user.update({ where: { id: userId }, data: { role: on ? "moderator" : "user" } }),
+    db.user.update({ where: { id: userId }, data: { role: toRole } }),
     db.session.deleteMany({ where: { userId } }),
+    db.roleChange.create({
+      data: { targetId: userId, targetName: target.name, actorId: admin.id, actorName: admin.name, fromRole: target.role, toRole },
+    }),
   ]);
   revalidatePath("/admin/users");
   redirect(`/admin/users?changed=${encodeURIComponent(userId)}`);

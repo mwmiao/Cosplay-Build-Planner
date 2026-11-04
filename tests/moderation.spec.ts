@@ -117,6 +117,8 @@ test("roles: admins grant moderator in the app; moderators only get Community mo
   await row.getByRole("button", { name: "Make moderator" }).click();
   await expect(admin.page.getByText(`${mod.user.name}'s role is updated.`)).toBeVisible();
   await expect(row).toContainText("Moderator");
+  // The change is recorded: who did it, to whom, and which role.
+  await expect(admin.page.getByTestId("role-log")).toContainText(`${admin.user.name} changed ${mod.user.name} to Moderator`);
 
   // Signed out by the change; after logging in they get reports, not the rest.
   await mod.page.goto("/admin");
@@ -135,6 +137,7 @@ test("roles: admins grant moderator in the app; moderators only get Community mo
   admin.page.once("dialog", (d) => d.accept());
   await row.getByRole("button", { name: "Remove moderator" }).click();
   await expect(row).not.toContainText("Moderator");
+  await expect(admin.page.getByTestId("role-log")).toContainText(`${admin.user.name} changed ${mod.user.name} to User`);
   await login(mod.page, mod.user);
   await expect(mod.page).toHaveURL(/\/projects$/);
   await expect(mod.page.getByRole("link", { name: "New project" })).toBeVisible();

@@ -799,6 +799,8 @@ export const ptPT: Dict = {
     removeModeratorConfirm: (name: string) => `Retirar a função de moderador a ${name}? A sessão termina.`,
     roleChanged: (name: string) => `A função de ${name} foi atualizada. Tem de voltar a iniciar sessão.`,
     roleNotAllowed: "Essa função não pode ser alterada aqui.",
+    roleLog: "Alterações recentes de função",
+    roleLogEntry: (actor: string, target: string, to: string) => `${actor} alterou ${target} para ${to}`,
     ownerNotice: (date: string, reason: string) =>
       `Um moderador removeu este projeto da Comunidade a ${date}. Motivo: ${reason}. O projeto em si não foi alterado; pode corrigi-lo e voltar a publicar.`,
   },

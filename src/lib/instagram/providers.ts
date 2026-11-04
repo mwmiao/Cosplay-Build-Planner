@@ -2,24 +2,53 @@
 // login, token or official API). To add RSS.app, Apify…: implement
 // InstagramSourceProvider (types.ts) and add it to PROVIDERS below; nothing
 // else in the app changes.
+import { PrivateAddressError, assertPublicUrl } from "../netGuard";
 import { parseFeed } from "./feed";
 import { FeedError, type FeedSource, type FetchOptions, type FetchResult, type InstagramSourceProvider } from "./types";
+
+const PRIVATE_FEED_MESSAGE = "This feed address points to a private network address, which isn't allowed. Set ALLOW_PRIVATE_FEED_URLS=true if it is your own feed provider.";
+
+/** The bundled RSS-Bridge, or any address when the owner has allowed private feed URLs. */
+function isTrustedFeedUrl(feedUrl: string): boolean {
+  if (process.env.ALLOW_PRIVATE_FEED_URLS === "true") return true;
+  const base = process.env.RSS_BRIDGE_BASE_URL?.trim();
+  try {
+    return Boolean(base) && new URL(feedUrl).origin === new URL(base!).origin;
+  } catch {
+    return false;
+  }
+}
 
 const CACHE_MS = 5 * 60_000;
 const cache = new Map<string, { at: number; body: string }>();
 
 /** GET a feed with a timeout, a short in-memory cache and readable errors. */
-export async function fetchFeedText(url: string, { useCache = true }: { useCache?: boolean } = {}): Promise<string> {
+export async function fetchFeedText(
+  url: string,
+  { useCache = true, publicOnly = false }: { useCache?: boolean; publicOnly?: boolean } = {},
+): Promise<string> {
   const hit = cache.get(url);
   if (useCache && hit && Date.now() - hit.at < CACHE_MS) return hit.body;
   let res: Response;
   try {
-    res = await fetch(url, {
-      headers: { Accept: "application/atom+xml, application/rss+xml, application/xml, text/xml" },
-      signal: AbortSignal.timeout(30_000),
-      cache: "no-store",
-    });
+    // publicOnly: every address, including each redirect, must be a public one.
+    let target = url;
+    for (let hops = 0; ; hops++) {
+      if (publicOnly) await assertPublicUrl(target);
+      res = await fetch(target, {
+        headers: { Accept: "application/atom+xml, application/rss+xml, application/xml, text/xml" },
+        signal: AbortSignal.timeout(30_000),
+        redirect: publicOnly ? "manual" : "follow",
+        cache: "no-store",
+      });
+      const location = res.headers.get("location");
+      if (!publicOnly || res.status < 300 || res.status >= 400 || !location) break;
+      if (hops >= 3) throw new FeedError("Feed redirected too many times", "invalid");
+      target = new URL(location, target).toString();
+    }
   } catch (err) {
+    if (err instanceof FeedError) throw err;
+    if (err instanceof PrivateAddressError) throw new FeedError(PRIVATE_FEED_MESSAGE, "invalid");
     const cause = (err as { cause?: { code?: string } })?.cause?.code ?? (err as Error)?.name;
     throw new FeedError(`Can't reach ${new URL(url).origin} (${cause ?? "network error"})`, "unreachable");
   }
@@ -54,7 +83,10 @@ export const rssBridgeProvider: InstagramSourceProvider = {
   async fetchRecentPosts(source: FeedSource, options: FetchOptions = {}): Promise<FetchResult> {
     const feedUrl = source.feedUrl || this.buildFeedUrl(source.username);
     if (!feedUrl) throw new FeedError("RSS_BRIDGE_BASE_URL isn't set and the source has no feed URL", "notConfigured");
-    return { feedUrl, posts: parseOrThrow(await fetchFeedText(feedUrl, { useCache: !options.fresh })) };
+    // A feed address typed in by an admin must be public, unless it is the bundled
+    // RSS-Bridge or ALLOW_PRIVATE_FEED_URLS=true (a feed provider on your own network).
+    const publicOnly = Boolean(source.feedUrl) && !isTrustedFeedUrl(feedUrl);
+    return { feedUrl, posts: parseOrThrow(await fetchFeedText(feedUrl, { useCache: !options.fresh, publicOnly })) };
   },
 };
 

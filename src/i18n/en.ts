@@ -793,6 +793,8 @@ export const en = {
     removeModeratorConfirm: (name: string) => `Remove ${name}'s moderator role? They'll be signed out.`,
     roleChanged: (name: string) => `${name}'s role is updated. They need to log in again.`,
     roleNotAllowed: "That role can't be changed here.",
+    roleLog: "Recent role changes",
+    roleLogEntry: (actor: string, target: string, to: string) => `${actor} changed ${target} to ${to}`,
     ownerNotice: (date: string, reason: string) =>
       `A moderator removed this project from the Community on ${date}. Reason: ${reason}. Your project itself is unchanged; you can fix it and publish again.`,
   },

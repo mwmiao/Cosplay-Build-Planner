@@ -31,6 +31,7 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
     take: PAGE_SIZE,
     select: { id: true, name: true, role: true, createdAt: true },
   });
+  const recent = await db.roleChange.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
   const changed = searchParams.changed ? users.find((u) => u.id === searchParams.changed) : undefined;
   return (
     <>
@@ -89,6 +90,21 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
           })}
         </ul>
       )}
+      {recent.length ? (
+        <section className="mt-8" aria-labelledby="role-log">
+          <h2 id="role-log" className="section-title mb-2">
+            {A.roleLog}
+          </h2>
+          <ul className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300" data-testid="role-log">
+            {recent.map((r) => (
+              <li key={r.id}>
+                {A.roleLogEntry(r.actorName, r.targetName, (A.roles as Record<string, string>)[r.toRole] ?? r.toRole)}{" "}
+                <span className="text-xs text-zinc-600 dark:text-zinc-400">· {f.date(r.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
 }

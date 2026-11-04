@@ -39,9 +39,12 @@ test("feed parsing, provider URLs and failed fetches (unit)", async () => {
   await expect(fetchFeedText("http://127.0.0.1:9/feed", { useCache: false })).rejects.toBeInstanceOf(FeedError);
   await expect(fetchFeedText("http://127.0.0.1:9/feed", { useCache: false })).rejects.toMatchObject({ kind: "unreachable" });
   await expect(fetchFeedText(`${MOCK}/?u=broken_feed`, { useCache: false })).rejects.toMatchObject({ kind: "http", status: 500 });
+  // The mock bridge is on 127.0.0.1, which admin-typed feed addresses may not use unless allowed.
+  process.env.ALLOW_PRIVATE_FEED_URLS = "true";
   await expect(
     rssBridgeProvider.fetchRecentPosts({ username: "not_a_feed", feedUrl: `${MOCK}/?u=not_a_feed` }, { fresh: true }),
   ).rejects.toMatchObject({ kind: "invalid" });
+  delete process.env.ALLOW_PRIVATE_FEED_URLS;
 
   // Event detection.
   const ref = new Date("2099-10-07T10:00:00Z");

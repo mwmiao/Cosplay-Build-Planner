@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import { pickClientIp } from "../src/lib/clientIp";
 import { sameOrigin } from "../src/lib/http";
+import { rssBridgeProvider } from "../src/lib/instagram/providers";
+import { assertPublicUrl, isPrivateAddress } from "../src/lib/netGuard";
+import { purgeRateLimits } from "../src/lib/rateLimitCleanup";
 import { asNewPerson, login, newUser, register } from "./helpers";
 
 // Security hardening: response headers, the CSRF guard, the login lockout key
@@ -99,4 +104,68 @@ test("public Community API: rate limited per address with Retry-After", async ({
   // Another address is unaffected.
   const other = await request.get("/api/community", { headers: { "x-forwarded-for": "10.52.0.2" } });
   expect(other.status()).toBe(200);
+});
+
+test("client address: TRUSTED_PROXY decides which header is believed (unit)", () => {
+  const get = (h: Record<string, string>) => (name: string) => h[name] ?? null;
+  const spoofed = get({ "x-forwarded-for": "6.6.6.6, 203.0.113.9", "cf-connecting-ip": "198.51.100.7", "x-real-ip": "5.5.5.5" });
+  expect(pickClientIp(spoofed)).toBe("198.51.100.7"); // unset: first match, as before
+  expect(pickClientIp(get({ "x-forwarded-for": "6.6.6.6, 203.0.113.9" }))).toBe("6.6.6.6");
+  expect(pickClientIp(get({}))).toBe("local");
+  // cloudflare: only CF-Connecting-IP; a forged X-Forwarded-For changes nothing.
+  expect(pickClientIp(spoofed, "cloudflare")).toBe("198.51.100.7");
+  expect(pickClientIp(get({ "x-forwarded-for": "6.6.6.6" }), "cloudflare")).toBe("local");
+  // proxy: the entry your proxy appended (last), never the client-supplied first one.
+  expect(pickClientIp(spoofed, "proxy")).toBe("203.0.113.9");
+  expect(pickClientIp(get({ "cf-connecting-ip": "198.51.100.7" }), "proxy")).toBe("local");
+});
+
+test("rate-limit counters older than a day are purged, recent ones kept", async () => {
+  const db = new PrismaClient({ datasourceUrl: "file:./playwright.db" });
+  try {
+    const now = new Date();
+    const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
+    await db.authRateLimit.createMany({
+      data: [
+        { key: "purge-test-old", count: 3, windowStart: hoursAgo(30) },
+        { key: "purge-test-recent", count: 3, windowStart: hoursAgo(2) },
+      ],
+    });
+    expect(await purgeRateLimits(db, now)).toBeGreaterThanOrEqual(1);
+    expect(await db.authRateLimit.findUnique({ where: { key: "purge-test-old" } })).toBeNull();
+    expect(await db.authRateLimit.findUnique({ where: { key: "purge-test-recent" } })).not.toBeNull();
+    await db.authRateLimit.delete({ where: { key: "purge-test-recent" } });
+  } finally {
+    await db.$disconnect();
+  }
+});
+
+test("feed URLs typed by an admin: private addresses are refused (unit)", async () => {
+  for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.1.10", "169.254.169.254", "100.64.0.5", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:192.168.0.1"]) {
+    expect(isPrivateAddress(ip), ip).toBe(true);
+  }
+  for (const ip of ["93.184.216.34", "8.8.8.8", "172.32.0.1", "100.63.0.1", "2606:4700::1111"]) {
+    expect(isPrivateAddress(ip), ip).toBe(false);
+  }
+  for (const url of ["http://localhost:3000/feed", "http://127.0.0.1:1337/", "http://[::1]/", "http://10.0.0.5/feed", "http://nas.local/feed", "http://169.254.169.254/latest/meta-data/"]) {
+    await expect(assertPublicUrl(url), url).rejects.toThrow();
+  }
+  await expect(assertPublicUrl("http://93.184.216.34/feed")).resolves.toBeUndefined();
+
+  // Through the provider: refused with a clear message, and nothing is fetched.
+  delete process.env.ALLOW_PRIVATE_FEED_URLS;
+  delete process.env.RSS_BRIDGE_BASE_URL;
+  await expect(
+    rssBridgeProvider.fetchRecentPosts({ username: "x", feedUrl: "http://127.0.0.1:3199/?u=quimera_test" }, { fresh: true }),
+  ).rejects.toMatchObject({ kind: "invalid", message: expect.stringContaining("private network") });
+  // The bundled/own RSS-Bridge address is trusted, and so is everything when the owner allows it.
+  process.env.RSS_BRIDGE_BASE_URL = "http://127.0.0.1:3199";
+  const ok = await rssBridgeProvider.fetchRecentPosts({ username: "x", feedUrl: "http://127.0.0.1:3199/?u=quimera_test" }, { fresh: true });
+  expect(ok.posts.length).toBeGreaterThan(0);
+  delete process.env.RSS_BRIDGE_BASE_URL;
+  process.env.ALLOW_PRIVATE_FEED_URLS = "true";
+  await expect(
+    rssBridgeProvider.fetchRecentPosts({ username: "x", feedUrl: "http://127.0.0.1:3199/?u=quimera_test" }, { fresh: true }),
+  ).resolves.toMatchObject({ feedUrl: "http://127.0.0.1:3199/?u=quimera_test" });
+  delete process.env.ALLOW_PRIVATE_FEED_URLS;
 });
