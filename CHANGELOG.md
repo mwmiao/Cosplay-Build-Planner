@@ -4,6 +4,44 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## Unreleased
+
+### Added
+- **Download my data:** one JSON file with your profile, projects, parts,
+  budgets and shopping list (Account page). Image files aren't included.
+- **Delete my account:** removes the account and everything it owns for good.
+  Needs your password. Admins can't use it (remove the admin role first).
+- **Suspend and restore accounts:** admins can suspend someone under Users and
+  roles. They are signed out, can't log in, and their Community projects are
+  hidden until restored. Nothing is deleted.
+- **Role history:** Users and roles lists the latest role changes and suspensions.
+- `TRUSTED_PROXY` setting: which header to believe for the visitor's address
+  when rate limiting (set it if the app is reachable from the internet).
+- `ALLOW_PRIVATE_FEED_URLS` setting for Instagram feeds hosted on your own network.
+- Tests: fast unit tests (`npm run test:unit`), lint with accessibility rules
+  (`npm run lint`), and checks that translations match and every route and
+  action verifies who is asking. CI runs them.
+- `docs/ARCHITECTURE.md`.
+
+### Changed
+- Security headers added, including a Content-Security-Policy, and HSTS when
+  the app is served over https.
+- Login limits count per address and account together, plus a wider limit per
+  account, so a stranger can't lock you out by guessing your password.
+- Copying a Community project and the public Community list are rate limited.
+- Admin-typed Instagram feed addresses must be public addresses (the bundled
+  RSS-Bridge is fine).
+- Community search ignores case and accents ("página" finds "Página").
+- Community images are revalidated with a 304 instead of re-downloaded, and
+  grid images load lazily.
+- Old login-limit records are cleaned up hourly.
+
+### Fixed
+- Light-mode placeholder text, completed items and the shopping delete button
+  now meet the contrast minimum.
+- The full-screen image viewer keeps keyboard focus inside it.
+- "Reorder" links no longer claim to be toggle buttons to screen readers.
+
 ## 1.9.0 — 2026-11-04
 
 ### Added
