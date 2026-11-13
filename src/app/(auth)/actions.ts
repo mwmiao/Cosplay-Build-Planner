@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getI18n } from "@/i18n/server";
 import { getCurrentUser, safeNext } from "@/lib/auth";
-import { getAuth } from "@/lib/betterAuth";
-import { db } from "@/lib/db";
+import { getAuth, isSuspendedError } from "@/lib/betterAuth";
 import { EmailUnavailableError, emailConfigured } from "@/lib/email";
 import { clearGuestKey, deleteGuest, issueGuestKey } from "@/lib/guest";
 import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/passwordRules";
@@ -52,15 +51,9 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   if (!email || !password) return { ok: false, message: A.invalidCredentials };
   try {
     await getAuth().api.signInEmail({ body: { email, password, rememberMe: true }, headers: await authHeaders() });
-  } catch {
-    // Same message whether the email exists or not.
-    return { ok: false, message: A.invalidCredentials };
-  }
-  // Right password, but an admin has suspended the account: end the session that was just made.
-  const person = await db.user.findUnique({ where: { email }, select: { id: true, suspendedAt: true } });
-  if (person?.suspendedAt) {
-    await db.session.deleteMany({ where: { userId: person.id } });
-    return { ok: false, message: A.suspended };
+  } catch (e) {
+    // Same message whether the email exists or not (a suspended account is only reported after the right password).
+    return { ok: false, message: isSuspendedError(e) ? A.suspended : A.invalidCredentials };
   }
   redirect(safeNext(field(formData, "next")));
 }

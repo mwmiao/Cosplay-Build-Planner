@@ -1,5 +1,5 @@
 import "server-only";
-import { betterAuth } from "better-auth";
+import { APIError, betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins";
@@ -11,6 +11,11 @@ import { getAuthSecret } from "./secrets";
 
 export const SESSION_DAYS = 30;
 export const RESET_TOKEN_MINUTES = 60;
+
+const SUSPENDED_MESSAGE = "ACCOUNT_SUSPENDED";
+
+/** True when Better Auth refused a sign-in because an admin suspended the account. */
+export const isSuspendedError = (e: unknown) => e instanceof APIError && e.message === SUSPENDED_MESSAGE;
 
 function create() {
   return betterAuth({
@@ -47,6 +52,17 @@ function create() {
     session: {
       expiresIn: SESSION_DAYS * 24 * 60 * 60,
       updateAge: 24 * 60 * 60, // sliding expiry, refreshed at most daily
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // Suspended accounts never get a session, whatever the sign-in route.
+          before: async (session) => {
+            const person = await db.user.findUnique({ where: { id: session.userId }, select: { suspendedAt: true } });
+            if (person?.suspendedAt) throw new APIError("FORBIDDEN", { message: SUSPENDED_MESSAGE });
+          },
+        },
+      },
     },
     // Better Auth's HTTP endpoints aren't mounted (the app calls auth.api from
     // server actions), so the app applies its own limits in lib/rateLimit.ts.

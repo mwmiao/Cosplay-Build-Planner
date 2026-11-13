@@ -66,13 +66,14 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
           {users.map((u) => {
             const role = (A.roles as Record<string, string>)[u.role] ?? u.role;
             const isModerator = u.role === "moderator";
+            const suspended = u.suspendedAt !== null;
             return (
               <li key={u.id} className="card flex flex-wrap items-center justify-between gap-3 p-3" data-testid="user-row">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="break-words font-semibold">{u.name}</span>
                     <span className="rounded-full bg-zinc-100 px-2 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{role}</span>
-                    {u.suspendedAt ? (
+                    {suspended ? (
                       <span className="rounded-full bg-red-100 px-2 text-[11px] font-semibold text-red-800 dark:bg-red-950 dark:text-red-300" data-testid="suspended-badge">
                         {A.roles.suspended}
                       </span>
@@ -82,7 +83,7 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
                 </div>
                 {u.role === "admin" || u.id === admin.id ? null : (
                   <div className="flex flex-wrap gap-2">
-                    {u.suspendedAt ? null : (
+                    {suspended ? null : (
                       <form action={setModerator.bind(null, u.id, !isModerator)}>
                         <ConfirmButton
                           message={isModerator ? A.removeModeratorConfirm(u.name) : A.makeModeratorConfirm(u.name)}
@@ -92,12 +93,9 @@ export default async function UsersPage({ searchParams }: { searchParams: { q?: 
                         </ConfirmButton>
                       </form>
                     )}
-                    <form action={setSuspended.bind(null, u.id, !u.suspendedAt)}>
-                      <ConfirmButton
-                        message={u.suspendedAt ? A.restoreConfirm(u.name) : A.suspendConfirm(u.name)}
-                        className={u.suspendedAt ? "btn-secondary" : "btn-danger"}
-                      >
-                        {u.suspendedAt ? A.restore : A.suspend}
+                    <form action={setSuspended.bind(null, u.id, !suspended)}>
+                      <ConfirmButton message={suspended ? A.restoreConfirm(u.name) : A.suspendConfirm(u.name)} className={suspended ? "btn-secondary" : "btn-danger"}>
+                        {suspended ? A.restore : A.suspend}
                       </ConfirmButton>
                     </form>
                   </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
-import { listPublicProjects } from "@/lib/community/view";
+import { listPublicProjects, visible } from "@/lib/community/view";
 import { db } from "@/lib/db";
 import { idSchema } from "@/lib/validation";
 
@@ -12,7 +12,7 @@ import { idSchema } from "@/lib/validation";
 async function load(publicationId: string) {
   if (!idSchema.safeParse(publicationId).success) return null;
   return db.publication.findFirst({
-    where: { id: publicationId, project: { deletedAt: null } },
+    where: { id: publicationId, ...visible },
     select: { ownerId: true, owner: { select: { name: true } } },
   });
 }

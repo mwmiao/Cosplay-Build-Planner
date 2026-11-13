@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { parseIds } from "@/lib/community/view";
+import { parseIds, visible } from "@/lib/community/view";
 import { db } from "@/lib/db";
 import { mimeForPath, resolveUploadPath } from "@/lib/uploads";
 import { idSchema } from "@/lib/validation";
@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { imageId: string;
       id: params.imageId,
       kind: { in: ["cover", "reference", "progress"] },
       encrypted: false,
-      project: { deletedAt: null, publication: { is: { owner: { suspendedAt: null } } } },
+      project: { deletedAt: null, publication: { is: visible } },
     },
     select: {
       id: true,

@@ -26,6 +26,14 @@ type Sort = (typeof SORTS)[number];
 const byDate = (a: Date | null, b: Date | null) =>
   a && b ? a.getTime() - b.getTime() : a ? -1 : b ? 1 : 0;
 
+function Notice({ children }: { children: React.ReactNode }) {
+  return (
+    <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+      {children}
+    </div>
+  );
+}
+
 export default async function ProjectsPage({
   searchParams,
 }: {
@@ -35,11 +43,7 @@ export default async function ProjectsPage({
   if (!user) {
     return (
       <>
-        {searchParams.deleted ? (
-          <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
-            {getI18n().t.auth.accountDeleted}
-          </div>
-        ) : null}
+        {searchParams.deleted ? <Notice>{getI18n().t.auth.accountDeleted}</Notice> : null}
         <VisitorStart next={safeNext(searchParams.next)} />
       </>
     );
@@ -107,11 +111,7 @@ export default async function ProjectsPage({
         </div>
       </header>
 
-      {searchParams.welcome === "guest" && user.isGuest ? (
-        <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
-          {t.guest.welcome}
-        </div>
-      ) : null}
+      {searchParams.welcome === "guest" && user.isGuest ? <Notice>{t.guest.welcome}</Notice> : null}
       {searchParams.limit ? (
         <div role="alert" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
           {t.guest.projectLimit(GUEST_MAX_PROJECTS)}

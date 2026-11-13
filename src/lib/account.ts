@@ -20,11 +20,7 @@ export async function buildAccountExport(userId: string, ctx: MoneyContext, t: D
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
-  const projects = [];
-  for (const { id } of projectIds) {
-    const data = await buildProjectExport(id, userId, ctx, t);
-    if (data) projects.push(data);
-  }
+  const projects = (await Promise.all(projectIds.map(({ id }) => buildProjectExport(id, userId, ctx, t)))).filter((p) => p !== null);
   const general = await db.shoppingListItem.findMany({
     where: { ownerId: userId, projectId: null, deletedAt: null },
     orderBy: { createdAt: "asc" },
@@ -56,6 +52,9 @@ export async function buildAccountExport(userId: string, ctx: MoneyContext, t: D
   };
 }
 
+/** Neutral name kept in the role-change history after the person is gone. */
+const DELETED_ACCOUNT_NAME = "Deleted account";
+
 /**
  * Permanently removes an account and everything it owns: projects (including
  * archived and deleted ones) with their images, publications, shopping items,
@@ -74,11 +73,10 @@ export async function deleteAccountData(userId: string): Promise<void> {
     db.shoppingListItem.deleteMany({ where: { ownerId: userId } }),
     db.project.deleteMany({ where: { ownerId: userId } }), // parts, images, publication, attendance follow
     db.event.updateMany({ where: { createdBy: userId }, data: { createdBy: null } }),
-    db.roleChange.updateMany({ where: { targetId: userId }, data: { targetName: "Deleted account" } }),
-    db.roleChange.updateMany({ where: { actorId: userId }, data: { actorName: "Deleted account" } }),
+    db.roleChange.updateMany({ where: { targetId: userId }, data: { targetName: DELETED_ACCOUNT_NAME } }),
+    db.roleChange.updateMany({ where: { actorId: userId }, data: { actorName: DELETED_ACCOUNT_NAME } }),
     db.verification.deleteMany({ where: { OR: [{ value: userId }, { identifier: user.email }] } }),
     db.user.delete({ where: { id: userId } }), // sessions, sign-in methods, reports, saves, reactions follow
   ]);
-  for (const p of projects) await removeProjectFiles(p.id);
-  for (const p of publications) await removePublicationFolder(p.id);
+  await Promise.all([...projects.map((p) => removeProjectFiles(p.id)), ...publications.map((p) => removePublicationFolder(p.id))]);
 }

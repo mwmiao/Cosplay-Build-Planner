@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -56,6 +57,36 @@ export async function dismissReports(publicationId: string): Promise<void> {
   redirect("/admin?dismissed=1#reports");
 }
 
+type Admin = Awaited<ReturnType<typeof requireAdmin>>;
+
+/**
+ * Shared by the admin account actions: the target must be a real, non-admin
+ * account (and not the acting admin when `notSelf`). Signs the person out so the
+ * change applies right away, and records it in the role-change history.
+ */
+async function changeAccount(
+  admin: Admin,
+  userId: string,
+  update: Prisma.UserUpdateInput,
+  toRole: string,
+  { notSelf = false } = {},
+): Promise<never> {
+  // Better Auth user ids (not cuids)
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(userId) || (notSelf && userId === admin.id)) redirect("/admin/users?error=1");
+  const target = await db.user.findUnique({ where: { id: userId }, select: { name: true, role: true, isAnonymous: true } });
+  if (!target || target.isAnonymous || target.role === "admin") redirect("/admin/users?error=1");
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: update }),
+    db.session.deleteMany({ where: { userId } }),
+    db.roleChange.create({
+      data: { targetId: userId, targetName: target.name, actorId: admin.id, actorName: admin.name, fromRole: target.role, toRole },
+    }),
+  ]);
+  revalidatePath("/community", "layout");
+  revalidatePath("/admin/users");
+  redirect(`/admin/users?changed=${encodeURIComponent(userId)}`);
+}
+
 /**
  * Admins suspend or restore an account: the person is signed out everywhere,
  * can't sign in, and their Community projects are hidden until restored.
@@ -64,28 +95,7 @@ export async function dismissReports(publicationId: string): Promise<void> {
  */
 export async function setSuspended(userId: string, on: boolean): Promise<void> {
   const admin = await requireAdmin();
-  if (!/^[A-Za-z0-9_-]{8,64}$/.test(userId) || userId === admin.id) redirect("/admin/users?error=1");
-  const target = await db.user.findUnique({ where: { id: userId }, select: { name: true, role: true, isAnonymous: true, suspendedAt: true } });
-  if (!target || target.isAnonymous || target.role === "admin") redirect("/admin/users?error=1");
-  if (Boolean(target.suspendedAt) !== on) {
-    await db.$transaction([
-      db.user.update({ where: { id: userId }, data: { suspendedAt: on ? new Date() : null } }),
-      db.session.deleteMany({ where: { userId } }),
-      db.roleChange.create({
-        data: {
-          targetId: userId,
-          targetName: target.name,
-          actorId: admin.id,
-          actorName: admin.name,
-          fromRole: target.role,
-          toRole: on ? "suspended" : "unsuspended",
-        },
-      }),
-    ]);
-  }
-  revalidatePath("/community", "layout");
-  revalidatePath("/admin/users");
-  redirect(`/admin/users?changed=${encodeURIComponent(userId)}`);
+  await changeAccount(admin, userId, { suspendedAt: on ? new Date() : null }, on ? "suspended" : "unsuspended", { notSelf: true });
 }
 
 /**
@@ -95,18 +105,6 @@ export async function setSuspended(userId: string, on: boolean): Promise<void> {
  */
 export async function setModerator(userId: string, on: boolean): Promise<void> {
   const admin = await requireAdmin();
-  // Better Auth user ids (not cuids)
-  if (!/^[A-Za-z0-9_-]{8,64}$/.test(userId)) redirect("/admin/users?error=1");
-  const target = await db.user.findUnique({ where: { id: userId }, select: { name: true, role: true, isAnonymous: true } });
-  if (!target || target.isAnonymous || target.role === "admin") redirect("/admin/users?error=1");
   const toRole = on ? "moderator" : "user";
-  await db.$transaction([
-    db.user.update({ where: { id: userId }, data: { role: toRole } }),
-    db.session.deleteMany({ where: { userId } }),
-    db.roleChange.create({
-      data: { targetId: userId, targetName: target.name, actorId: admin.id, actorName: admin.name, fromRole: target.role, toRole },
-    }),
-  ]);
-  revalidatePath("/admin/users");
-  redirect(`/admin/users?changed=${encodeURIComponent(userId)}`);
+  await changeAccount(admin, userId, { role: toRole }, toRole);
 }
