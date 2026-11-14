@@ -23,7 +23,7 @@ export type ImportResult = { ok: true; report: ImportReport } | { ok: false; err
 /** Validates the file and summarises it (optionally against a target project). Changes nothing. */
 export async function previewImport(text: string, targetId?: string): Promise<PreviewResult> {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = parseImportText(text, t);
   if (!parsed.ok) return parsed;
   const target = targetId && idSchema.safeParse(targetId).success ? targetId : undefined;
@@ -33,7 +33,7 @@ export async function previewImport(text: string, targetId?: string): Promise<Pr
 /** Re-validates and imports in one transaction. */
 export async function runImport(text: string, options: ImportOptions): Promise<ImportResult> {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = parseImportText(text, t);
   if (!parsed.ok) return parsed;
 

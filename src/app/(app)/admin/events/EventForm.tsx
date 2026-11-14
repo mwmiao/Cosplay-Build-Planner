@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useRef, useState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, StickyActions, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -52,7 +51,7 @@ export function EventForm({
 }) {
   const { t } = useI18n();
   const E = t.events;
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
   const formRef = useRef<HTMLFormElement>(null);
   const [pasted, setPasted] = useState("");
   const [filled, setFilled] = useState<string | null>(null);

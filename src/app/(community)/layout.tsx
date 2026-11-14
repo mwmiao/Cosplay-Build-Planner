@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function CommunityLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   if (user) {
     const adminBadge = user.isModerator ? badge(await adminCounts(user)) : 0;
     return (

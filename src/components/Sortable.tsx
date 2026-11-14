@@ -29,7 +29,7 @@ export function Sortable({
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   const [, startTransition] = useTransition();
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const byId = new Map(items.map((i) => [i.id, i]));
 
   // New items from the server (e.g. after an upload) join the end.

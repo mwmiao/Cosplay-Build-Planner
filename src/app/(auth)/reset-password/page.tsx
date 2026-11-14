@@ -3,12 +3,13 @@ import Link from "next/link";
 import { getI18n } from "@/i18n/server";
 import { ResetForm } from "../forms";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.auth.resetTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.auth.resetTitle };
 }
 
-export default function ResetPasswordPage({ searchParams }: { searchParams: { token?: string } }) {
-  const { t } = getI18n();
+export default async function ResetPasswordPage(props: { searchParams: Promise<{ token?: string }> }) {
+  const searchParams = await props.searchParams;
+  const { t } = await getI18n();
   const A = t.auth;
   const token = typeof searchParams.token === "string" ? searchParams.token : "";
   return (

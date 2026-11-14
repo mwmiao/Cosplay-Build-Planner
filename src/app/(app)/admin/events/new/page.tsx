@@ -7,16 +7,17 @@ import { idSchema } from "@/lib/validation";
 import { createEvent } from "../actions";
 import { EventForm } from "../EventForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.events.add };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.events.add };
 }
 
 type Extracted = { name?: string; start?: string; end?: string; time?: string; venue?: string; address?: string; city?: string; tickets?: string; ticketUrl?: string };
 
 /** Add an event; with ?post=<id> ("Create event from post") the form starts from what the detector read. */
-export default async function NewEventPage({ searchParams }: { searchParams: { post?: string } }) {
+export default async function NewEventPage(props: { searchParams: Promise<{ post?: string }> }) {
+  const searchParams = await props.searchParams;
   await requireAdmin();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const postId = idSchema.safeParse(searchParams.post);
   const post = postId.success
     ? await db.instagramPost.findUnique({ where: { id: postId.data }, include: { source: { include: { organiser: true } } } })

@@ -24,7 +24,8 @@ import { lightboxImages } from "./references/ImageCard";
 import { ProgressForm } from "./references/ProgressForm";
 import { UploadForm } from "./references/UploadForm";
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const user = await requireUser();
   const project = await getProjectOr404(params.id, user.id);
   return { title: project.characterName };
@@ -42,16 +43,17 @@ function filterHref(projectId: string, current: Search, change: Search) {
   return `/projects/${projectId}${s ? `?${s}` : ""}#parts`;
 }
 
-export default async function ProjectPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: Search & { published?: string; unpublished?: string; copied?: string };
-}) {
+export default async function ProjectPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<Search & { published?: string; unpublished?: string; copied?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await requireUser();
   const project = await getProjectOr404(params.id, user.id);
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const P = t.project;
   const [allParts, references, referenceCount, cover, partPhotos, progress] = await Promise.all([
     db.buildPart.findMany({
@@ -124,7 +126,7 @@ export default async function ProjectPage({
     { done: referenceCount > 0, label: P.guide.reference, href: `/projects/${project.id}/references` },
     { done: !!project.deadline, label: P.guide.deadline, href: `/projects/${project.id}/edit` },
   ];
-  const showGuide = projectCount === 1 && !project.archivedAt && guide.some((g) => !g.done) && !cookies().has(GUIDE_COOKIE);
+  const showGuide = projectCount === 1 && !project.archivedAt && guide.some((g) => !g.done) && !(await cookies()).has(GUIDE_COOKIE);
   return (
     <>
       {searchParams.published ? (

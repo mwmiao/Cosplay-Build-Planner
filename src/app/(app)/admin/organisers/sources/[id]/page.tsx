@@ -10,17 +10,18 @@ import { idSchema } from "@/lib/validation";
 import { deleteSource, saveSource } from "../../../instagram/actions";
 import { SourceForm } from "../../../instagram/SourceForms";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.instagram.editSource };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.instagram.editSource };
 }
 
-export default async function EditSourcePage({ params }: { params: { id: string } }) {
+export default async function EditSourcePage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await requireAdmin();
   const id = idSchema.safeParse(params.id);
   if (!id.success) notFound();
   const s = await db.instagramSource.findUnique({ where: { id: id.data } });
   if (!s) notFound();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const S = t.instagram;
   const organisers = await db.organiser.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
   const providers = Object.keys(PROVIDERS).filter((p) => p !== "mock" || process.env.NODE_ENV !== "production");

@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, StickyActions, SubmitButton } from "@/components/FormBits";
 import { currencyOptions } from "@/i18n";
@@ -62,7 +61,7 @@ export function PartForm({
   const F = t.partForm;
   const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: t.category[c] ?? c }));
   const statusOptions = PART_STATUSES.map((s) => ({ value: s, label: t.status[s] ?? s }));
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
   const formRef = useRef<HTMLFormElement>(null);
   const [paid, setPaid] = useState(initial?.paid ?? false);
   const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);

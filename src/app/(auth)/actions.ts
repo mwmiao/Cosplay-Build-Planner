@@ -20,7 +20,7 @@ import type { FormState } from "@/lib/validation";
  * guest plugin would see it and clear the cookie, undoing the new login.
  */
 async function authHeaders(): Promise<Headers> {
-  const h = new Headers(headers());
+  const h = new Headers(await headers());
   const user = await getCurrentUser();
   if (!user?.isGuest) h.delete("cookie");
   return h;
@@ -32,11 +32,11 @@ function field(formData: FormData, name: string): string {
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
   const email = field(formData, "email").trim().toLowerCase();
   const password = field(formData, "password");
-  const ip = clientIp();
+  const ip = (await clientIp());
   // Per address, per address+account, and a looser cap per account. A stranger
   // can therefore not lock you out by guessing from their own address (the
   // address+account limit only blocks them), while spread-out guessing against
@@ -59,9 +59,9 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 }
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
-  if (!(await rateLimit(`register-ip:${clientIp()}`, 10, 60 * 60))) return { ok: false, message: A.tooMany };
+  if (!(await rateLimit(`register-ip:${(await clientIp())}`, 10, 60 * 60))) return { ok: false, message: A.tooMany };
 
   const parsed = z
     .object({
@@ -95,40 +95,40 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
 export async function startGuest(formData?: FormData): Promise<void> {
   const next = safeNext(formData?.get("next"));
   if (await getCurrentUser()) redirect(next);
-  if (!(await rateLimit(`guest-ip:${clientIp()}`, 10, 24 * 60 * 60))) redirect("/login?error=guest-limit");
-  await getAuth().api.signInAnonymous({ headers: headers() });
-  issueGuestKey();
+  if (!(await rateLimit(`guest-ip:${(await clientIp())}`, 10, 24 * 60 * 60))) redirect("/login?error=guest-limit");
+  await getAuth().api.signInAnonymous({ headers: await headers() });
+  (await issueGuestKey());
   redirect(next === "/projects" ? "/projects?welcome=guest" : next);
 }
 
 export async function signOut(): Promise<void> {
   const user = await getCurrentUser();
   try {
-    await getAuth().api.signOut({ headers: headers() });
+    await getAuth().api.signOut({ headers: await headers() });
   } catch {
     /* already signed out */
   }
   // A guest can't log back in, so leaving guest mode deletes their data now.
   if (user?.isGuest) {
     await deleteGuest(user.id);
-    clearGuestKey();
+    (await clearGuestKey());
   }
   redirect("/projects");
 }
 
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
   // Never pretend to send an email when none can be sent.
   if (!emailConfigured()) return { ok: false, message: A.emailUnavailableTitle };
   const email = field(formData, "email").trim().toLowerCase();
   if (!z.string().email().safeParse(email).success) return { ok: false, errors: { email: [A.emailInvalid] } };
-  if (!(await rateLimit(`reset-ip:${clientIp()}`, 10, 60 * 60)) || !(await rateLimit(`reset-email:${email}`, 3, 60 * 60))) {
+  if (!(await rateLimit(`reset-ip:${(await clientIp())}`, 10, 60 * 60)) || !(await rateLimit(`reset-email:${email}`, 3, 60 * 60))) {
     return { ok: false, message: A.tooMany };
   }
   try {
     // Better Auth answers the same way whether or not the account exists.
-    await getAuth().api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" }, headers: headers() });
+    await getAuth().api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" }, headers: await headers() });
   } catch (err) {
     if (err instanceof EmailUnavailableError) return { ok: false, message: A.emailUnavailableTitle };
     console.error("Password reset email failed", err);
@@ -138,9 +138,9 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
 }
 
 export async function resetPassword(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
-  if (!(await rateLimit(`reset-submit-ip:${clientIp()}`, 20, 15 * 60))) return { ok: false, message: A.tooMany };
+  if (!(await rateLimit(`reset-submit-ip:${(await clientIp())}`, 20, 15 * 60))) return { ok: false, message: A.tooMany };
   const token = field(formData, "token");
   const password = field(formData, "password");
   if (password.length < PASSWORD_MIN) return { ok: false, errors: { password: [A.passwordTooShort(PASSWORD_MIN)] } };
@@ -148,7 +148,7 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
   if (password !== field(formData, "confirm")) return { ok: false, errors: { confirm: [A.passwordsDiffer] } };
   try {
     // Single use: Better Auth deletes the token when it's redeemed (and rejects expired ones).
-    await getAuth().api.resetPassword({ body: { token, newPassword: password }, headers: headers() });
+    await getAuth().api.resetPassword({ body: { token, newPassword: password }, headers: await headers() });
   } catch {
     return { ok: false, message: A.resetInvalid };
   }

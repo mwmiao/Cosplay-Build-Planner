@@ -7,16 +7,17 @@ import { GUEST_DAYS } from "@/lib/guest";
 import { startGuest } from "../actions";
 import { LoginForm } from "../forms";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.auth.loginTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.auth.loginTitle };
 }
 
-export default async function LoginPage({ searchParams }: { searchParams: { next?: string; error?: string } }) {
+export default async function LoginPage(props: { searchParams: Promise<{ next?: string; error?: string }> }) {
+  const searchParams = await props.searchParams;
   const next = safeNext(searchParams.next);
   const user = await getCurrentUser();
   // Guests may log in to an existing account (their projects move into it).
   if (user && !user.isGuest) redirect(next);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const G = t.guest;
   return (
     <>

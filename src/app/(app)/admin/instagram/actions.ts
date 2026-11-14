@@ -31,7 +31,7 @@ function parseId(id: string) {
 
 export async function saveSource(id: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const S = t.instagram;
   const username = cleanUsername(String(formData.get("username") ?? ""));
   if (!username) return { ok: false, errors: { username: [S.usernameInvalid] } };
@@ -100,7 +100,7 @@ export type ManualPostState = FormState & { outcome?: string };
 
 export async function addManualPostAction(_prev: ManualPostState, formData: FormData): Promise<ManualPostState> {
   await requireAdmin();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const S = t.instagram;
   const parsed = z
     .object({

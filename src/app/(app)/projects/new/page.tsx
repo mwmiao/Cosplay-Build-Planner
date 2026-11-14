@@ -7,13 +7,13 @@ import { getDefaultCurrency } from "@/lib/settings";
 import { createProject } from "../actions";
 import { ProjectForm } from "../ProjectForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.projectForm.newTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.projectForm.newTitle };
 }
 
 export default async function NewProjectPage() {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   return (
     <>
       <BackLink href="/projects">{t.projects.title}</BackLink>

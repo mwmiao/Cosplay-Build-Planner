@@ -50,7 +50,7 @@ async function ownedProject(projectId: string, userId: string) {
 export async function previewOrPublish(projectId: string, _prev: PublishState, formData: FormData): Promise<PublishState> {
   const user = await requireAccount();
   const project = await ownedProject(projectId, user.id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const C = t.community;
 
   const parsed = z

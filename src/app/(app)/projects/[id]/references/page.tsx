@@ -13,23 +13,24 @@ import { reorderImages } from "./actions";
 import { ImageCard, lightboxImages } from "./ImageCard";
 import { UploadForm } from "./UploadForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.refs.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.refs.title };
 }
 
 /** "" = ungrouped */
 const UNGROUPED = "-";
 
-export default async function ReferencesPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { uploaded?: string; uploadError?: string; group?: string; reorder?: string };
-}) {
+export default async function ReferencesPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ uploaded?: string; uploadError?: string; group?: string; reorder?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await requireUser();
   const project = await getProjectOr404(params.id, user.id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const R = t.refs;
   const all = await db.referenceImage.findMany({
     where: { projectId: project.id, kind: "reference" },

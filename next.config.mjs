@@ -24,11 +24,11 @@ const csp = [
 const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
-  eslint: { ignoreDuringBuilds: true },
+  // Next 16 blocks dev resources (hot reload) for other origins; the Playwright tests use 127.0.0.1. Dev server only.
+  allowedDevOrigins: ["127.0.0.1"],
+  // src/instrumentation.ts starts the background jobs (guest cleanup, events check).
+  serverExternalPackages: ["sharp", "@prisma/client"],
   experimental: {
-    // src/instrumentation.ts starts the background jobs (guest cleanup, events check).
-    instrumentationHook: true,
-    serverComponentsExternalPackages: ["sharp", "@prisma/client"],
     // Project imports send the JSON file to a server action (files up to 5 MB).
     serverActions: { bodySizeLimit: "6mb" },
   },

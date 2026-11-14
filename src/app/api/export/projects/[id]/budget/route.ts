@@ -11,7 +11,8 @@ import { idSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = idSchema.safeParse(params.id);
@@ -22,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const c = t.csv;
   const ctx = await getMoneyContext(user.id);
   const stats = projectStats(project, project.parts, ctx);

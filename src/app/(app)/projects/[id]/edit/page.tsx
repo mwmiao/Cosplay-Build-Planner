@@ -17,20 +17,21 @@ import { lightboxImages } from "../references/ImageCard";
 import { UploadForm } from "../references/UploadForm";
 import { ProjectForm } from "../../ProjectForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.projectForm.editTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.projectForm.editTitle };
 }
 
-export default async function EditProjectPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { uploaded?: string; uploadError?: string };
-}) {
+export default async function EditProjectPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ uploaded?: string; uploadError?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await requireUser();
   const project = await getProjectOr404(params.id, user.id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const F = t.projectForm;
   const archived = project.archivedAt !== null;
   const base = project.currency ?? (await getDefaultCurrency(user.id));

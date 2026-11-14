@@ -12,7 +12,7 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (user.isGuest) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const data = await buildAccountExport(user.id, await getMoneyContext(user.id), getI18n().t);
+  const data = await buildAccountExport(user.id, await getMoneyContext(user.id), (await getI18n()).t);
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return new Response(JSON.stringify(data, null, 2), {
     headers: {

@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Guards against a new route or server action that forgets to check who is asking.
-// Middleware only checks that a session cookie exists; every handler must validate it.
+// The proxy only checks that a session cookie exists; every handler must validate it.
 
 const GUARDS = /\b(getCurrentUser|requireUser|requireAccount|requireAdmin|requireModerator)\(/;
 

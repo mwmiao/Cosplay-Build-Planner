@@ -7,15 +7,16 @@ import { getDefaultCurrency } from "@/lib/settings";
 import { createPart } from "../actions";
 import { PartForm } from "../PartForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.partForm.newTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.partForm.newTitle };
 }
 
-export default async function NewPartPage({ params }: { params: { id: string } }) {
+export default async function NewPartPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await requireUser();
   const project = await getProjectOr404(params.id, user.id);
   const base = project.currency ?? (await getDefaultCurrency(user.id));
-  const { t } = getI18n();
+  const { t } = await getI18n();
   return (
     <>
       <BackLink href={`/projects/${project.id}`}>{project.characterName}</BackLink>

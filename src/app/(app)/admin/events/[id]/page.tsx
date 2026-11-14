@@ -10,17 +10,18 @@ import { idSchema } from "@/lib/validation";
 import { deleteEvent, updateEvent } from "../actions";
 import { EventForm } from "../EventForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.events.edit };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.events.edit };
 }
 
-export default async function EditEventPage({ params }: { params: { id: string } }) {
+export default async function EditEventPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await requireAdmin();
   const id = idSchema.safeParse(params.id);
   if (!id.success) notFound();
   const event = await db.event.findUnique({ where: { id: id.data } });
   if (!event) notFound();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const E = t.events;
   return (
     <>

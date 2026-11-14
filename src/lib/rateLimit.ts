@@ -34,7 +34,7 @@ export async function rateLimit(key: string, max: number, windowSeconds: number)
  * Client address for rate limiting (see pickClientIp for how TRUSTED_PROXY
  * decides which header is believed). Per-account limits apply regardless.
  */
-export function clientIp(): string {
-  const h = headers();
+export async function clientIp(): Promise<string> {
+  const h = (await headers());
   return pickClientIp((name) => h.get(name), env().TRUSTED_PROXY);
 }

@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
  * are stored encrypted and decrypted here with the key from the guest's own
  * cookie (the server never stores that key).
  */
-export async function GET(_req: Request, { params }: { params: { path: string[] } }) {
+export async function GET(_req: Request, props: { params: Promise<{ path: string[] }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -32,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: { path: string[] 
     let data = await readFile(full);
     let type = mimeForPath(full);
     if (image.encrypted) {
-      const key = guestKey();
+      const key = (await guestKey());
       if (!key) return NextResponse.json({ error: "Not found" }, { status: 404 });
       data = decryptBytes(data, key);
       type = rel === image.thumbPath ? "image/webp" : image.mimeType;

@@ -13,14 +13,14 @@ import Link from "next/link";
 import { signOut } from "../../(auth)/actions";
 import { purgeProject, restoreProject } from "../projects/actions";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.settings.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.settings.title };
 }
 
 export default async function SettingsPage() {
   const user = await requireUser();
   const adminWaiting = user.isModerator ? Object.values(await adminCounts(user)).reduce((a, b) => a + b, 0) : 0;
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const S = t.settings;
   const [deleted, counts] = await Promise.all([
     db.project.findMany({

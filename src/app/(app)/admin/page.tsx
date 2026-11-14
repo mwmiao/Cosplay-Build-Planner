@@ -12,13 +12,14 @@ import { RemoveForm } from "./RemoveForm";
 
 type NotificationDetail = { date?: string | null; location?: string | null; username?: string | null; permalink?: string | null; preview?: string };
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.admin.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.admin.title };
 }
 
-export default async function AdminPage({ searchParams }: { searchParams: { removed?: string; dismissed?: string } }) {
+export default async function AdminPage(props: { searchParams: Promise<{ removed?: string; dismissed?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await requireModerator();
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const A = t.admin;
   const R = t.community.report;
   const [counts, notifications, publications, log, openReports] = await Promise.all([

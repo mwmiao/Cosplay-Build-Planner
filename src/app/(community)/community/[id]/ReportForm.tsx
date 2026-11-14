@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -11,7 +11,7 @@ import { reportPublication } from "./actions";
 export function ReportForm({ publicationId }: { publicationId: string }) {
   const { t } = useI18n();
   const R = t.community.report;
-  const [state, action] = useFormState(reportPublication.bind(null, publicationId), {});
+  const [state, action] = useActionState(reportPublication.bind(null, publicationId), {});
   if (state.ok) {
     return (
       <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">

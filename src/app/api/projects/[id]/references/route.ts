@@ -39,7 +39,8 @@ function capped(req: Request, max: number, onExceeded: () => void): Request {
  * aren't limited by the server-action body size. Works as a plain HTML form
  * post: redirects back with ?uploaded= or ?uploadError=.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // Cookie-authenticated POST outside server actions: reject cross-site requests.
   if (!sameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const user = await getCurrentUser();
@@ -51,7 +52,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // Only the owner may attach files; another user's project looks missing.
   const project = await db.project.findFirst({ where: { id: projectId, ownerId: user.id, deletedAt: null } });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const E = t.refs.errors;
 
   // Refuse an oversized request before reading it: formData() holds the whole
@@ -142,7 +143,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let key: Buffer | null = null;
   let guestRoom = Number.POSITIVE_INFINITY;
   if (user.isGuest) {
-    key = guestKey();
+    key = (await guestKey());
     if (!key) return back({ uploadError: t.guest.keyMissing });
     guestRoom = GUEST_MAX_BYTES - (await guestUsage(user.id)).bytes;
   }

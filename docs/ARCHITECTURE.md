@@ -25,7 +25,7 @@ One Next.js 14 app (App Router, TypeScript) with a SQLite database through Prism
 
 ## Request flow and access control
 
-1. `src/middleware.ts` only checks that a session cookie exists. It never grants access.
+1. `src/proxy.ts` only checks that a session cookie exists. It never grants access.
 2. Every page, server action and route handler then validates the session against the database with `getCurrentUser()` / `requireUser()` / `requireAccount()` / `requireAdmin()` / `requireModerator()` (`src/lib/auth.ts`). Someone else's project looks exactly like a missing one (404).
 3. A test (`tests-unit/route-auth.test.ts`) fails if a route or server action is added without such a check, unless it is on the short list of deliberately public ones.
 

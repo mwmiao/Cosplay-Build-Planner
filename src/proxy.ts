@@ -8,7 +8,7 @@ const SESSION_COOKIES = ["cbp.session_token", "__Secure-cbp.session_token"];
 const PUBLIC_PAGES = /^\/(login|register|forgot-password|reset-password|community|events)(\/|$)/;
 const PUBLIC_API = /^\/api\/(health|community)(\/|$)/;
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   // Projects is the main page; visitors without an account get a start page there.
   if (pathname === "/projects" || PUBLIC_PAGES.test(pathname) || PUBLIC_API.test(pathname)) return NextResponse.next();
@@ -25,7 +25,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Not the image upload route: when middleware runs on a POST, Next.js holds
+  // Not the image upload route: when the proxy runs on a POST, Next.js holds
   // the whole body in memory until it has all arrived, before the route can
   // refuse an oversized upload. The route checks the session itself.
   matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|icons/|manifest.webmanifest|api/projects/[^/]+/references).*)"],

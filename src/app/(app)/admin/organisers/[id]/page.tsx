@@ -9,17 +9,18 @@ import { idSchema } from "@/lib/validation";
 import { deleteOrganiser, saveOrganiser } from "../../events/actions";
 import { OrganiserForm } from "../OrganiserForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.organisers.edit };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.organisers.edit };
 }
 
-export default async function EditOrganiserPage({ params }: { params: { id: string } }) {
+export default async function EditOrganiserPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await requireAdmin();
   const id = idSchema.safeParse(params.id);
   if (!id.success) notFound();
   const o = await db.organiser.findUnique({ where: { id: id.data } });
   if (!o) notFound();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const O = t.organisers;
   return (
     <>

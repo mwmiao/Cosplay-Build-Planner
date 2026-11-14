@@ -4,14 +4,14 @@ import { getI18n } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { RegisterForm } from "../forms";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.auth.registerTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.auth.registerTitle };
 }
 
 export default async function RegisterPage() {
   const user = await getCurrentUser();
   if (user && !user.isGuest) redirect("/projects");
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
   return (
     <>

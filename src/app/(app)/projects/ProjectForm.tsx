@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, StickyActions, SubmitButton } from "@/components/FormBits";
 import { currencyOptions } from "@/i18n";
@@ -44,7 +44,7 @@ export function ProjectForm({
 }) {
   const { t } = useI18n();
   const F = t.projectForm;
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
   const e = state.errors ?? {};
   const statusOptions = PROJECT_STATUSES.map((s) => ({ value: s, label: t.status[s] ?? s }));
   // New projects start short; editing, or an error in there, shows everything.

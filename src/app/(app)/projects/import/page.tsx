@@ -5,13 +5,13 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ImportWizard } from "./ImportWizard";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.transfer.importTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.transfer.importTitle };
 }
 
 export default async function ImportPage() {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const projects = await db.project.findMany({
     where: { ownerId: user.id, deletedAt: null },
     select: { id: true, characterName: true },

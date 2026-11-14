@@ -1,7 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useTransition } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { LOCALES, currencyOptions, getDictionary } from "@/i18n";
@@ -11,7 +10,7 @@ import { refreshRatesNow, saveDefaultCurrency, setLanguage } from "./actions";
 
 export function DefaultCurrencyForm({ current }: { current: string }) {
   const { t } = useI18n();
-  const [state, action] = useFormState(saveDefaultCurrency, {});
+  const [state, action] = useActionState(saveDefaultCurrency, {});
   return (
     <form action={action} className="space-y-3">
       <FormMessage state={state} />
@@ -31,7 +30,7 @@ export function DefaultCurrencyForm({ current }: { current: string }) {
 
 export function RefreshRatesButton() {
   const { t } = useI18n();
-  const [state, action] = useFormState(refreshRatesNow, {});
+  const [state, action] = useActionState(refreshRatesNow, {});
   return (
     <form action={action} className="space-y-2">
       <FormMessage state={state} />

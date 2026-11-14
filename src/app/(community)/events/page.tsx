@@ -9,17 +9,20 @@ import { db } from "@/lib/db";
 import { type EventView, listEvents, mapsLink, today } from "@/lib/events";
 import { hostname } from "@/lib/format";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.events.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.events.title };
 }
 
-export default async function EventsPage({ searchParams }: { searchParams: { when?: string; city?: string; type?: string; month?: string; suggested?: string } }) {
+export default async function EventsPage(
+  props: { searchParams: Promise<{ when?: string; city?: string; type?: string; month?: string; suggested?: string }> }
+) {
+  const searchParams = await props.searchParams;
   const [user, all] = await Promise.all([getCurrentUser(), listEvents()]);
   const pendingCount = user?.isAdmin ? (await adminCounts(user)).toReview : 0;
   const going = new Set(
     user && !user.isGuest ? (await db.eventAttendance.findMany({ where: { userId: user.id }, select: { eventId: true } })).map((a) => a.eventId) : [],
   );
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const E = t.events;
   const past = searchParams.when === "past";
   const now = today().getTime();

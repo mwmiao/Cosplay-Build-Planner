@@ -54,7 +54,7 @@ export async function togglePurchased(itemId: string): Promise<void> {
 
 export async function addShoppingItem(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).shoppingItem.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   if (parsed.data.projectId) {

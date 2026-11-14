@@ -19,7 +19,7 @@ function field(formData: FormData, name: string): string {
 
 export async function updateDisplayName(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = z
     .string()
     .trim()
@@ -28,14 +28,14 @@ export async function updateDisplayName(_prev: FormState, formData: FormData): P
     .safeParse(field(formData, "name"));
   if (!parsed.success) return { ok: false, errors: { name: parsed.error.issues.map((i) => i.message) } };
   // Better Auth updates the signed-in user only (taken from the session cookie).
-  await getAuth().api.updateUser({ body: { name: parsed.data }, headers: headers() });
+  await getAuth().api.updateUser({ body: { name: parsed.data }, headers: await headers() });
   revalidatePath("/", "layout");
   return { ok: true, message: t.auth.nameSaved };
 }
 
 export async function changePassword(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
   if (!(await rateLimit(`change-password:${user.id}`, 10, 15 * 60))) return { ok: false, message: A.tooMany };
   const current = field(formData, "current");
@@ -46,7 +46,7 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   try {
     await getAuth().api.changePassword({
       body: { currentPassword: current, newPassword: next, revokeOtherSessions: true },
-      headers: headers(),
+      headers: await headers(),
     });
   } catch {
     return { ok: false, errors: { current: [A.wrongPassword] } };
@@ -61,18 +61,18 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
  */
 export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireAccount();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
   if (user.isAdmin) return { ok: false, message: A.deleteAdminBlocked };
   if (!(await rateLimit(`delete-account:${user.id}`, 5, 15 * 60))) return { ok: false, message: A.tooMany };
   try {
-    await getAuth().api.verifyPassword({ body: { password: field(formData, "password") }, headers: headers() });
+    await getAuth().api.verifyPassword({ body: { password: field(formData, "password") }, headers: await headers() });
   } catch {
     return { ok: false, errors: { password: [A.wrongPassword] } };
   }
   await deleteAccountData(user.id);
   try {
-    await getAuth().api.signOut({ headers: headers() }); // clears the browser's cookie; the session itself is gone
+    await getAuth().api.signOut({ headers: await headers() }); // clears the browser's cookie; the session itself is gone
   } catch {
     /* already signed out */
   }

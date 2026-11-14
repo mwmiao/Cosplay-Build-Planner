@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getI18n } from "@/i18n/server";
 
 /** Visitors without an account: a slim header with the public pages and a login link. Nothing private is loaded here. */
-export function VisitorShell({ loginHref, children }: { loginHref: string; children: React.ReactNode }) {
-  const { t } = getI18n();
+export async function VisitorShell({ loginHref, children }: { loginHref: string; children: React.ReactNode }) {
+  const { t } = await getI18n();
   return (
     <div className="min-h-dvh">
       <header className="border-b border-zinc-200/80 bg-white/75 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/75">

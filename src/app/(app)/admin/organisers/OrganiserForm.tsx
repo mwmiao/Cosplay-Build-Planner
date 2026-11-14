@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -28,7 +28,7 @@ export function OrganiserForm({
 }) {
   const { t } = useI18n();
   const O = t.organisers;
-  const [formState, formAction] = useFormState(action, {});
+  const [formState, formAction] = useActionState(action, {});
   // Saving redirects back to this same page, where the state can come back undefined.
   const state = formState ?? {};
   const e = state.errors ?? {};

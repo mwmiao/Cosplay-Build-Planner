@@ -2,6 +2,8 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
+  // A regex in src/lib/backup.ts looks like a utility class and yields CSS that Turbopack rejects.
+  blocklist: ["[-:.]"],
   darkMode: "class",
   theme: {
     extend: {

@@ -15,7 +15,7 @@ import { type FormState, errorState, formToObject, idSchema } from "@/lib/valida
 
 const blank = (x: unknown) => (typeof x === "string" && x.trim() === "" ? undefined : typeof x === "string" ? x.trim() : x);
 
-function eventSchema(t: ReturnType<typeof getI18n>["t"]) {
+function eventSchema(t: Awaited<ReturnType<typeof getI18n>>["t"]) {
   const v = t.validation;
   const E = t.events;
   const day = z
@@ -97,7 +97,7 @@ async function syncPosts(eventId: string, reviewStatus: "approved" | "rejected")
 
 export async function createEvent(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = eventSchema(t).safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   // "Create event from post": link the Instagram post the admin started from.
@@ -125,7 +125,7 @@ export async function updateEvent(id: string, _prev: FormState, formData: FormDa
   await requireAdmin();
   const eventId = idSchema.safeParse(id);
   if (!eventId.success) notFound();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = eventSchema(t).safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   const result = await db.event.updateMany({
@@ -166,7 +166,7 @@ export async function deleteEvent(id: string): Promise<void> {
 /** Anyone with an account can suggest an event; it waits for an admin. */
 export async function suggestEvent(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireAccount();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   if (!(await rateLimit(`event-suggest:${user.id}`, 10, 24 * 60 * 60))) return { ok: false, message: t.events.tooManySuggestions };
   const parsed = eventSchema(t).safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
@@ -235,7 +235,7 @@ export async function runEventSync(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Organisers (recurring events whose Instagram is checked daily)
 
-function organiserSchema(t: ReturnType<typeof getI18n>["t"]) {
+function organiserSchema(t: Awaited<ReturnType<typeof getI18n>>["t"]) {
   const v = t.validation;
   const O = t.organisers;
   const optional = (max: number) => z.preprocess(blank, z.string().max(max, v.tooLong(max)).optional());
@@ -252,7 +252,7 @@ function organiserSchema(t: ReturnType<typeof getI18n>["t"]) {
 
 export async function saveOrganiser(id: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = organiserSchema(t).safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   const d = parsed.data;

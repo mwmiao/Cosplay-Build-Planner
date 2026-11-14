@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Visitors without an account only get here for the Projects page (see
-  // middleware); every private page still checks the session itself.
+  // proxy); every private page still checks the session itself.
   const user = await getCurrentUser();
   if (!user) return <VisitorShell loginHref="/login">{children}</VisitorShell>;
   const adminBadge = user.isModerator ? badge(await adminCounts(user)) : 0;
@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar userName={user.name} canModerate={user.isModerator} isGuest={user.isGuest} adminBadge={adminBadge} signOut={signOut} />
       <main className="pb-safe-nav min-w-0 flex-1 md:pb-8">
         <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-8 md:py-8">
-          {user.guestExpiresAt ? <GuestBanner expiresAt={user.guestExpiresAt} t={getI18n().t} /> : null}
+          {user.guestExpiresAt ? <GuestBanner expiresAt={user.guestExpiresAt} t={(await getI18n()).t} /> : null}
           {children}
         </div>
       </main>
