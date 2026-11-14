@@ -21,19 +21,20 @@ import {
 import { clearPurchased, deleteShoppingItem, togglePurchased } from "./actions";
 import { AddItemForm } from "./AddItemForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.shopping.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.shopping.title };
 }
 
 const GROUPS: GroupBy[] = ["supplier", "category", "project"];
 
-export default async function ShoppingPage({
-  searchParams,
-}: {
-  searchParams: { group?: string; show?: string };
-}) {
+export default async function ShoppingPage(
+  props: {
+    searchParams: Promise<{ group?: string; show?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await requireUser();
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const S = t.shopping;
   const group = parseGroup(searchParams.group);
   const showPurchased = searchParams.show === "all";

@@ -1,7 +1,6 @@
 "use client";
 
-import { useId } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useId } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -24,7 +23,7 @@ export function ProgressForm({
   const { t } = useI18n();
   const R = t.refs;
   const id = useId();
-  const [state, formAction] = useFormState(action, {});
+  const [state, formAction] = useActionState(action, {});
   return (
     <form action={formAction} className="space-y-3" noValidate>
       <FormMessage state={state} />

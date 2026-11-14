@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -11,7 +11,7 @@ import { requestPasswordReset, resetPassword, signIn, signUp } from "./actions";
 export function LoginForm({ next }: { next: string }) {
   const { t } = useI18n();
   const A = t.auth;
-  const [state, action] = useFormState(signIn, {});
+  const [state, action] = useActionState(signIn, {});
   return (
     <form action={action} className="space-y-4">
       <FormMessage state={state} />
@@ -41,7 +41,7 @@ export function LoginForm({ next }: { next: string }) {
 export function RegisterForm() {
   const { t } = useI18n();
   const A = t.auth;
-  const [state, action] = useFormState(signUp, {});
+  const [state, action] = useActionState(signUp, {});
   const e = state.errors ?? {};
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -75,7 +75,7 @@ export function RegisterForm() {
 export function ForgotForm() {
   const { t } = useI18n();
   const A = t.auth;
-  const [state, action] = useFormState(requestPasswordReset, {});
+  const [state, action] = useActionState(requestPasswordReset, {});
   return (
     <form action={action} className="space-y-4" noValidate>
       <FormMessage state={state} />
@@ -99,7 +99,7 @@ export function ForgotForm() {
 export function ResetForm({ token }: { token: string }) {
   const { t } = useI18n();
   const A = t.auth;
-  const [state, action] = useFormState(resetPassword, {});
+  const [state, action] = useActionState(resetPassword, {});
   const e = state.errors ?? {};
   return (
     <form action={action} className="space-y-4" noValidate>

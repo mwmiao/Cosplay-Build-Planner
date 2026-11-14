@@ -7,13 +7,13 @@ import { GUEST_MAX_BYTES, GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
 import { signOut } from "../../(auth)/actions";
 import { ChangePasswordForm, DeleteAccountForm, DisplayNameForm } from "./AccountForms";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.auth.accountTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.auth.accountTitle };
 }
 
 export default async function AccountPage() {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.auth;
   if (user.isGuest) {
     const G = t.guest;

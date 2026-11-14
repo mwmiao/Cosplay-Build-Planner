@@ -6,8 +6,8 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { setModerator, setSuspended } from "../actions";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.admin.users };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.admin.users };
 }
 
 const PAGE_SIZE = 50;
@@ -17,9 +17,12 @@ const PAGE_SIZE = 50;
  * don't see them): an account can be found by display name, or by typing its
  * exact email.
  */
-export default async function UsersPage({ searchParams }: { searchParams: { q?: string; changed?: string; error?: string } }) {
+export default async function UsersPage(
+  props: { searchParams: Promise<{ q?: string; changed?: string; error?: string }> }
+) {
+  const searchParams = await props.searchParams;
   const admin = await requireAdmin();
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const A = t.admin;
   const q = (searchParams.q ?? "").trim().slice(0, 100);
   const users = await db.user.findMany({

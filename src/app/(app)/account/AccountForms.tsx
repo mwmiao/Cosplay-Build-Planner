@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useEffect, useRef } from "react";
 import { Field } from "@/components/Field";
 import { ConfirmButton, FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -10,7 +9,7 @@ import { changePassword, deleteAccount, updateDisplayName } from "./actions";
 
 export function DisplayNameForm({ name }: { name: string }) {
   const { t } = useI18n();
-  const [state, action] = useFormState(updateDisplayName, {});
+  const [state, action] = useActionState(updateDisplayName, {});
   return (
     <form action={action} className="space-y-3" noValidate>
       <FormMessage state={state} />
@@ -31,7 +30,7 @@ export function DisplayNameForm({ name }: { name: string }) {
 export function ChangePasswordForm() {
   const { t } = useI18n();
   const A = t.auth;
-  const [state, action] = useFormState(changePassword, {});
+  const [state, action] = useActionState(changePassword, {});
   const ref = useRef<HTMLFormElement>(null);
   const e = state.errors ?? {};
   useEffect(() => {
@@ -59,7 +58,7 @@ export function ChangePasswordForm() {
 export function DeleteAccountForm() {
   const { t } = useI18n();
   const A = t.auth;
-  const [state, action] = useFormState(deleteAccount, {});
+  const [state, action] = useActionState(deleteAccount, {});
   return (
     <form action={action} className="space-y-3" noValidate>
       <FormMessage state={state} />

@@ -14,7 +14,11 @@ export const dynamic = "force-dynamic";
  * guests' encrypted images never are. Unpublishing, deleting the image or
  * switching it off makes this 404 immediately.
  */
-export async function GET(req: Request, { params }: { params: { imageId: string; variant: string } }) {
+export async function GET(
+  req: Request,
+  props: { params: Promise<{ imageId: string; variant: string }> }
+) {
+  const params = await props.params;
   if (!idSchema.safeParse(params.imageId).success || (params.variant !== "thumb" && params.variant !== "full")) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

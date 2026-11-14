@@ -13,15 +13,15 @@ import { addManualPostAction, checkAllSources, checkSourceNow, saveSource, testS
 import { ManualPostForm, SourceForm, TestFeedButton } from "../instagram/SourceForms";
 import { OrganiserForm } from "./OrganiserForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.organisers.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.organisers.title };
 }
 
 /** Recurring events / organisers, and the public Instagram accounts watched for new events. */
 export default async function OrganisersPage() {
   await requireAdmin();
   await ensureBuiltinData();
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const O = t.organisers;
   const S = t.instagram;
   const [organisers, sources, bridge] = await Promise.all([

@@ -20,17 +20,18 @@ import { UploadForm } from "../../../references/UploadForm";
 import { deletePart, updatePart } from "../../actions";
 import { PartForm } from "../../PartForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.partForm.editTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.partForm.editTitle };
 }
 
-export default async function EditPartPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string; partId: string };
-  searchParams: { uploaded?: string; uploadError?: string; reorder?: string };
-}) {
+export default async function EditPartPage(
+  props: {
+    params: Promise<{ id: string; partId: string }>;
+    searchParams: Promise<{ uploaded?: string; uploadError?: string; reorder?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const user = await requireUser();
   const project = await getProjectOr404(params.id, user.id);
   const partId = idSchema.safeParse(params.partId);
@@ -40,7 +41,7 @@ export default async function EditPartPage({
   });
   if (!part) notFound();
   const base = project.currency ?? (await getDefaultCurrency(user.id));
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const F = t.partForm;
   const photos = await db.referenceImage.findMany({
     where: { projectId: project.id, kind: "part", partId: part.id },

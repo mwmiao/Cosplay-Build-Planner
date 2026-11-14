@@ -32,7 +32,7 @@ function expectOne(result: { count: number }) {
 
 export async function createProject(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).project.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   if (user.isGuest && (await guestUsage(user.id)).projects >= GUEST_MAX_PROJECTS) {
@@ -52,7 +52,7 @@ export async function updateProject(
 ): Promise<FormState> {
   const user = await requireUser();
   const projectId = idSchema.parse(id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).project.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
 
@@ -151,6 +151,6 @@ export async function purgeProject(id: string): Promise<void> {
 /** Skip the first-project checklist on this device. */
 export async function dismissGuide(): Promise<void> {
   await requireUser();
-  cookies().set(GUIDE_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  (await cookies()).set(GUIDE_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   revalidatePath("/projects", "layout");
 }

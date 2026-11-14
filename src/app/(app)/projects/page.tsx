@@ -15,8 +15,8 @@ import { startGuest } from "../../(auth)/actions";
 import { getMoneyContext } from "@/lib/queries";
 import { viewPrefs } from "@/lib/viewPrefs";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.projects.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.projects.title };
 }
 
 const SORTS = ["deadline", "start", "updated", "created", "name", "progress"] as const;
@@ -34,23 +34,24 @@ function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function ProjectsPage({
-  searchParams,
-}: {
-  searchParams: { view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string; deleted?: string };
-}) {
+export default async function ProjectsPage(
+  props: {
+    searchParams: Promise<{ view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string; deleted?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   if (!user) {
     return (
       <>
-        {searchParams.deleted ? <Notice>{getI18n().t.auth.accountDeleted}</Notice> : null}
+        {searchParams.deleted ? <Notice>{(await getI18n()).t.auth.accountDeleted}</Notice> : null}
         <VisitorStart next={safeNext(searchParams.next)} />
       </>
     );
   }
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const archived = searchParams.view === "archived";
-  const { sort, view } = viewPrefs<Sort>("projects-view", searchParams, SORTS, { sort: "deadline", view: "list" });
+  const { sort, view } = await viewPrefs<Sort>("projects-view", searchParams, SORTS, { sort: "deadline", view: "list" });
   const projects = await db.project.findMany({
     where: { ownerId: user.id, deletedAt: null, archivedAt: archived ? { not: null } : null },
     include: {
@@ -268,8 +269,8 @@ export default async function ProjectsPage({
 const EXAMPLE_STATUSES = ["done", "ordered", "needed"];
 
 /** The main page for visitors without an account: start as a guest, or log in. */
-function VisitorStart({ next }: { next: string }) {
-  const { t } = getI18n();
+async function VisitorStart({ next }: { next: string }) {
+  const { t } = await getI18n();
   const G = t.guest;
   return (
     <>

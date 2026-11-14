@@ -38,7 +38,7 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
   // Each copy duplicates image files, so repeated copying is limited.
   if (!(await rateLimit(`copy:${user.id}`, 20, 60 * 60))) redirect("/projects?limit=1");
   // Guests' copies are encrypted with their key, like their uploads.
-  const key = user.isGuest ? guestKey() : null;
+  const key = user.isGuest ? (await guestKey()) : null;
   if (user.isGuest && !key) redirect("/projects?limit=1");
 
   // Only images the public page shows right now (getPublicProject applied the allow-list).
@@ -146,7 +146,7 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
  * and a daily limit. The owner never learns who reported it.
  */
 export async function reportPublication(publicationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const R = t.community.report;
   const user = await getCurrentUser();
   if (!user || user.isGuest) return { ok: false, message: R.needsAccount };

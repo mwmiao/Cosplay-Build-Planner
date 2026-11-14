@@ -8,17 +8,18 @@ import { COMMUNITY_SORTS, type CommunitySort, listPublicProjects } from "@/lib/c
 import { PROJECT_STATUSES } from "@/lib/constants";
 import { viewPrefs } from "@/lib/viewPrefs";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.community.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.community.title };
 }
 
 type Search = { q?: string; sort?: string; layout?: string; page?: string; status?: string; saved?: string };
 
-export default async function CommunityPage({ searchParams }: { searchParams: Search }) {
-  const { t, f } = getI18n();
+export default async function CommunityPage(props: { searchParams: Promise<Search> }) {
+  const searchParams = await props.searchParams;
+  const { t, f } = await getI18n();
   const C = t.community;
   const q = typeof searchParams.q === "string" ? searchParams.q.slice(0, 100) : "";
-  const { sort, view } = viewPrefs<CommunitySort>("community-view", searchParams, COMMUNITY_SORTS, { sort: "newest", view: "list" });
+  const { sort, view } = await viewPrefs<CommunitySort>("community-view", searchParams, COMMUNITY_SORTS, { sort: "newest", view: "list" });
   const page = Math.max(1, Math.min(10_000, Number.parseInt(searchParams.page ?? "1", 10) || 1));
   const user = await getCurrentUser();
   const saved = !!searchParams.saved && !!user && !user.isGuest;

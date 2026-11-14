@@ -17,7 +17,7 @@ import { type FormState, idSchema } from "@/lib/validation";
  */
 export async function removePublication(publicationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireModerator();
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const A = t.admin;
   if (!idSchema.safeParse(publicationId).success) return { ok: false, message: A.alreadyGone };
   const reason = z.string().trim().min(3).max(500).safeParse(formData.get("reason") ?? "");

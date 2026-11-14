@@ -1,7 +1,7 @@
 import { getI18n } from "@/i18n/server";
 
-export default function CommunityLoading() {
-  const { t } = getI18n();
+export default async function CommunityLoading() {
+  const { t } = await getI18n();
   return (
     <div role="status" aria-live="polite" className="space-y-3">
       <p className="sr-only">{t.community.loading}</p>

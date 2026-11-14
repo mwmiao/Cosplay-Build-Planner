@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { useI18n } from "@/i18n/client";
@@ -12,7 +12,7 @@ import type { ManualPostState } from "./actions";
 export function TestFeedButton({ action }: { action: (prev: TestFeedResult | null) => Promise<TestFeedResult> }) {
   const { t, f } = useI18n();
   const S = t.instagram;
-  const [result, formAction] = useFormState(action, null);
+  const [result, formAction] = useActionState(action, null);
   return (
     <form action={formAction} className="min-w-0">
       <SubmitButton className="btn-ghost min-h-9" pendingText={S.testing}>
@@ -58,7 +58,7 @@ export function SourceForm({
 }) {
   const { t } = useI18n();
   const S = t.instagram;
-  const [formState, formAction] = useFormState(action, {});
+  const [formState, formAction] = useActionState(action, {});
   // Saving redirects back to this same page, where the state can come back undefined.
   const state = formState ?? {};
   const e = state.errors ?? {};
@@ -115,7 +115,7 @@ export function ManualPostForm({
 }) {
   const { t } = useI18n();
   const S = t.instagram;
-  const [formState, formAction] = useFormState(action, {});
+  const [formState, formAction] = useActionState(action, {});
   // Saving redirects back to this same page, where the state can come back undefined.
   const state = formState ?? {};
   const e = state.errors ?? {};

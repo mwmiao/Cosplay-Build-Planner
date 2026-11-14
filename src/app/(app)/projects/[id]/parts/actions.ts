@@ -114,7 +114,7 @@ export async function createPart(
   const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const project = await liveProject(pid, user.id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).part.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   const payment = await paymentFor(parsed.data, project, null, t, user.id);
@@ -153,7 +153,7 @@ export async function updatePart(
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(partId);
   const project = await liveProject(pid, user.id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).part.safeParse(formToObject(formData));
   if (!parsed.success) return errorState(parsed.error, t);
   const before = await livePart(id, pid, user.id);

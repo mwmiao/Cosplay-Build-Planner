@@ -4,12 +4,12 @@ import { getI18n } from "@/i18n/server";
 import { emailConfigured } from "@/lib/email";
 import { ForgotForm } from "../forms";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.auth.forgotTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.auth.forgotTitle };
 }
 
-export default function ForgotPasswordPage() {
-  const { t } = getI18n();
+export default async function ForgotPasswordPage() {
+  const { t } = await getI18n();
   const A = t.auth;
   return (
     <>

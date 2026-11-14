@@ -10,14 +10,15 @@ import { getProjectOr404 } from "@/lib/queries";
 import { unpublish } from "./actions";
 import { PublishForm } from "./PublishForm";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.community.publishTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.community.publishTitle };
 }
 
-export default async function PublishPage({ params }: { params: { id: string } }) {
+export default async function PublishPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await requireAccount();
   const project = await getProjectOr404(params.id, user.id);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const C = t.community;
   const [images, publication] = await Promise.all([
     // The main picture (first) and the reference images, in their manual order. Part photos stay private.

@@ -10,8 +10,8 @@ import { getSyncStatus } from "@/lib/events/sync";
 import { approvePost, markNotEvent, rejectPost, resolveEventUpdate } from "../instagram/actions";
 import { resolveChange, reviewEvent, runEventSync } from "./actions";
 
-export function generateMetadata(): Metadata {
-  return { title: getI18n().t.events.queueTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.events.queueTitle };
 }
 
 type Extracted = { name?: string; start?: string; end?: string; time?: string; venue?: string; address?: string; city?: string; tickets?: string; ticketUrl?: string };
@@ -31,7 +31,7 @@ function parse<T>(json: string | null, fallback: T): T {
  */
 export default async function EventQueuePage() {
   await requireAdmin();
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const E = t.events;
   const S = t.instagram;
   const [posts, updates, otherPending, changed, status] = await Promise.all([

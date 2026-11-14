@@ -3,8 +3,8 @@ import { getI18n } from "@/i18n/server";
 export const dynamic = "force-dynamic";
 
 /** Centered card layout for login, registration and password reset. */
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  const { t } = getI18n();
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const { t } = await getI18n();
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-8">
       <div className="card w-full max-w-sm p-6">

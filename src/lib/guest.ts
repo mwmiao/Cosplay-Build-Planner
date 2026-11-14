@@ -29,8 +29,8 @@ export function guestExpiresAt(createdAt: Date): Date {
 }
 
 /** Creates the guest's encryption key and stores it only in their browser. */
-export function issueGuestKey(): void {
-  cookies().set(KEY_COOKIE(), randomBytes(32).toString("base64url"), {
+export async function issueGuestKey(): Promise<void> {
+  (await cookies()).set(KEY_COOKIE(), randomBytes(32).toString("base64url"), {
     httpOnly: true,
     sameSite: "lax",
     secure: secureCookies(),
@@ -40,15 +40,15 @@ export function issueGuestKey(): void {
 }
 
 /** The guest's key from their cookie (null when missing or malformed). */
-export function guestKey(): Buffer | null {
-  const value = cookies().get(KEY_COOKIE())?.value;
+export async function guestKey(): Promise<Buffer | null> {
+  const value = (await cookies()).get(KEY_COOKIE())?.value;
   if (!value) return null;
   const key = Buffer.from(value, "base64url");
   return key.length === 32 ? key : null;
 }
 
-export function clearGuestKey(): void {
-  cookies().delete(KEY_COOKIE());
+export async function clearGuestKey(): Promise<void> {
+  (await cookies()).delete(KEY_COOKIE());
 }
 
 export type GuestUsage = { projects: number; bytes: number };

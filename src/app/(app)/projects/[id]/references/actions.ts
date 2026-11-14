@@ -24,7 +24,7 @@ export async function updateReference(
   const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(imageId);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).reference.safeParse(formToObject(formData));
   if (!parsed.success) {
     return { ok: false, errors: parsed.error.flatten().fieldErrors };
@@ -108,7 +108,7 @@ export async function updateProgress(
   const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(imageId);
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const parsed = schemas(t).progress.safeParse(formToObject(formData));
   if (!parsed.success) return { ok: false, errors: parsed.error.flatten().fieldErrors };
   const result = await db.referenceImage.updateMany({

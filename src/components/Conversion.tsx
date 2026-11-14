@@ -15,9 +15,9 @@ type Paid = Pick<
 >;
 
 /** The stored conversion of a paid part: original amount, rate, date and source. */
-export function ConversionDetails({ part, base }: { part: Paid; base: string }) {
+export async function ConversionDetails({ part, base }: { part: Paid; base: string }) {
   if (!part.paidAt || part.paidBaseCents === null) return null;
-  const { t, f } = getI18n();
+  const { t, f } = await getI18n();
   const c = t.conversion;
   const cur = part.currency ?? base;
   const original = part.actualCostCents === null ? null : part.actualCostCents * part.quantity;

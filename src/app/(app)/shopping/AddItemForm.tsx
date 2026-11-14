@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useEffect, useRef } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
 import { currencyOptions } from "@/i18n";
@@ -20,7 +19,7 @@ export function AddItemForm({
 }) {
   const { t } = useI18n();
   const S = t.shopping;
-  const [state, action] = useFormState(addShoppingItem, {});
+  const [state, action] = useActionState(addShoppingItem, {});
   const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: t.category[c] ?? c }));
   const ref = useRef<HTMLFormElement>(null);
   const e = state.errors ?? {};

@@ -9,13 +9,14 @@ import { idSchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 /** Canonical project export (JSON). Re-import it via Projects → Import. */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = idSchema.safeParse(params.id);
   if (!id.success) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { t } = getI18n();
+  const { t } = await getI18n();
   const data = await buildProjectExport(id.data, user.id, await getMoneyContext(user.id), t);
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

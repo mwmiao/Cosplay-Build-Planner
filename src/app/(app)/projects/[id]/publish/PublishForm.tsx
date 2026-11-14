@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, StickyActions, SubmitButton } from "@/components/FormBits";
 import { PublicProject } from "@/components/PublicProject";
@@ -35,7 +34,7 @@ export function PublishForm({
 }) {
   const { t, f } = useI18n();
   const C = t.community;
-  const [state, action] = useFormState<PublishState, FormData>(previewOrPublish.bind(null, projectId), {});
+  const [state, action] = useActionState<PublishState, FormData>(previewOrPublish.bind(null, projectId), {});
   const [selected, setSelected] = useState<string[]>(defaults.imageIds);
   const [mode, setMode] = useState(defaults.imageMode);
   const e = state.errors ?? {};
