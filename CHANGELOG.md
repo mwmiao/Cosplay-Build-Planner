@@ -4,6 +4,36 @@ Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Each release is a git tag (`v1.1.0`) and a Docker image tag (`1.1.0` and `1.1`).
 `latest` always follows the newest commit on `main`.
 
+## 1.10.0 — 2026-11-14
+
+### Changed
+- Upgraded to Next.js 16 and React 19 (no change to how the app is used).
+- Replacing a project from a file now updates matching parts in place, so
+  their photos are kept. Parts not in the file are removed, and the preview
+  warns how many photos that affects.
+- Amounts accept thousands separators ("1,234.56" and "1.234,56"). The limit
+  per amount is 10 million; a paid line total (amount × quantity) can reach
+  the 32-bit limit.
+- Exchange rates: the latest rates refresh in the background, and a payment
+  only falls back to cached rates within 3 days of its date.
+- Importing a project file is limited to 10 per hour per account.
+- Only the newest 10 labelled database snapshots are kept.
+
+### Fixed
+- Forms keep what you typed after a validation error or save.
+- Addresses like `::ffff:c0a8:1` are now blocked for feed URLs, as private ones are.
+- Very large images no longer exhaust memory (pixel limit, two decodes at once).
+- A failing Instagram post no longer stops the rest of the feed.
+- Event dates: month names no longer match inside longer words.
+- CSV export no longer prefixes negative amounts.
+- Marking a paid item as needed again no longer clears its payment.
+- Base-currency change guard now counts paid parts without a currency.
+- Login redirects reject backslashes and control characters.
+
+### Security
+- Docker workflow: read-only token permissions and pinned action versions;
+  `.dockerignore` excludes secrets and backups.
+
 ## 1.9.1 — 2026-11-04
 
 ### Added
