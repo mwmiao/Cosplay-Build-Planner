@@ -379,18 +379,6 @@ async function insertItems(tx: Tx, file: ExportFile, projectId: string, ownerId:
   return itemsCreated;
 }
 
-async function insertRows(
-  tx: Tx,
-  file: ExportFile,
-  projectId: string,
-  ownerId: string,
-  skipPartUids: Set<string>,
-  skipItemUids: Set<string>,
-) {
-  const parts = await insertParts(tx, file, projectId, ownerId, skipPartUids);
-  return { ...parts, itemsCreated: await insertItems(tx, file, projectId, ownerId, skipItemUids) };
-}
-
 /**
  * Imports a validated file in one transaction: either everything is written or
  * nothing is. Merge and replace take a database snapshot first.
@@ -435,7 +423,10 @@ export async function applyImport(
       if (options.mode === "create") {
         // Always a new private project owned by the importing user.
         const project = await tx.project.create({ data: { ...projectData(file), ownerId: userId } });
-        const r = await insertRows(tx, file, project.id, userId, new Set(), new Set());
+        const r = {
+          ...(await insertParts(tx, file, project.id, userId, new Set())),
+          itemsCreated: await insertItems(tx, file, project.id, userId, new Set()),
+        };
         return {
           mode: "create",
           projectId: project.id,
@@ -480,7 +471,10 @@ export async function applyImport(
       ]);
       const partUids = new Set(parts.map((p) => p.uid));
       const itemUids = new Set(items.map((s) => s.uid));
-      const r = await insertRows(tx, file, target.id, userId, partUids, itemUids);
+      const r = {
+        ...(await insertParts(tx, file, target.id, userId, partUids)),
+        itemsCreated: await insertItems(tx, file, target.id, userId, itemUids),
+      };
       if (!target.currency) {
         await tx.project.update({ where: { id: target.id }, data: { currency: file.project.currency } });
       }

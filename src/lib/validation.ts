@@ -29,10 +29,9 @@ export function parseMoneyToCents(input: string): number {
     const frac = body.slice(lastSep + 1);
     const sepCount = (body.match(/[.,]/g) ?? []).length;
     const mixed = body.includes(".") && body.includes(",");
-    const thousandsOnly = frac.length === 3 && !mixed && (sepCount > 1 || (whole !== "" && whole !== "0"));
-    // "1.234.567" (repeated same separator) is also thousands-only.
-    const repeated = !mixed && sepCount > 1;
-    normalized = thousandsOnly || repeated ? body.replace(/[.,]/g, "") : `${whole}.${frac}`;
+    // "1.234.567" or "1.500": only thousands separators, no decimals.
+    const thousandsOnly = !mixed && (sepCount > 1 || (frac.length === 3 && whole !== "" && whole !== "0"));
+    normalized = thousandsOnly ? body.replace(/[.,]/g, "") : `${whole}.${frac}`;
   }
   const n = Number(normalized);
   return Number.isFinite(n) ? Math.round((negative ? -n : n) * 100) : Number.NaN;
