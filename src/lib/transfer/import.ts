@@ -207,6 +207,16 @@ export async function buildPreview(
   for (const p of file.parts) currencies.add(p.currency);
   for (const s of file.shoppingItems) currencies.add(s.currency);
 
+  if (targetId) {
+    const fileUids = new Set(file.parts.map((p) => p.id));
+    const photos = await db.referenceImage.findMany({
+      where: { kind: "part", project: { id: targetId, ownerId: userId, deletedAt: null } },
+      select: { part: { select: { uid: true } } },
+    });
+    const lost = photos.filter((ph) => !ph.part || !fileUids.has(ph.part.uid)).length;
+    if (lost > 0) warnings.push(W.replaceLosesPhotos(lost));
+  }
+
   return {
     projectName: file.project.characterName,
     series: file.project.series,
@@ -412,9 +422,23 @@ export async function applyImport(
       if (options.mode === "replace") {
         const removedItems = await tx.shoppingListItem.deleteMany({ where: { projectId: target.id, partId: null } });
         await tx.shoppingListItem.deleteMany({ where: { projectId: target.id } });
+        // Part photos belong to the part row; remember them by the part's stable uid so they can move to the re-created part.
+        const keptPhotos = await tx.referenceImage.findMany({
+          where: { projectId: target.id, kind: "part", part: { isNot: null } },
+          select: { id: true, part: { select: { uid: true } } },
+        });
+        await tx.referenceImage.updateMany({ where: { id: { in: keptPhotos.map((p) => p.id) } }, data: { partId: null, kind: "part-detached" } });
         const removedParts = await tx.buildPart.deleteMany({ where: { projectId: target.id } });
         const updated = await tx.project.update({ where: { id: target.id }, data: projectData(file) });
         const r = await insertRows(tx, file, target.id, userId, new Set(), new Set());
+        const newParts = await tx.buildPart.findMany({ where: { projectId: target.id }, select: { id: true, uid: true } });
+        const newPartId = new Map(newParts.map((p) => [p.uid, p.id]));
+        for (const photo of keptPhotos) {
+          const id = photo.part ? newPartId.get(photo.part.uid) : undefined;
+          if (id) await tx.referenceImage.update({ where: { id: photo.id }, data: { partId: id, kind: "part" } });
+        }
+        // Photos of expenses that aren't in the file are removed (the pre-import backup still lists them).
+        await tx.referenceImage.deleteMany({ where: { projectId: target.id, kind: "part-detached" } });
         return {
           mode: "replace",
           projectId: target.id,

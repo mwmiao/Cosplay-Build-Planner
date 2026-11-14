@@ -4,7 +4,9 @@ type Cell = string | number | boolean | null | undefined;
 function cell(value: Cell): string {
   if (value === null || value === undefined) return "";
   let s = String(value);
-  if (typeof value === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  // A plain money amount such as "-12.50" (budget export) is a number, not a formula.
+  const isPlainAmount = typeof value === "string" && /^-\d+\.\d{2}$/.test(s);
+  if (typeof value === "string" && !isPlainAmount && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

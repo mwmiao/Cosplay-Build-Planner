@@ -65,7 +65,7 @@ export async function updateProject(
   const base = current.currency ?? (await getDefaultCurrency(user.id));
   if (d.currency !== base) {
     const converted = await db.buildPart.count({
-      where: { projectId, deletedAt: null, paidAt: { not: null }, currency: { not: null } },
+      where: { projectId, deletedAt: null, paidAt: { not: null } },
     });
     if (converted > 0) {
       const msg = t.projectForm.currencyChangeRefused(converted, base);

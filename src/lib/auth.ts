@@ -70,7 +70,7 @@ export async function requireModerator(): Promise<CurrentUser> {
 /** Only same-site relative paths are allowed as post-login destinations. */
 export function safeNext(next: unknown): string {
   if (typeof next !== "string") return "/projects";
-  if (!next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/projects";
+  if (!next.startsWith("/") || next.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(next)) return "/projects";
   if (/^\/(login|register|forgot-password|reset-password)(\/|\?|$)/.test(next)) return "/projects";
   return next;
 }

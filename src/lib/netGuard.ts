@@ -24,8 +24,17 @@ export function isPrivateAddress(address: string): boolean {
   }
   if (kind === 6) {
     if (ip === "::" || ip === "::1") return true;
+    // IPv4-mapped (::ffff:a.b.c.d). WHATWG URL rewrites the dotted form to hex (::ffff:c0a8:1).
     const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(ip);
     if (mapped) return isPrivateAddress(mapped[1]!);
+    const mappedHex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(ip);
+    if (mappedHex) {
+      const hi = parseInt(mappedHex[1]!, 16);
+      const lo = parseInt(mappedHex[2]!, 16);
+      return isPrivateAddress(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+    }
+    // Deprecated IPv4-compatible (::a.b.c.d / ::c0a8:1) forms are never public hosts.
+    if (/^::[0-9a-f:.]+$/.test(ip)) return true;
     return /^f[cd]/.test(ip) || /^fe[89ab]/.test(ip) || ip.startsWith("ff"); // unique-local, link-local, multicast
   }
   return false;

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
+import { rateLimit } from "@/lib/rateLimit";
 import { getMoneyContext } from "@/lib/queries";
 import {
   ImportError,
@@ -36,6 +37,10 @@ export async function runImport(text: string, options: ImportOptions): Promise<I
   const parsed = parseImportText(text, t);
   if (!parsed.ok) return parsed;
 
+  // Merge/replace each write a full database snapshot, so they are limited per account.
+  if (options.mode !== "create" && !(await rateLimit(`import-snapshot:${user.id}`, 10, 60 * 60))) {
+    return { ok: false, errors: [t.transfer.errors.tooManyImports] };
+  }
   if (options.mode === "create" && user.isGuest && (await guestUsage(user.id)).projects >= GUEST_MAX_PROJECTS) {
     return { ok: false, errors: [t.guest.projectLimit(GUEST_MAX_PROJECTS)] };
   }

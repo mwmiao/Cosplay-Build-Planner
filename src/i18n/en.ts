@@ -515,6 +515,7 @@ export const en = {
       missingTarget: "Choose the project to import into.",
       targetNotFound: "That project no longer exists.",
       backupFailed: "Couldn't make a safety backup, so nothing was imported.",
+      tooManyImports: "Too many imports in the last hour. Try again later.",
       failed: "The import failed and nothing was changed.",
     },
     issue: {
@@ -538,6 +539,8 @@ export const en = {
       references: (n: number) =>
         `${plural(n, "1 reference image is", `${n} reference images are`)} listed, but image files aren't part of the export, so they won't be imported.`,
       missingRates: (list: string) => `No exchange rate yet for ${list}; the planned total leaves those out.`,
+      replaceLosesPhotos: (n: number) =>
+        `Replacing this project would remove ${plural(n, "1 photo", `${n} photos`)} attached to expenses that aren't in this file. Photos of expenses that are in the file are kept. Merge instead to keep everything.`,
       archived: "The project was archived; it will be imported as active.",
       matchesExisting: (name: string) =>
         `This file came from “${name}”, which still exists here. You can merge into it, replace it, or create a copy.`,

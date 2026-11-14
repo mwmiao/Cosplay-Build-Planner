@@ -288,10 +288,10 @@ model AuthRateLimit {
 }
 
 // ---------------------------------------------------------------------------
-// Community. A publication is a SNAPSHOT of public data, built from an
-// allow-list when the owner publishes or presses "Update published version".
-// Private edits never reach it automatically. Unpublishing deletes the row,
-// its PublicImage rows and the copied files.
+// Community. A publication is LIVE: every view is built from the project as it
+// is now, through a fixed allow-list of public fields (src/lib/community/view.ts).
+// The owner's publish settings choose the optional fields and images. Unpublishing
+// deletes the row and its PublicImage rows.
 
 model Publication {
   id            String   @id @default(cuid())
@@ -511,7 +511,7 @@ model Event {
 }
 
 /// Recurring events and their organisers (e.g. Quimera Art Market). The daily
-/// check reads their Instagram posts (Instagram API) for new dates; while no
+/// check reads their Instagram posts (public feed via RSS-Bridge) for new dates; while no
 /// upcoming edition is known they're listed as "next edition not announced".
 model Organiser {
   id            String    @id @default(cuid())

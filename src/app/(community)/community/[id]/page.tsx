@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { SubmitButton } from "@/components/FormBits";
 import { PublicProject } from "@/components/PublicProject";
 import { BackLink } from "@/components/ui";
@@ -12,9 +13,10 @@ import { RemoveForm } from "../../../(app)/admin/RemoveForm";
 import { copyToMyProjects, toggleBookmark, toggleReaction } from "./actions";
 import { ReportForm } from "./ReportForm";
 
-async function load(id: string) {
+// cache(): generateMetadata and the page share one lookup per request.
+const load = cache(async (id: string) => {
   return idSchema.safeParse(id).success ? getPublicProject(id) : null;
-}
+});
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const p = await load(params.id);

@@ -216,7 +216,16 @@ export async function checkSource(sourceId: string, { fresh = false }: { fresh?:
       const stored = await storePost(source.id, input, provider.name);
       if (!stored) continue;
       result.newPosts += 1;
-      const outcome = await processPost(stored, source);
+      let outcome: Awaited<ReturnType<typeof processPost>>;
+      try {
+        outcome = await processPost(stored, source);
+      } catch (err) {
+        // Forget the post so the next check processes it again, and carry on with the rest.
+        console.error("Instagram post processing failed", err);
+        await db.instagramPost.delete({ where: { id: stored.id } }).catch(() => {});
+        result.newPosts -= 1;
+        continue;
+      }
       if (outcome === "event") result.events += 1;
       if (outcome === "update") result.updates += 1;
     }

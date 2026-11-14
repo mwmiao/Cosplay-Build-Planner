@@ -130,11 +130,16 @@ async function readTable(): Promise<RateTable> {
   };
 }
 
-/** Current rates, refreshed when older than 6 hours (cached rates if offline). */
-export async function getLatestRates(): Promise<RateTable> {
+/** Current rates, refreshed when older than 6 hours (cached rates meanwhile, and if offline). */
+export async function getLatestRates({ waitForFresh = false } = {}): Promise<RateTable> {
   const table = await readTable();
   const stale = !table.fetchedAt || Date.now() - table.fetchedAt.getTime() > STALE_MS;
   if (stale && Date.now() - lastFailure > RETRY_AFTER_FAILURE_MS) {
+    // With rates already cached, serve them now and refresh in the background so a page view never waits on the network.
+    if (table.fetchedAt && !waitForFresh) {
+      refreshLatestRates().catch((err) => console.warn("Exchange rates: background refresh failed", err));
+      return table;
+    }
     try {
       await refreshLatestRates();
       return readTable();
@@ -183,9 +188,11 @@ export async function historicalRate(from: string, to: string, date: string): Pr
 
   // Currencies the ECB doesn't publish: only trust current rates for recent payments.
   if (daysBetween(date, todayUtc()) <= RECENT_DAYS) {
-    const table = await getLatestRates();
+    const table = await getLatestRates({ waitForFresh: true });
     const rate = crossRate(table, from, to);
-    if (rate && table.rateDate && table.source) {
+    // The cached table itself must also date from around the payment (not an old offline cache).
+    const tableIsCurrent = table.rateDate !== null && Math.abs(daysBetween(table.rateDate, date)) <= RECENT_DAYS;
+    if (rate && tableIsCurrent && table.rateDate && table.source) {
       return { rate, rateDate: table.rateDate, source: table.source };
     }
   }

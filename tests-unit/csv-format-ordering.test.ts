@@ -70,3 +70,10 @@ describe("reorderPositions", () => {
     expect(reorderPositions(rows, ["b", "b", "a"])).toEqual([{ id: "b", position: 1 }, { id: "a", position: 2 }]);
   });
 });
+
+describe("csv amounts", () => {
+  it("keeps negative money amounts as numbers but still neutralises formulas", () => {
+    const lines = toCsv([["-12.50", "-2", "-1+2"]]).slice(1);
+    expect(lines).toBe("-12.50,'-2,'-1+2\r\n");
+  });
+});

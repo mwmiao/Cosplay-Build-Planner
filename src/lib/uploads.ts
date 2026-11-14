@@ -46,6 +46,35 @@ export type StoredImage = {
  * both files are written encrypted and named *.enc.
  */
 export async function storeImage(projectId: string, file: File, key?: Buffer | null): Promise<StoredImage> {
+  // Decoding is memory-hungry: let only a couple of uploads decode at once.
+  await acquireDecodeSlot();
+  try {
+    return await storeImageNow(projectId, file, key);
+  } finally {
+    releaseDecodeSlot();
+  }
+}
+
+const MAX_INPUT_PIXELS = 64_000_000; // 64 MP: above any phone camera photo, far below a decompression bomb
+const MAX_PARALLEL_DECODES = 2;
+let activeDecodes = 0;
+const decodeWaiters: Array<() => void> = [];
+
+function acquireDecodeSlot(): Promise<void> {
+  if (activeDecodes < MAX_PARALLEL_DECODES) {
+    activeDecodes += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => decodeWaiters.push(resolve));
+}
+
+function releaseDecodeSlot(): void {
+  const next = decodeWaiters.shift();
+  if (next) next(); // the slot passes straight to the next waiter
+  else activeDecodes -= 1;
+}
+
+async function storeImageNow(projectId: string, file: File, key?: Buffer | null): Promise<StoredImage> {
   const maxBytes = env().MAX_UPLOAD_MB * 1024 * 1024;
   if (file.size === 0) throw new UploadError("empty");
   if (file.size > maxBytes) {
@@ -55,7 +84,7 @@ export async function storeImage(projectId: string, file: File, key?: Buffer | n
   const input = Buffer.from(await file.arrayBuffer());
   let meta: sharp.Metadata;
   try {
-    meta = await sharp(input).metadata();
+    meta = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
   } catch {
     throw new UploadError("unreadable");
   }
@@ -64,7 +93,7 @@ export async function storeImage(projectId: string, file: File, key?: Buffer | n
     throw new UploadError(format === "heif" ? "heic" : "unsupported");
   }
   const fmt = format as Format;
-  if ((meta.width ?? 0) * (meta.height ?? 0) > 100_000_000) {
+  if ((meta.width ?? 0) * (meta.height ?? 0) > MAX_INPUT_PIXELS) {
     throw new UploadError("dimensions");
   }
 
@@ -78,7 +107,7 @@ export async function storeImage(projectId: string, file: File, key?: Buffer | n
   if (fmt === "gif") {
     output = input;
   } else {
-    const result = await sharp(input)
+    const result = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
       .rotate()
       .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
       .toFormat(fmt, fmt === "jpeg" ? { quality: 85, mozjpeg: true } : { quality: 85 })
@@ -88,7 +117,7 @@ export async function storeImage(projectId: string, file: File, key?: Buffer | n
     height = result.info.height;
   }
 
-  const thumb = await sharp(input, { animated: false })
+  const thumb = await sharp(input, { animated: false, limitInputPixels: MAX_INPUT_PIXELS })
     .rotate()
     .resize({ width: THUMB_SIZE, height: THUMB_SIZE, fit: "cover", position: "attention" })
     .webp({ quality: 75 })

@@ -6,6 +6,8 @@ node_modules
 data
 prisma/*.db
 prisma/*.db-journal
+prisma/secrets
+prisma/backups
 test-results
 playwright-report
 tests

@@ -44,7 +44,7 @@ export async function togglePurchased(itemId: string): Promise<void> {
       });
       if (part && purchased && part.status === "needed") {
         await tx.buildPart.update({ where: { id: part.id }, data: { status: "ordered" } });
-      } else if (part && !purchased && part.status === "ordered") {
+      } else if (part && !purchased && part.status === "ordered" && !part.paidAt) {
         await tx.buildPart.update({ where: { id: part.id }, data: { status: "needed" } });
       }
     }

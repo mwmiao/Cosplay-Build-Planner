@@ -59,8 +59,8 @@ export function findDates(text: string, ref: Date): { start?: string; end?: stri
   const sep = String.raw`\s*(?:,|e|a|até|-|–|/|&)\s*`;
   // "15 e 16 de maio de 2027", "29, 30 e 31 de outubro", "7 de novembro", "15-16 May 2027"
   const words = new RegExp(
-    String.raw`\b(\d{1,2})((?:${sep}\d{1,2})*)\s*(?:de\s+)?(${MONTH_RE})\.?(?:\s*(?:de\s+)?(\d{4}))?`,
-    "i",
+    String.raw`\b(\d{1,2})((?:${sep}\d{1,2})*)\s*(?:de\s+)?(${MONTH_RE})\.?(?![\p{L}])(?:\s*(?:de\s+)?(\d{4}))?`,
+    "iu",
   );
   // "22/11", "22.11.2026", "21 e 22/11", "21-22.11"
   const numeric = /\b(\d{1,2})((?:\s*(?:,|e|a|-|–)\s*\d{1,2})*)[./](\d{1,2})(?:[./](\d{2,4}))?\b/;

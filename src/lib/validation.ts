@@ -10,6 +10,34 @@ const blankToUndefined = (v: unknown) =>
 /** HTML checkbox: "on" when ticked, missing when not. */
 const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean());
 
+/**
+ * "12.5" / "12,50" / "1.500" / "1,234.56" / "1.234,56" → cents (NaN when unreadable).
+ * A lone separator followed by exactly three digits (and a non-zero whole part) is a
+ * thousands separator; otherwise the last separator is the decimal point.
+ */
+export function parseMoneyToCents(input: string): number {
+  const cleaned = input.replace(/[^\d.,-]/g, "");
+  if (cleaned === "") return Number.NaN;
+  const negative = cleaned.startsWith("-");
+  const body = cleaned.replace(/-/g, "");
+  const lastSep = Math.max(body.lastIndexOf("."), body.lastIndexOf(","));
+  let normalized: string;
+  if (lastSep === -1) {
+    normalized = body;
+  } else {
+    const whole = body.slice(0, lastSep).replace(/[.,]/g, "");
+    const frac = body.slice(lastSep + 1);
+    const sepCount = (body.match(/[.,]/g) ?? []).length;
+    const mixed = body.includes(".") && body.includes(",");
+    const thousandsOnly = frac.length === 3 && !mixed && (sepCount > 1 || (whole !== "" && whole !== "0"));
+    // "1.234.567" (repeated same separator) is also thousands-only.
+    const repeated = !mixed && sepCount > 1;
+    normalized = thousandsOnly || repeated ? body.replace(/[.,]/g, "") : `${whole}.${frac}`;
+  }
+  const n = Number(normalized);
+  return Number.isFinite(n) ? Math.round((negative ? -n : n) * 100) : Number.NaN;
+}
+
 /** Form schemas with error messages in the user's language. */
 export function schemas(t: Dict) {
   const v = t.validation;
@@ -30,15 +58,13 @@ export function schemas(t: Dict) {
       const s = blankToUndefined(val);
       if (s === undefined) return undefined;
       if (typeof s !== "string") return s;
-      const cleaned = s.replace(/[^\d.,-]/g, "").replace(",", ".");
-      const n = Number(cleaned);
-      return Number.isFinite(n) && cleaned !== "" ? Math.round(n * 100) : Number.NaN;
+      return parseMoneyToCents(s);
     },
     z
       .number({ invalid_type_error: v.amount })
       .int()
       .min(0, v.negative)
-      .max(100_000_000, v.tooLarge)
+      .max(1_000_000_000, v.tooLarge)
       .optional(),
   );
 
@@ -113,6 +139,9 @@ export function schemas(t: Dict) {
       chargedBaseCents: optionalMoney,
     })
     .superRefine((d, ctx) => {
+      if (d.actualCostCents !== undefined && d.actualCostCents * d.quantity > 2_147_483_647) {
+        ctx.addIssue({ code: "custom", path: ["actualCostCents"], message: v.tooLarge });
+      }
       if (!d.paid) return;
       if (d.actualCostCents === undefined) {
         ctx.addIssue({ code: "custom", path: ["actualCostCents"], message: v.paidAmount });

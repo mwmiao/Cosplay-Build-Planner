@@ -141,13 +141,13 @@ test("rate-limit counters older than a day are purged, recent ones kept", async 
 });
 
 test("feed URLs typed by an admin: private addresses are refused (unit)", async () => {
-  for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.1.10", "169.254.169.254", "100.64.0.5", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:192.168.0.1"]) {
+  for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.1.10", "169.254.169.254", "100.64.0.5", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:192.168.0.1", "::ffff:c0a8:1", "::ffff:7f00:1", "::ffff:a9fe:a9fe"]) {
     expect(isPrivateAddress(ip), ip).toBe(true);
   }
   for (const ip of ["93.184.216.34", "8.8.8.8", "172.32.0.1", "100.63.0.1", "2606:4700::1111"]) {
     expect(isPrivateAddress(ip), ip).toBe(false);
   }
-  for (const url of ["http://localhost:3000/feed", "http://127.0.0.1:1337/", "http://[::1]/", "http://10.0.0.5/feed", "http://nas.local/feed", "http://169.254.169.254/latest/meta-data/"]) {
+  for (const url of ["http://localhost:3000/feed", "http://127.0.0.1:1337/", "http://[::1]/", "http://10.0.0.5/feed", "http://nas.local/feed", "http://169.254.169.254/latest/meta-data/", "http://[::ffff:192.168.0.1]/", "http://[::ffff:127.0.0.1]/"]) {
     await expect(assertPublicUrl(url), url).rejects.toThrow();
   }
   await expect(assertPublicUrl("http://93.184.216.34/feed")).resolves.toBeUndefined();

@@ -1,5 +1,6 @@
 import "server-only";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { db } from "./db";
 import type { MoneyContext } from "./projects";
 import { getLatestRates } from "./rates";
@@ -10,13 +11,13 @@ import { idSchema } from "./validation";
  * Loads a non-deleted project owned by `userId`, or renders the 404 page.
  * Another user's project looks exactly like a missing one.
  */
-export async function getProjectOr404(id: string, userId: string) {
+export const getProjectOr404 = cache(async (id: string, userId: string) => {
   const parsed = idSchema.safeParse(id);
   if (!parsed.success) notFound();
   const project = await db.project.findFirst({ where: { id: parsed.data, ownerId: userId, deletedAt: null } });
   if (!project) notFound();
   return project;
-}
+});
 
 /** Supplier names the user has already used, for the supplier field's suggestions. */
 export async function knownSuppliers(userId: string): Promise<string[]> {

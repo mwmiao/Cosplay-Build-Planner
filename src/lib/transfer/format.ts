@@ -46,7 +46,9 @@ const issue = (key: IssueKey) => ({ params: { key } });
 
 const stableId = z.string().refine((s) => /^[A-Za-z0-9_-]{1,64}$/.test(s), issue("id"));
 const currency = z.string().refine((s): boolean => isCurrency(s), issue("currency"));
-const cents = z.number().refine((n) => Number.isInteger(n) && n >= 0 && n <= 100_000_000, issue("amount"));
+// Matches the form limits: one amount up to 10M units; a paid line total (amount × quantity) can reach the 32-bit column limit.
+const cents = z.number().refine((n) => Number.isInteger(n) && n >= 0 && n <= 1_000_000_000, issue("amount"));
+const lineTotalCents = z.number().refine((n) => Number.isInteger(n) && n >= 0 && n <= 2_147_483_647, issue("amount"));
 const dateOnly = z
   .string()
   .refine((s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) && new Date(`${s}T00:00:00Z`).toISOString().startsWith(s), issue("date"));
@@ -67,7 +69,7 @@ const optionalUrl = z
 const paymentSchema = z.object({
   paidAt: dateOnly,
   baseCurrency: currency,
-  baseAmountCents: cents,
+  baseAmountCents: lineTotalCents,
   fxRate: z.number().positive().finite().nullable(),
   fxRateDate: dateOnly.nullable(),
   fxSource: text(200).nullable(),

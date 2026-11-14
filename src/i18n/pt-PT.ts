@@ -521,6 +521,7 @@ export const ptPT: Dict = {
       missingTarget: "Escolha o projeto para onde importar.",
       targetNotFound: "Esse projeto já não existe.",
       backupFailed: "Não foi possível fazer uma cópia de segurança, por isso nada foi importado.",
+      tooManyImports: "Demasiadas importações na última hora. Tente mais tarde.",
       failed: "A importação falhou e nada foi alterado.",
     },
     issue: {
@@ -544,6 +545,8 @@ export const ptPT: Dict = {
       references: (n: number) =>
         `${plural(n, "1 imagem de referência está listada", `${n} imagens de referência estão listadas`)}, mas os ficheiros de imagem não fazem parte da exportação, por isso não serão importados.`,
       missingRates: (list: string) => `Ainda não há taxa de câmbio para ${list}; o total previsto não as inclui.`,
+      replaceLosesPhotos: (n: number) =>
+        `Substituir este projeto removeria ${plural(n, "1 foto", `${n} fotos`)} de despesas que não estão neste ficheiro. As fotos de despesas que estão no ficheiro são mantidas. Junte em vez de substituir para manter tudo.`,
       archived: "O projeto estava arquivado; será importado como ativo.",
       matchesExisting: (name: string) =>
         `Este ficheiro veio de «${name}», que ainda existe aqui. Pode juntar-lhe o ficheiro, substituí-lo ou criar uma cópia.`,
