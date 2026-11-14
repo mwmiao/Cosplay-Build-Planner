@@ -23,6 +23,8 @@ test("register, log out, log in (generic errors, safe redirect)", async ({ page 
   await login(page, user, "/settings");
   await expect(page).toHaveURL(/\/settings$/);
   await page.getByRole("main").getByRole("button", { name: "Log out" }).click();
+  // Wait for the logout to finish; navigating away now would cancel it and leave the session active.
+  await expect(page).toHaveURL(/\/projects$/);
   await login(page, user, "https://evil.example/");
   await expect(page).toHaveURL(/\/projects$/);
 });
