@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { Field } from "@/components/Field";
 import { ConfirmButton, FormMessage, SubmitButton } from "@/components/FormBits";
+import { resetForm } from "@/components/KeepFormValues";
 import { useI18n } from "@/i18n/client";
 import { PASSWORD_MIN } from "@/lib/passwordRules";
 import { changePassword, deleteAccount, updateDisplayName } from "./actions";
@@ -34,7 +35,7 @@ export function ChangePasswordForm() {
   const ref = useRef<HTMLFormElement>(null);
   const e = state.errors ?? {};
   useEffect(() => {
-    if (state.ok) ref.current?.reset();
+    if (state.ok) resetForm(ref.current);
   }, [state]);
   return (
     <form ref={ref} action={action} className="space-y-3" noValidate>

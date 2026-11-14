@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, StickyActions, SubmitButton } from "@/components/FormBits";
+import { resetForm } from "@/components/KeepFormValues";
 import { currencyOptions } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { CATEGORIES, PART_STATUSES } from "@/lib/constants";
@@ -70,7 +71,7 @@ export function PartForm({
   // After "Save & add another", clear the form for the next part.
   useEffect(() => {
     if (state.ok && formRef.current) {
-      formRef.current.reset();
+      resetForm(formRef.current);
       setPaid(false);
       setCurrency(defaultCurrency);
       formRef.current.querySelector<HTMLInputElement>("input[name=name]")?.focus();

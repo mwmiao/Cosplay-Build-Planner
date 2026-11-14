@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { KeepFormValues } from "@/components/KeepFormValues";
 import { I18nProvider } from "@/i18n/client";
 import { getI18n } from "@/i18n/server";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-dvh">
+        <KeepFormValues />
         <I18nProvider locale={locale}>{children}</I18nProvider>
       </body>
     </html>
