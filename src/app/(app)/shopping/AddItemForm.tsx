@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { Field } from "@/components/Field";
 import { FormMessage, SubmitButton } from "@/components/FormBits";
+import { resetForm } from "@/components/KeepFormValues";
 import { currencyOptions } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { CATEGORIES } from "@/lib/constants";
@@ -25,7 +26,7 @@ export function AddItemForm({
   const e = state.errors ?? {};
 
   useEffect(() => {
-    if (state.ok) ref.current?.reset();
+    if (state.ok) resetForm(ref.current);
   }, [state]);
 
   const projectOptions = [
