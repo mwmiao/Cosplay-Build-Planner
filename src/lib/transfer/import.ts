@@ -311,17 +311,10 @@ function partData(part: ExportPart, projectId: string, position: number) {
   };
 }
 
-async function insertRows(
-  tx: Tx,
-  file: ExportFile,
-  projectId: string,
-  ownerId: string,
-  skipPartUids: Set<string>,
-  skipItemUids: Set<string>,
-) {
+/** Creates the file's parts that aren't skipped, after any parts already in the project (merge). */
+async function insertParts(tx: Tx, file: ExportFile, projectId: string, ownerId: string, skipPartUids: Set<string>) {
   let partsCreated = 0;
   let paidPreserved = 0;
-  // Parts keep the file's order, after any parts already in the project (merge).
   const last = await tx.buildPart.aggregate({ where: { projectId }, _max: { position: true } });
   let position = (last._max.position ?? -1) + 1;
   for (const p of file.parts) {
@@ -332,6 +325,34 @@ async function insertRows(
     partsCreated += 1;
     if (p.payment) paidPreserved += 1;
   }
+  return { partsCreated, paidPreserved };
+}
+
+/**
+ * Replace: makes the project's parts match the file. Parts with the same stable id are
+ * updated in place (keeping their database id, photos and order of creation); parts
+ * the file doesn't have are removed, and with them their photos.
+ */
+async function syncPartsToFile(tx: Tx, file: ExportFile, projectId: string, ownerId: string) {
+  const existing = await tx.buildPart.findMany({ where: { projectId }, select: { id: true, uid: true } });
+  const idByUid = new Map(existing.map((p) => [p.uid, p.id]));
+  const fileUids = new Set(file.parts.map((p) => p.id));
+
+  const removed = await tx.buildPart.deleteMany({ where: { projectId, uid: { notIn: [...fileUids] } } });
+  let paidPreserved = 0;
+  for (const [position, p] of file.parts.entries()) {
+    const data = { ...partData(p, projectId, position), deletedAt: null };
+    const id = idByUid.get(p.id);
+    const part = id
+      ? await tx.buildPart.update({ where: { id }, data })
+      : await tx.buildPart.create({ data });
+    await syncShoppingItemForPart(tx, part, ownerId);
+    if (p.payment) paidPreserved += 1;
+  }
+  return { partsCreated: file.parts.length, paidPreserved, partsRemoved: removed.count };
+}
+
+async function insertItems(tx: Tx, file: ExportFile, projectId: string, ownerId: string, skipItemUids: Set<string>) {
   let itemsCreated = 0;
   for (const s of file.shoppingItems) {
     if (skipItemUids.has(s.id)) continue;
@@ -355,7 +376,19 @@ async function insertRows(
     });
     itemsCreated += 1;
   }
-  return { partsCreated, paidPreserved, itemsCreated };
+  return itemsCreated;
+}
+
+async function insertRows(
+  tx: Tx,
+  file: ExportFile,
+  projectId: string,
+  ownerId: string,
+  skipPartUids: Set<string>,
+  skipItemUids: Set<string>,
+) {
+  const parts = await insertParts(tx, file, projectId, ownerId, skipPartUids);
+  return { ...parts, itemsCreated: await insertItems(tx, file, projectId, ownerId, skipItemUids) };
 }
 
 /**
@@ -422,30 +455,17 @@ export async function applyImport(
       if (options.mode === "replace") {
         const removedItems = await tx.shoppingListItem.deleteMany({ where: { projectId: target.id, partId: null } });
         await tx.shoppingListItem.deleteMany({ where: { projectId: target.id } });
-        // Part photos belong to the part row; remember them by the part's stable uid so they can move to the re-created part.
-        const keptPhotos = await tx.referenceImage.findMany({
-          where: { projectId: target.id, kind: "part", part: { isNot: null } },
-          select: { id: true, part: { select: { uid: true } } },
-        });
-        await tx.referenceImage.updateMany({ where: { id: { in: keptPhotos.map((p) => p.id) } }, data: { partId: null, kind: "part-detached" } });
-        const removedParts = await tx.buildPart.deleteMany({ where: { projectId: target.id } });
         const updated = await tx.project.update({ where: { id: target.id }, data: projectData(file) });
-        const r = await insertRows(tx, file, target.id, userId, new Set(), new Set());
-        const newParts = await tx.buildPart.findMany({ where: { projectId: target.id }, select: { id: true, uid: true } });
-        const newPartId = new Map(newParts.map((p) => [p.uid, p.id]));
-        for (const photo of keptPhotos) {
-          const id = photo.part ? newPartId.get(photo.part.uid) : undefined;
-          if (id) await tx.referenceImage.update({ where: { id: photo.id }, data: { partId: id, kind: "part" } });
-        }
-        // Photos of expenses that aren't in the file are removed (the pre-import backup still lists them).
-        await tx.referenceImage.deleteMany({ where: { projectId: target.id, kind: "part-detached" } });
+        const { partsRemoved, ...parts } = await syncPartsToFile(tx, file, target.id, userId);
+        const itemsCreated = await insertItems(tx, file, target.id, userId, new Set());
         return {
           mode: "replace",
           projectId: target.id,
           projectName: updated.characterName,
-          ...r,
+          ...parts,
+          itemsCreated,
           partsSkipped: 0,
-          partsRemoved: removedParts.count,
+          partsRemoved,
           itemsSkipped: 0,
           // Part-linked items are rebuilt from the imported parts; only hand-added ones count as removed.
           itemsRemoved: removedItems.count,

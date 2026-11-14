@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
 import { newUser, register } from "./helpers";
 
 test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.0.2.1" } });
@@ -159,6 +160,11 @@ test("import: create, round-trip export, merge without duplicates, replace", asy
   const afterMerge = await (await page.request.get(`/api/export${projectPath}/json`)).json();
   expect(afterMerge.parts).toHaveLength(2);
 
+  // Replace updates matching expenses in place: their database ids (and so their photos) survive.
+  const db = new PrismaClient({ datasourceUrl: "file:./playwright.db" });
+  const projectId = projectPath.split("/").pop()!;
+  const idsBefore = Object.fromEntries((await db.buildPart.findMany({ where: { projectId } })).map((p) => [p.uid, p.id]));
+
   // Replace needs the exact project name typed before it is allowed.
   await page.goto("/projects/import");
   await upload(page, sampleFile({ extraPart: true, budgetCents: 45000 }));
@@ -172,13 +178,17 @@ test("import: create, round-trip export, merge without duplicates, replace", asy
   await page.getByLabel(/Type the project name to confirm/).fill(NAME);
   await replace.click();
   await expect(report).toContainText(`Replaced “${NAME}”.`);
-  await expect(report).toContainText("Expenses removed before importing: 2");
+  await expect(report).toContainText("Expenses removed before importing: 0");
   await expect(report).toContainText("Expenses imported: 3");
   await expect(report).toContainText(/Safety backup made first: cosplay-.*-pre-import\.db/);
   const afterReplace = await (await page.request.get(`/api/export${projectPath}/json`)).json();
   expect(afterReplace.parts).toHaveLength(3);
   expect(afterReplace.project.budgetCents).toBe(45000);
   expect(afterReplace.parts.find((p: { id: string }) => p.id === "exp-wig-1").payment.baseAmountCents).toBe(5555);
+  const idsAfter = Object.fromEntries((await db.buildPart.findMany({ where: { projectId } })).map((p) => [p.uid, p.id]));
+  expect(Object.keys(idsBefore).length).toBe(2);
+  for (const [uid, id] of Object.entries(idsBefore)) expect(idsAfter[uid]).toBe(id);
+  await db.$disconnect();
 });
 
 test("import: rejects invalid files with clear errors and changes nothing", async ({ page }) => {
