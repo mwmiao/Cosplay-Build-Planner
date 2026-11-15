@@ -358,6 +358,7 @@ export const ptPT: Dict = {
     groupBy: "Agrupar por",
     group: { supplier: "Fornecedor", category: "Categoria", project: "Projeto" },
     showPurchased: "Mostrar comprados",
+    showPurchasedCount: (n: number) => `Mostrar comprados (${n})`,
     hidePurchased: "Ocultar comprados",
     addItem: "Adicionar artigo",
     emptyAll: "A lista está vazia",
