@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ConfirmButton } from "@/components/FormBits";
+import { ConfirmButton, PendingButton } from "@/components/FormBits";
 import { CheckIcon, DownloadIcon, LinkIcon } from "@/components/Icons";
 import { EmptyState } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
@@ -124,19 +124,18 @@ export default async function ShoppingPage(
                 {list.map((item) => (
                   <li key={item.id} className="card flex items-center gap-3 p-3" data-testid="shopping-item">
                     <form action={togglePurchased.bind(null, item.id)}>
-                      <button
-                        type="submit"
+                      <PendingButton
                         role="checkbox"
                         aria-checked={item.purchased}
                         aria-label={S.purchased(item.name)}
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors ${
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-60 ${
                           item.purchased
                             ? "border-green-600 bg-green-600 text-white"
                             : "border-zinc-300 text-transparent hover:border-green-600 hover:text-green-600 dark:border-zinc-600"
                         }`}
                       >
                         <CheckIcon className="h-5 w-5" />
-                      </button>
+                      </PendingButton>
                     </form>
                     <div className="min-w-0 flex-1">
                       <div className={`font-medium ${item.purchased ? "text-zinc-500 line-through dark:text-zinc-400" : ""}`}>
