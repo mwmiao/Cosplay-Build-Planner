@@ -48,7 +48,33 @@ export default async function EditProjectPage(
       <BackLink href={`/projects/${project.id}`}>{project.characterName}</BackLink>
       <h1 className="page-title mb-4">{F.editTitle}</h1>
 
-      <section id="cover" aria-labelledby="cover-title" className="card mb-6 scroll-mt-4">
+      <div className="card">
+        <ProjectForm
+          action={updateProject.bind(null, project.id)}
+          cancelHref={`/projects/${project.id}`}
+          submitLabel={F.saveChanges}
+          defaultCurrency={base}
+          eventNames={eventNames}
+          currencyNote={
+            converted > 0
+              ? F.currencyLocked(converted, base)
+              : undefined
+          }
+          initial={{
+            characterName: project.characterName,
+            series: project.series ?? "",
+            conventionName: project.conventionName ?? "",
+            startDate: dateInput(project.startDate),
+            deadline: dateInput(project.deadline),
+            status: project.status,
+            currency: base,
+            budget: moneyInput(project.budgetCents),
+            notes: project.notes ?? "",
+          }}
+        />
+      </div>
+
+      <section id="cover" aria-labelledby="cover-title" className="card mt-6 scroll-mt-4">
         <h2 id="cover-title" className="section-title mb-1">
           {F.cover}
         </h2>
@@ -88,32 +114,6 @@ export default async function EditProjectPage(
           </div>
         </div>
       </section>
-
-      <div className="card">
-        <ProjectForm
-          action={updateProject.bind(null, project.id)}
-          cancelHref={`/projects/${project.id}`}
-          submitLabel={F.saveChanges}
-          defaultCurrency={base}
-          eventNames={eventNames}
-          currencyNote={
-            converted > 0
-              ? F.currencyLocked(converted, base)
-              : undefined
-          }
-          initial={{
-            characterName: project.characterName,
-            series: project.series ?? "",
-            conventionName: project.conventionName ?? "",
-            startDate: dateInput(project.startDate),
-            deadline: dateInput(project.deadline),
-            status: project.status,
-            currency: base,
-            budget: moneyInput(project.budgetCents),
-            notes: project.notes ?? "",
-          }}
-        />
-      </div>
 
       <section className="card mt-6 space-y-4" aria-labelledby="danger-zone">
         <h2 id="danger-zone" className="section-title">
