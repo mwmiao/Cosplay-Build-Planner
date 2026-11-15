@@ -12,6 +12,7 @@ import { getMoneyContext } from "@/lib/queries";
 import {
   type GroupBy,
   convertedTotal,
+  countPurchasedItems,
   groupItems,
   itemCurrency,
   itemTotal,
@@ -38,7 +39,7 @@ export default async function ShoppingPage(
   const S = t.shopping;
   const group = parseGroup(searchParams.group);
   const showPurchased = searchParams.show === "all";
-  const [items, projects, ctx] = await Promise.all([
+  const [items, projects, ctx, hiddenCount] = await Promise.all([
     loadShoppingItems(user.id, showPurchased),
     db.project.findMany({
       where: activeProjectsOf(user.id),
@@ -46,6 +47,7 @@ export default async function ShoppingPage(
       orderBy: { characterName: "asc" },
     }),
     getMoneyContext(user.id),
+    showPurchased ? Promise.resolve(0) : countPurchasedItems(user.id),
   ]);
   const cur = ctx.defaultCurrency;
   const groups = groupItems(items, group, t);
@@ -91,7 +93,7 @@ export default async function ShoppingPage(
           ))}
         </div>
         <Link href={href({ show: showPurchased ? undefined : "all" })} className={`${showPurchased ? "chip-on" : "chip-off"} sm:ml-auto`}>
-          {showPurchased ? S.hidePurchased : S.showPurchased}
+          {showPurchased ? S.hidePurchased : hiddenCount > 0 ? S.showPurchasedCount(hiddenCount) : S.showPurchased}
         </Link>
       </div>
 

@@ -11,20 +11,27 @@ export function parseGroup(value: string | undefined): GroupBy {
   return value === "category" || value === "project" ? value : "supplier";
 }
 
+/** Items the user can see on their list: general ones plus those of their active projects. */
+const visibleTo = (userId: string) => ({
+  deletedAt: null,
+  OR: [
+    { projectId: null, ownerId: userId },
+    { project: { ownerId: userId, deletedAt: null, archivedAt: null } },
+  ],
+});
+
 /** The user's items: their general items plus items from their active projects. */
 export async function loadShoppingItems(userId: string, includePurchased: boolean) {
   return db.shoppingListItem.findMany({
-    where: {
-      deletedAt: null,
-      ...(includePurchased ? {} : { purchased: false }),
-      OR: [
-        { projectId: null, ownerId: userId },
-        { project: { ownerId: userId, deletedAt: null, archivedAt: null } },
-      ],
-    },
+    where: { ...visibleTo(userId), ...(includePurchased ? {} : { purchased: false }) },
     include: { project: { select: { id: true, characterName: true, currency: true } } },
     orderBy: [{ purchased: "asc" }, { name: "asc" }],
   });
+}
+
+/** How many purchased items the default view hides. */
+export function countPurchasedItems(userId: string) {
+  return db.shoppingListItem.count({ where: { ...visibleTo(userId), purchased: true } });
 }
 
 export type ShoppingRow = Awaited<ReturnType<typeof loadShoppingItems>>[number];
