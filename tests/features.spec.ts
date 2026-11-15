@@ -309,3 +309,19 @@ test("events check: parsers and robots.txt rules", async () => {
   expect(robotsAllows("User-agent: Yandex\nDisallow: /\n", "/pt/tags/cosplay")).toBe(true);
   expect(robotsAllows("", "/anything")).toBe(true);
 });
+
+test("undoing done restores the previous status and the shopping item", async ({ page }) => {
+  await register(page, newUser("Undo"));
+  const id = await createProject(page, "Undo Character");
+  await addPart(page, id, "Undo foam");
+
+  await page.getByRole("button", { name: "Mark Undo foam as done" }).click();
+  await expect(page.getByRole("button", { name: "Mark Undo foam as not done" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Mark Undo foam as not done" }).click();
+  await expect(page.getByRole("button", { name: "Mark Undo foam as done" })).toBeVisible();
+  await expect(page.getByRole("list").filter({ hasText: "Undo foam" }).getByText("Needed", { exact: true }).first()).toBeVisible();
+
+  await page.goto("/shopping");
+  await expect(page.getByText("Undo foam")).toBeVisible();
+});
