@@ -23,6 +23,10 @@ export const en = {
     csv: "CSV",
     general: "General",
     fixFields: "Please fix the highlighted fields.",
+    loading: "Loading…",
+    errorTitle: "Something went wrong",
+    errorText: "This page could not be loaded. Your data is safe. Try again, and if it keeps happening check that the server is running.",
+    retry: "Try again",
   },
 
   nav: {

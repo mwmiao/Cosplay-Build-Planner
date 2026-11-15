@@ -23,6 +23,10 @@ export const ptPT: Dict = {
     csv: "CSV",
     general: "Geral",
     fixFields: "Corrija os campos assinalados.",
+    loading: "A carregar…",
+    errorTitle: "Algo correu mal",
+    errorText: "Não foi possível carregar esta página. Os seus dados estão seguros. Tente novamente e, se continuar, confirme que o servidor está a funcionar.",
+    retry: "Tentar novamente",
   },
 
   nav: {
