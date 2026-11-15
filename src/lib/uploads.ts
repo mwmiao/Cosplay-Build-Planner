@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 import { encryptBytes } from "./crypto";
 import { env, uploadRoot } from "./env";
 
@@ -82,7 +82,7 @@ async function storeImageNow(projectId: string, file: File, key?: Buffer | null)
   }
 
   const input = Buffer.from(await file.arrayBuffer());
-  let meta: sharp.Metadata;
+  let meta: Metadata;
   try {
     meta = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
   } catch {

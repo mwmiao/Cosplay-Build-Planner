@@ -31,11 +31,11 @@
     "better-auth": "1.7.7",
     "esbuild": "0.24.0",
     "next": "16.4.6",
-    "nodemailer": "10.1.0",
+    "nodemailer": "10.5.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "server-only": "0.0.1",
-    "sharp": "0.33.5",
+    "sharp": "0.35.5",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -61,6 +61,6 @@
     "prisma@5.22.0": true,
     "esbuild@0.24.0": true,
     "esbuild@0.23.1": true,
-    "sharp@0.33.5": true
+    "sharp@0.35.5": true
   }
 }
