@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ZodIssue } from "zod";
+import type { core } from "zod";
 import type { Dict } from "@/i18n";
 import { snapshotDatabase } from "../backup";
 import { CATEGORIES } from "../constants";
@@ -31,21 +31,21 @@ function pathLabel(path: (string | number)[]): string {
   return path.reduce<string>((acc, p) => (typeof p === "number" ? `${acc}[${p}]` : acc ? `${acc}.${p}` : p), "");
 }
 
-function formatIssue(issue: ZodIssue, t: Dict): string {
+function formatIssue(issue: core.$ZodIssue, t: Dict): string {
   const T = t.transfer.issue;
   let msg: string;
   if (issue.code === "custom" && issue.params?.key && issue.params.key in T) {
     msg = (T as Record<string, unknown>)[issue.params.key] as string;
   } else if (issue.code === "invalid_type") {
-    msg = issue.received === "undefined" ? T.missing : T.wrongType(issue.expected);
-  } else if (issue.code === "invalid_enum_value") {
-    msg = T.oneOf(issue.options.join(", "));
+    msg = issue.input === undefined ? T.missing : T.wrongType(issue.expected);
+  } else if (issue.code === "invalid_value") {
+    msg = T.oneOf(issue.values.join(", "));
   } else if (issue.code === "too_small" || issue.code === "too_big") {
     msg = T.outOfRange;
   } else {
     msg = T.invalid;
   }
-  const where = pathLabel(issue.path);
+  const where = pathLabel(issue.path as (string | number)[]);
   return where ? `${where}: ${msg}` : msg;
 }
 
@@ -71,7 +71,7 @@ export function parseImportText(text: string, t: Dict): ParseResult {
     return { ok: false, errors: [E.unsupportedVersion(head.schemaVersion)] };
   }
 
-  const parsed = exportFileSchema.safeParse(raw);
+  const parsed = exportFileSchema.safeParse(raw, { reportInput: true });
   const duplicates = findDuplicateIds(raw).map(([section, i]) => `${section}[${i}].id: ${t.transfer.issue.duplicateId}`);
   if (!parsed.success || duplicates.length) {
     const all = [...duplicates, ...(parsed.success ? [] : parsed.error.issues.map((i) => formatIssue(i, t)))];

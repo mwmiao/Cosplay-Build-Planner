@@ -47,13 +47,13 @@ const erApiSchema = z.object({
   result: z.literal("success"),
   base_code: z.literal("EUR"),
   time_last_update_unix: z.number(),
-  rates: z.record(z.number().positive()),
+  rates: z.record(z.string(), z.number().positive()),
 });
 
 const frankfurterSchema = z.object({
   base: z.string(),
   date: z.string(),
-  rates: z.record(z.number().positive()),
+  rates: z.record(z.string(), z.number().positive()),
 });
 
 async function fetchJson(url: string): Promise<unknown> {
