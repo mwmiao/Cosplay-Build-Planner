@@ -44,7 +44,7 @@ const PUBLIC_ACTIONS = new Set([
   "src/app/(auth)/actions.ts:signOut",
   "src/app/(auth)/actions.ts:requestPasswordReset",
   "src/app/(auth)/actions.ts:resetPassword",
-  "src/app/(app)/settings/actions.ts:setLanguage", // only sets the language cookie; visitors can too
+  "src/app/(app)/(main)/settings/actions.ts:setLanguage", // only sets the language cookie; visitors can too
 ]);
 
 describe("server actions", () => {

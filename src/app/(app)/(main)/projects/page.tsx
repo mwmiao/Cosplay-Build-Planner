@@ -11,7 +11,7 @@ import { daysLabel, daysUntil } from "@/lib/format";
 import { projectStats } from "@/lib/projects";
 import { GUEST_DAYS, GUEST_MAX_PROJECTS } from "@/lib/guest";
 import { SubmitButton } from "@/components/FormBits";
-import { startGuest } from "../../(auth)/actions";
+import { startGuest } from "../../../(auth)/actions";
 import { getMoneyContext } from "@/lib/queries";
 import { viewPrefs } from "@/lib/viewPrefs";
 
@@ -34,24 +34,24 @@ function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function ProjectsPage(
-  props: {
-    searchParams: Promise<{ view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string; deleted?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; sort?: string; layout?: string; welcome?: string; limit?: string; next?: string; deleted?: string }>;
+}) {
+  const search = await searchParams;
   const user = await getCurrentUser();
   if (!user) {
     return (
       <>
-        {searchParams.deleted ? <Notice>{(await getI18n()).t.auth.accountDeleted}</Notice> : null}
-        <VisitorStart next={safeNext(searchParams.next)} />
+        {search.deleted ? <Notice>{(await getI18n()).t.auth.accountDeleted}</Notice> : null}
+        <VisitorStart next={safeNext(search.next)} />
       </>
     );
   }
   const { t, f } = await getI18n();
-  const archived = searchParams.view === "archived";
-  const { sort, view } = await viewPrefs<Sort>("projects-view", searchParams, SORTS, { sort: "deadline", view: "list" });
+  const archived = search.view === "archived";
+  const { sort, view } = await viewPrefs<Sort>("projects-view", search, SORTS, { sort: "deadline", view: "list" });
   const projects = await db.project.findMany({
     where: { ownerId: user.id, deletedAt: null, archivedAt: archived ? { not: null } : null },
     include: {
@@ -90,8 +90,8 @@ export default async function ProjectsPage(
   const archivedHref = (on: boolean) => {
     const qs = new URLSearchParams();
     if (on) qs.set("view", "archived");
-    if (searchParams.sort) qs.set("sort", sort);
-    if (searchParams.layout) qs.set("layout", view);
+    if (search.sort) qs.set("sort", sort);
+    if (search.layout) qs.set("layout", view);
     const s = qs.toString();
     return `/projects${s ? `?${s}` : ""}`;
   };
@@ -112,8 +112,8 @@ export default async function ProjectsPage(
         </div>
       </header>
 
-      {searchParams.welcome === "guest" && user.isGuest ? <Notice>{t.guest.welcome}</Notice> : null}
-      {searchParams.limit ? (
+      {search.welcome === "guest" && user.isGuest ? <Notice>{t.guest.welcome}</Notice> : null}
+      {search.limit ? (
         <div role="alert" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
           {t.guest.projectLimit(GUEST_MAX_PROJECTS)}
         </div>

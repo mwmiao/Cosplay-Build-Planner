@@ -13,10 +13,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.events.title };
 }
 
-export default async function EventsPage(
-  props: { searchParams: Promise<{ when?: string; city?: string; type?: string; month?: string; suggested?: string }> }
-) {
-  const searchParams = await props.searchParams;
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ when?: string; city?: string; type?: string; month?: string; suggested?: string }> }) {
+  const search = await searchParams;
   const [user, all] = await Promise.all([getCurrentUser(), listEvents()]);
   const pendingCount = user?.isAdmin ? (await adminCounts(user)).toReview : 0;
   const going = new Set(
@@ -24,7 +22,7 @@ export default async function EventsPage(
   );
   const { t, f } = await getI18n();
   const E = t.events;
-  const past = searchParams.when === "past";
+  const past = search.when === "past";
   const now = today().getTime();
   const inWindow = all.filter((e) => (past ? e.end.getTime() < now : e.end.getTime() >= now));
   // Recurring organisers with no upcoming date yet (not guessed: shown as "not announced").
@@ -35,16 +33,16 @@ export default async function EventsPage(
     // Accounts managed under Admin › Organisers (Organiser.instagram is the pre-1.7.1 copy).
     include: { sources: { select: { username: true }, orderBy: { username: "asc" } } },
   })).filter(
-    (o) => !upcomingOrganisers.has(o.id) && (!searchParams.city || o.city === searchParams.city),
+    (o) => !upcomingOrganisers.has(o.id) && (!search.city || o.city === search.city),
   );
   const cities = [...new Set(inWindow.map((e) => e.city))].sort((a, b) => a.localeCompare(b, t.intl));
-  const city = cities.includes(searchParams.city ?? "") ? searchParams.city : undefined;
+  const city = cities.includes(search.city ?? "") ? search.city : undefined;
   const inCity = inWindow.filter((e) => !city || e.city === city);
   const types = [...new Set(inCity.map((e) => e.eventType))];
-  const type = types.includes(searchParams.type ?? "") ? searchParams.type : undefined;
+  const type = types.includes(search.type ?? "") ? search.type : undefined;
   const monthOf = (e: EventView) => e.start.toISOString().slice(0, 7);
   const months = past ? [] : [...new Set(inCity.map(monthOf))];
-  const month = months.includes(searchParams.month ?? "") ? searchParams.month : undefined;
+  const month = months.includes(search.month ?? "") ? search.month : undefined;
   const events = inCity.filter((e) => (!type || e.eventType === type) && (!month || monthOf(e) === month));
   if (past) events.reverse();
 
@@ -99,7 +97,7 @@ export default async function EventsPage(
         ) : null}
       </header>
       <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{E.intro}</p>
-      {searchParams.suggested ? (
+      {search.suggested ? (
         <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {E.suggestedThanks}
         </div>

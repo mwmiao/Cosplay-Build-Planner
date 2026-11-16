@@ -23,6 +23,10 @@ export const en = {
     csv: "CSV",
     general: "General",
     fixFields: "Please fix the highlighted fields.",
+    loading: "Loading…",
+    errorTitle: "Something went wrong",
+    errorText: "This page could not be loaded. Your data is safe. Try again, and if it keeps happening check that the server is running.",
+    retry: "Try again",
   },
 
   nav: {
@@ -355,6 +359,7 @@ export const en = {
     groupBy: "Group by",
     group: { supplier: "Supplier", category: "Category", project: "Project" } as Record<string, string>,
     showPurchased: "Show purchased",
+    showPurchasedCount: (n: number) => `Show purchased (${n})`,
     hidePurchased: "Hide purchased",
     addItem: "Add an item",
     emptyAll: "Nothing on the list",

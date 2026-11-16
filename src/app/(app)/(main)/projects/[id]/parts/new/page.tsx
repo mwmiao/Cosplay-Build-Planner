@@ -11,10 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.partForm.newTitle };
 }
 
-export default async function NewPartPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function NewPartPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-  const project = await getProjectOr404(params.id, user.id);
+  const project = await getProjectOr404((await params).id, user.id);
   const base = project.currency ?? (await getDefaultCurrency(user.id));
   const { t } = await getI18n();
   return (

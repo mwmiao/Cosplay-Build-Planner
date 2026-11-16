@@ -39,13 +39,12 @@ function capped(req: Request, max: number, onExceeded: () => void): Request {
  * aren't limited by the server-action body size. Works as a plain HTML form
  * post: redirects back with ?uploaded= or ?uploadError=.
  */
-export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   // Cookie-authenticated POST outside server actions: reject cross-site requests.
   if (!sameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const idResult = idSchema.safeParse(params.id);
+  const idResult = idSchema.safeParse((await params).id);
   if (!idResult.success) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const projectId = idResult.data;
 
@@ -143,7 +142,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
   let key: Buffer | null = null;
   let guestRoom = Number.POSITIVE_INFINITY;
   if (user.isGuest) {
-    key = (await guestKey());
+    key = await guestKey();
     if (!key) return back({ uploadError: t.guest.keyMissing });
     guestRoom = GUEST_MAX_BYTES - (await guestUsage(user.id)).bytes;
   }

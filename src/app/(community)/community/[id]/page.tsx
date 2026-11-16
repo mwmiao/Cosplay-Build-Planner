@@ -18,17 +18,15 @@ const load = cache(async (id: string) => {
   return idSchema.safeParse(id).success ? getPublicProject(id) : null;
 });
 
-export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const params = await props.params;
-  const p = await load(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const p = await load((await params).id);
   return { title: p ? p.title : (await getI18n()).t.community.notFoundTitle };
 }
 
-export default async function CommunityProjectPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function CommunityProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { t, f } = await getI18n();
   const C = t.community;
-  const project = await load(params.id);
+  const project = await load((await params).id);
   if (!project) {
     return (
       <>

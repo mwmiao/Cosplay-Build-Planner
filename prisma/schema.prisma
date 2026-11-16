@@ -72,6 +72,8 @@ model BuildPart {
   url                String?
   notes              String?
   completedAt        DateTime?
+  /// Status the part had before it was ticked done, so un-ticking can restore it (null = unknown)
+  statusBeforeDone   String?
   /// Manual order in the parts list (ascending)
   position           Int       @default(0)
 

@@ -14,11 +14,11 @@ export async function generateMetadata(): Promise<Metadata> {
 type Extracted = { name?: string; start?: string; end?: string; time?: string; venue?: string; address?: string; city?: string; tickets?: string; ticketUrl?: string };
 
 /** Add an event; with ?post=<id> ("Create event from post") the form starts from what the detector read. */
-export default async function NewEventPage(props: { searchParams: Promise<{ post?: string }> }) {
-  const searchParams = await props.searchParams;
+export default async function NewEventPage({ searchParams }: { searchParams: Promise<{ post?: string }> }) {
+  const search = await searchParams;
   await requireAdmin();
   const { t } = await getI18n();
-  const postId = idSchema.safeParse(searchParams.post);
+  const postId = idSchema.safeParse(search.post);
   const post = postId.success
     ? await db.instagramPost.findUnique({ where: { id: postId.data }, include: { source: { include: { organiser: true } } } })
     : null;

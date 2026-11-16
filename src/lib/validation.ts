@@ -46,7 +46,7 @@ export function schemas(t: Dict) {
 
   const requiredText = (max: number, label: string) =>
     z
-      .string({ required_error: v.required(label) })
+      .string({ error: (iss) => (iss.input === undefined ? v.required(label) : undefined) })
       .trim()
       .min(1, v.required(label))
       .max(max, v.tooLong(max));
@@ -60,7 +60,7 @@ export function schemas(t: Dict) {
       return parseMoneyToCents(s);
     },
     z
-      .number({ invalid_type_error: v.amount })
+      .number({ error: (iss) => (iss.input === undefined ? undefined : v.amount) })
       .int()
       .min(0, v.negative)
       .max(1_000_000_000, v.tooLarge)
@@ -90,13 +90,13 @@ export function schemas(t: Dict) {
       .optional(),
   );
 
-  const currency = z.enum(CURRENCY_CODES, { errorMap: () => ({ message: v.pickCurrency }) });
-  const category = z.enum(CATEGORIES, { errorMap: () => ({ message: v.pickCategory }) });
+  const currency = z.enum(CURRENCY_CODES, { error: () => v.pickCurrency });
+  const category = z.enum(CATEGORIES, { error: () => v.pickCategory });
 
   const quantity = z.preprocess(
     (val) => blankToUndefined(val) ?? "1",
     z.coerce
-      .number({ invalid_type_error: v.wholeNumber })
+      .number({ error: (iss) => (iss.input === undefined ? undefined : v.wholeNumber) })
       .int(v.wholeNumber)
       .min(1, v.atLeastOne)
       .max(9999, v.tooMany),
@@ -109,7 +109,7 @@ export function schemas(t: Dict) {
       conventionName: optionalText(120),
       startDate: optionalDate,
       deadline: optionalDate,
-      status: z.enum(PROJECT_STATUSES, { errorMap: () => ({ message: v.pickStatus }) }),
+      status: z.enum(PROJECT_STATUSES, { error: () => v.pickStatus }),
       currency,
       budgetCents: optionalMoney,
       notes: optionalText(5000),
@@ -124,7 +124,7 @@ export function schemas(t: Dict) {
     .object({
       name: requiredText(120, t.partForm.name),
       category,
-      status: z.enum(PART_STATUSES, { errorMap: () => ({ message: v.pickStatus }) }),
+      status: z.enum(PART_STATUSES, { error: () => v.pickStatus }),
       currency,
       estimatedCostCents: optionalMoney,
       actualCostCents: optionalMoney,

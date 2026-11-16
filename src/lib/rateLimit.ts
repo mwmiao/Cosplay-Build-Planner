@@ -35,6 +35,6 @@ export async function rateLimit(key: string, max: number, windowSeconds: number)
  * decides which header is believed). Per-account limits apply regardless.
  */
 export async function clientIp(): Promise<string> {
-  const h = (await headers());
+  const h = await headers();
   return pickClientIp((name) => h.get(name), env().TRUSTED_PROXY);
 }

@@ -19,6 +19,16 @@ export function SubmitButton({
   );
 }
 
+/** Icon-only submit button for one-tap toggles: disabled while its form is sending, so a second tap can't undo the first. */
+export function PendingButton({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} aria-busy={pending || undefined} {...rest}>
+      {children}
+    </button>
+  );
+}
+
 export function FormMessage({ state }: { state: FormState }) {
   if (!state.message) return null;
   return (

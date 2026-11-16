@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { ConfirmButton, SubmitButton } from "@/components/FormBits";
+import { ConfirmButton, PendingButton, SubmitButton } from "@/components/FormBits";
 import { LightboxGroup, LightboxThumb } from "@/components/Lightbox";
 import { Sortable } from "@/components/Sortable";
 import { Timeline } from "@/components/Timeline";
@@ -24,10 +24,9 @@ import { lightboxImages } from "./references/ImageCard";
 import { ProgressForm } from "./references/ProgressForm";
 import { UploadForm } from "./references/UploadForm";
 
-export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const params = await props.params;
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const user = await requireUser();
-  const project = await getProjectOr404(params.id, user.id);
+  const project = await getProjectOr404((await params).id, user.id);
   return { title: project.characterName };
 }
 
@@ -43,16 +42,16 @@ function filterHref(projectId: string, current: Search, change: Search) {
   return `/projects/${projectId}${s ? `?${s}` : ""}#parts`;
 }
 
-export default async function ProjectPage(
-  props: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<Search & { published?: string; unpublished?: string; copied?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
+export default async function ProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Search & { published?: string; unpublished?: string; copied?: string }>;
+}) {
+  const search = await searchParams;
   const user = await requireUser();
-  const project = await getProjectOr404(params.id, user.id);
+  const project = await getProjectOr404((await params).id, user.id);
   const { t, f } = await getI18n();
   const P = t.project;
   const [allParts, references, referenceCount, cover, partPhotos, progress] = await Promise.all([
@@ -83,10 +82,10 @@ export default async function ProjectPage(
   for (const photo of partPhotos) if (photo.partId && !partThumb.has(photo.partId)) partThumb.set(photo.partId, photo.thumbPath);
 
   const filter: Search = {
-    status: (PART_STATUSES as readonly string[]).includes(searchParams.status ?? "") ? searchParams.status : undefined,
-    category: (CATEGORIES as readonly string[]).includes(searchParams.category ?? "") ? searchParams.category : undefined,
+    status: (PART_STATUSES as readonly string[]).includes(search.status ?? "") ? search.status : undefined,
+    category: (CATEGORIES as readonly string[]).includes(search.category ?? "") ? search.category : undefined,
   };
-  const reorder = searchParams.reorder === "1";
+  const reorder = search.reorder === "1";
   const parts = allParts.filter(
     (p) => (!filter.status || p.status === filter.status) && (!filter.category || p.category === filter.category),
   );
@@ -129,17 +128,17 @@ export default async function ProjectPage(
   const showGuide = projectCount === 1 && !project.archivedAt && guide.some((g) => !g.done) && !(await cookies()).has(GUIDE_COOKIE);
   return (
     <>
-      {searchParams.published ? (
+      {search.published ? (
         <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {C.publishedOk}
         </div>
       ) : null}
-      {searchParams.copied ? (
+      {search.copied ? (
         <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {C.copiedOk}
         </div>
       ) : null}
-      {searchParams.unpublished ? (
+      {search.unpublished ? (
         <div role="status" className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {C.unpublishedOk}
         </div>
@@ -395,18 +394,17 @@ export default async function ProjectPage(
               return (
                 <li key={part.id} className="card flex items-center gap-3 p-3">
                   <form action={togglePartDone.bind(null, project.id, part.id)}>
-                    <button
-                      type="submit"
+                    <PendingButton
                       aria-pressed={done}
                       aria-label={done ? P.markNotDone(part.name) : P.markDone(part.name)}
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors disabled:opacity-60 ${
                         done
                           ? "border-green-600 bg-green-600 text-white"
                           : "border-zinc-300 text-transparent hover:border-green-600 hover:text-green-600 dark:border-zinc-600"
                       }`}
                     >
                       <CheckIcon className="h-5 w-5" />
-                    </button>
+                    </PendingButton>
                   </form>
                   {partThumb.get(part.id) ? (
                     <Link href={`/projects/${project.id}/parts/${part.id}/edit#photos`} className="shrink-0" tabIndex={-1} aria-hidden="true">

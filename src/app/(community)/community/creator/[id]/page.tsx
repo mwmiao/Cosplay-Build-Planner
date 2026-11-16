@@ -17,22 +17,18 @@ async function load(publicationId: string) {
   });
 }
 
-export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const params = await props.params;
-  const p = await load(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const p = await load((await params).id);
   return { title: p ? p.owner.name : (await getI18n()).t.community.notFoundTitle };
 }
 
-export default async function CreatorPage(
-  props: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }
-) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
-  const creator = await load(params.id);
+export default async function CreatorPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> }) {
+  const search = await searchParams;
+  const creator = await load((await params).id);
   if (!creator) notFound();
   const { t } = await getI18n();
   const C = t.community;
-  const page = Math.max(1, Math.min(10_000, Number.parseInt(searchParams.page ?? "1", 10) || 1));
+  const page = Math.max(1, Math.min(10_000, Number.parseInt(search.page ?? "1", 10) || 1));
   const result = await listPublicProjects({ sort: "newest", page, ownerId: creator.ownerId });
   return (
     <>

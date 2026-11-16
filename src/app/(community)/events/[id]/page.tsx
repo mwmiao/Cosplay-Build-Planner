@@ -17,16 +17,14 @@ async function load(id: string) {
   return idSchema.safeParse(id).success ? getPublicEvent(id) : null;
 }
 
-export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const params = await props.params;
-  const event = await load(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const event = await load((await params).id);
   return { title: event ? event.name : (await getI18n()).t.events.title };
 }
 
 /** A shareable page for one approved event. */
-export default async function EventPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-  const e = await load(params.id);
+export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
+  const e = await load((await params).id);
   if (!e) notFound();
   const { t, f } = await getI18n();
   const E = t.events;

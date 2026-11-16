@@ -14,10 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.events.edit };
 }
 
-export default async function EditEventPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
-  const id = idSchema.safeParse(params.id);
+  const id = idSchema.safeParse((await params).id);
   if (!id.success) notFound();
   const event = await db.event.findUnique({ where: { id: id.data } });
   if (!event) notFound();

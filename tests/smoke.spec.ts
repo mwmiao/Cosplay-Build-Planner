@@ -55,6 +55,8 @@ test("create project, add part, shopping list, pay in another currency", async (
   // Ticking it off moves the part to "ordered".
   await group.getByRole("checkbox", { name: `${partName}: purchased` }).click();
   await expect(page.getByText(partName)).toHaveCount(0);
+  // The hidden item is counted on the chip, so it is clear where it went.
+  await expect(page.getByRole("link", { name: "Show purchased (1)" })).toBeVisible();
 
   // CSV export works.
   const csv = await page.request.get("/api/export/shopping?show=all");

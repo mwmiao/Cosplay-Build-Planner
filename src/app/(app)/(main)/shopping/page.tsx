@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ConfirmButton } from "@/components/FormBits";
+import { ConfirmButton, PendingButton } from "@/components/FormBits";
 import { CheckIcon, DownloadIcon, LinkIcon } from "@/components/Icons";
 import { EmptyState } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
@@ -12,6 +12,7 @@ import { getMoneyContext } from "@/lib/queries";
 import {
   type GroupBy,
   convertedTotal,
+  countPurchasedItems,
   groupItems,
   itemCurrency,
   itemTotal,
@@ -27,18 +28,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const GROUPS: GroupBy[] = ["supplier", "category", "project"];
 
-export default async function ShoppingPage(
-  props: {
-    searchParams: Promise<{ group?: string; show?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function ShoppingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ group?: string; show?: string }>;
+}) {
+  const search = await searchParams;
   const user = await requireUser();
   const { t, f } = await getI18n();
   const S = t.shopping;
-  const group = parseGroup(searchParams.group);
-  const showPurchased = searchParams.show === "all";
-  const [items, projects, ctx] = await Promise.all([
+  const group = parseGroup(search.group);
+  const showPurchased = search.show === "all";
+  const [items, projects, ctx, hiddenCount] = await Promise.all([
     loadShoppingItems(user.id, showPurchased),
     db.project.findMany({
       where: activeProjectsOf(user.id),
@@ -46,6 +47,7 @@ export default async function ShoppingPage(
       orderBy: { characterName: "asc" },
     }),
     getMoneyContext(user.id),
+    showPurchased ? Promise.resolve(0) : countPurchasedItems(user.id),
   ]);
   const cur = ctx.defaultCurrency;
   const groups = groupItems(items, group, t);
@@ -91,7 +93,7 @@ export default async function ShoppingPage(
           ))}
         </div>
         <Link href={href({ show: showPurchased ? undefined : "all" })} className={`${showPurchased ? "chip-on" : "chip-off"} sm:ml-auto`}>
-          {showPurchased ? S.hidePurchased : S.showPurchased}
+          {showPurchased ? S.hidePurchased : hiddenCount > 0 ? S.showPurchasedCount(hiddenCount) : S.showPurchased}
         </Link>
       </div>
 
@@ -124,19 +126,18 @@ export default async function ShoppingPage(
                 {list.map((item) => (
                   <li key={item.id} className="card flex items-center gap-3 p-3" data-testid="shopping-item">
                     <form action={togglePurchased.bind(null, item.id)}>
-                      <button
-                        type="submit"
+                      <PendingButton
                         role="checkbox"
                         aria-checked={item.purchased}
                         aria-label={S.purchased(item.name)}
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors ${
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-60 ${
                           item.purchased
                             ? "border-green-600 bg-green-600 text-white"
                             : "border-zinc-300 text-transparent hover:border-green-600 hover:text-green-600 dark:border-zinc-600"
                         }`}
                       >
                         <CheckIcon className="h-5 w-5" />
-                      </button>
+                      </PendingButton>
                     </form>
                     <div className="min-w-0 flex-1">
                       <div className={`font-medium ${item.purchased ? "text-zinc-500 line-through dark:text-zinc-400" : ""}`}>

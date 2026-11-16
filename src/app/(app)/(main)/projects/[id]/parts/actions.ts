@@ -9,6 +9,7 @@ import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { reorderPositions } from "@/lib/ordering";
+import { applyStatus, toggleTarget } from "@/lib/partStatus";
 import { UNPAID, type PaymentFields, convertPayment } from "@/lib/payments";
 import { RateUnavailableError } from "@/lib/rates";
 import { getDefaultCurrency } from "@/lib/settings";
@@ -167,7 +168,7 @@ export async function updatePart(
       data: {
         ...partData(d),
         ...payment.fields,
-        completedAt: d.status === "done" ? (before.completedAt ?? new Date()) : null,
+        ...applyStatus(before, d.status),
       },
     });
     await syncShoppingItemForPart(tx, part, user.id);
@@ -177,17 +178,16 @@ export async function updatePart(
   redirect(`/projects/${pid}#parts`);
 }
 
-/** Quick toggle from the parts list: done ↔ building. Payment details are untouched. */
+/** Quick toggle from the parts list: done ↔ the status it had before (building if unknown). Payment details are untouched. */
 export async function togglePartDone(projectId: string, partId: string): Promise<void> {
   const user = await requireUser();
   const pid = idSchema.parse(projectId);
   const id = idSchema.parse(partId);
   await db.$transaction(async (tx) => {
     const before = await livePart(id, pid, user.id, tx);
-    const done = before.status !== "done";
     const part = await tx.buildPart.update({
       where: { id: before.id },
-      data: { status: done ? "done" : "building", completedAt: done ? new Date() : null },
+      data: applyStatus(before, toggleTarget(before)),
     });
     await syncShoppingItemForPart(tx, part, user.id);
   });

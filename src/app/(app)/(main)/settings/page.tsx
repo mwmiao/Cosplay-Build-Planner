@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { ThemePicker } from "@/components/ThemePicker";
-import pkg from "../../../../package.json";
+import pkg from "../../../../../package.json";
 import { db } from "@/lib/db";
 import { getI18n } from "@/i18n/server";
 import { adminCounts } from "@/lib/adminCounts";
@@ -10,7 +10,7 @@ import { getMoneyContext } from "@/lib/queries";
 import { crossRate } from "@/lib/rates";
 import { DefaultCurrencyForm, LanguagePicker, RefreshRatesButton } from "./CurrencySettings";
 import Link from "next/link";
-import { signOut } from "../../(auth)/actions";
+import { signOut } from "../../../(auth)/actions";
 import { purgeProject, restoreProject } from "../projects/actions";
 
 export async function generateMetadata(): Promise<Metadata> {

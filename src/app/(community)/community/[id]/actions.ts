@@ -38,7 +38,7 @@ export async function copyToMyProjects(publicationId: string): Promise<void> {
   // Each copy duplicates image files, so repeated copying is limited.
   if (!(await rateLimit(`copy:${user.id}`, 20, 60 * 60))) redirect("/projects?limit=1");
   // Guests' copies are encrypted with their key, like their uploads.
-  const key = user.isGuest ? (await guestKey()) : null;
+  const key = user.isGuest ? await guestKey() : null;
   if (user.isGuest && !key) redirect("/projects?limit=1");
 
   // Only images the public page shows right now (getPublicProject applied the allow-list).
