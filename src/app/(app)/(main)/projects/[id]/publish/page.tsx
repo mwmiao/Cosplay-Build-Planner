@@ -14,10 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.community.publishTitle };
 }
 
-export default async function PublishPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function PublishPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireAccount();
-  const project = await getProjectOr404(params.id, user.id);
+  const project = await getProjectOr404((await params).id, user.id);
   const { t } = await getI18n();
   const C = t.community;
   const [images, publication] = await Promise.all([

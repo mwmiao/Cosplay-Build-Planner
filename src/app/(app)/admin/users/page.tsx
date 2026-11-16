@@ -17,14 +17,12 @@ const PAGE_SIZE = 50;
  * don't see them): an account can be found by display name, or by typing its
  * exact email.
  */
-export default async function UsersPage(
-  props: { searchParams: Promise<{ q?: string; changed?: string; error?: string }> }
-) {
-  const searchParams = await props.searchParams;
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string; changed?: string; error?: string }> }) {
+  const search = await searchParams;
   const admin = await requireAdmin();
   const { t, f } = await getI18n();
   const A = t.admin;
-  const q = (searchParams.q ?? "").trim().slice(0, 100);
+  const q = (search.q ?? "").trim().slice(0, 100);
   const users = await db.user.findMany({
     where: {
       isAnonymous: false,
@@ -35,7 +33,7 @@ export default async function UsersPage(
     select: { id: true, name: true, role: true, createdAt: true, suspendedAt: true },
   });
   const recent = await db.roleChange.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
-  const changed = searchParams.changed ? users.find((u) => u.id === searchParams.changed) : undefined;
+  const changed = search.changed ? users.find((u) => u.id === search.changed) : undefined;
   return (
     <>
       <BackLink href="/admin">{A.title}</BackLink>
@@ -46,7 +44,7 @@ export default async function UsersPage(
           {A.roleChanged(changed.name)}
         </p>
       ) : null}
-      {searchParams.error ? (
+      {search.error ? (
         <p role="alert" className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
           {A.roleNotAllowed}
         </p>

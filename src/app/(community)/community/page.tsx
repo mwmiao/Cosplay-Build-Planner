@@ -14,16 +14,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Search = { q?: string; sort?: string; layout?: string; page?: string; status?: string; saved?: string };
 
-export default async function CommunityPage(props: { searchParams: Promise<Search> }) {
-  const searchParams = await props.searchParams;
+export default async function CommunityPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const search = await searchParams;
   const { t, f } = await getI18n();
   const C = t.community;
-  const q = typeof searchParams.q === "string" ? searchParams.q.slice(0, 100) : "";
-  const { sort, view } = await viewPrefs<CommunitySort>("community-view", searchParams, COMMUNITY_SORTS, { sort: "newest", view: "list" });
-  const page = Math.max(1, Math.min(10_000, Number.parseInt(searchParams.page ?? "1", 10) || 1));
+  const q = typeof search.q === "string" ? search.q.slice(0, 100) : "";
+  const { sort, view } = await viewPrefs<CommunitySort>("community-view", search, COMMUNITY_SORTS, { sort: "newest", view: "list" });
+  const page = Math.max(1, Math.min(10_000, Number.parseInt(search.page ?? "1", 10) || 1));
   const user = await getCurrentUser();
-  const saved = !!searchParams.saved && !!user && !user.isGuest;
-  const status = PROJECT_STATUSES.find((s) => s === searchParams.status);
+  const saved = !!search.saved && !!user && !user.isGuest;
+  const status = PROJECT_STATUSES.find((s) => s === search.status);
   const result = await listPublicProjects({ q, sort, page, status, savedBy: saved ? user.id : undefined });
 
   const href = (change: Partial<{ q: string; page: number; status: string | undefined; saved: boolean }>) => {
@@ -32,8 +32,8 @@ export default async function CommunityPage(props: { searchParams: Promise<Searc
     if (next.q) qs.set("q", next.q);
     if (next.status) qs.set("status", next.status);
     if (next.saved) qs.set("saved", "1");
-    if (searchParams.sort) qs.set("sort", sort);
-    if (searchParams.layout) qs.set("layout", view);
+    if (search.sort) qs.set("sort", sort);
+    if (search.layout) qs.set("layout", view);
     if (next.page > 1) qs.set("page", String(next.page));
     const s = qs.toString();
     return `/community${s ? `?${s}` : ""}`;
@@ -55,8 +55,8 @@ export default async function CommunityPage(props: { searchParams: Promise<Searc
         </div>
         {status ? <input type="hidden" name="status" value={status} /> : null}
         {saved ? <input type="hidden" name="saved" value="1" /> : null}
-        {searchParams.sort ? <input type="hidden" name="sort" value={sort} /> : null}
-        {searchParams.layout ? <input type="hidden" name="layout" value={view} /> : null}
+        {search.sort ? <input type="hidden" name="sort" value={sort} /> : null}
+        {search.layout ? <input type="hidden" name="layout" value={view} /> : null}
         <button type="submit" className="btn-primary">
           {C.search}
         </button>

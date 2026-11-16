@@ -13,10 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.organisers.edit };
 }
 
-export default async function EditOrganiserPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function EditOrganiserPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
-  const id = idSchema.safeParse(params.id);
+  const id = idSchema.safeParse((await params).id);
   if (!id.success) notFound();
   const o = await db.organiser.findUnique({ where: { id: id.data } });
   if (!o) notFound();

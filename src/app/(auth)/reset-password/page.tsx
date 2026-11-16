@@ -7,11 +7,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.auth.resetTitle };
 }
 
-export default async function ResetPasswordPage(props: { searchParams: Promise<{ token?: string }> }) {
-  const searchParams = await props.searchParams;
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
+  const search = await searchParams;
   const { t } = await getI18n();
   const A = t.auth;
-  const token = typeof searchParams.token === "string" ? searchParams.token : "";
+  const token = typeof search.token === "string" ? search.token : "";
   return (
     <>
       <h1 className="mb-6 text-center text-xl font-bold">{A.resetTitle}</h1>

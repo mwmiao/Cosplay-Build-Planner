@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { BackLink } from "@/components/ui";
 import { getI18n } from "@/i18n/server";
 import { requireAccount } from "@/lib/auth";
-import { suggestEvent } from "../../admin/events/actions";
-import { EventForm } from "../../admin/events/EventForm";
+import { suggestEvent } from "../../../admin/events/actions";
+import { EventForm } from "../../../admin/events/EventForm";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.events.suggest };

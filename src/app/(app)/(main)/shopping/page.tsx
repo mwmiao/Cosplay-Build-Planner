@@ -28,17 +28,17 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const GROUPS: GroupBy[] = ["supplier", "category", "project"];
 
-export default async function ShoppingPage(
-  props: {
-    searchParams: Promise<{ group?: string; show?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function ShoppingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ group?: string; show?: string }>;
+}) {
+  const search = await searchParams;
   const user = await requireUser();
   const { t, f } = await getI18n();
   const S = t.shopping;
-  const group = parseGroup(searchParams.group);
-  const showPurchased = searchParams.show === "all";
+  const group = parseGroup(search.group);
+  const showPurchased = search.show === "all";
   const [items, projects, ctx, hiddenCount] = await Promise.all([
     loadShoppingItems(user.id, showPurchased),
     db.project.findMany({

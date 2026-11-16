@@ -1,26 +1,20 @@
-import { PART_STATUSES } from "./constants";
-
-/** What the quick "done" tick should store. `remembered` is the status saved when the part was ticked done. */
-export function toggleDone(
-  status: string,
-  remembered: string | null,
-): { status: string; statusBeforeDone: string | null } {
-  if (status !== "done") return { status: "done", statusBeforeDone: status };
-  const restore =
-    remembered && remembered !== "done" && (PART_STATUSES as readonly string[]).includes(remembered)
-      ? remembered
-      : "building";
-  return { status: restore, statusBeforeDone: null };
-}
+type PartStatus = { status: string; statusBeforeDone: string | null; completedAt: Date | null };
 
 /**
- * What the full edit form should store for statusBeforeDone: the status the part had when it
- * became done (via the form), cleared when it is not done, kept when it stays done.
+ * What to store when a part's status becomes `next`. While a part is done it remembers the
+ * status it had before (so un-ticking can restore it) and when it was completed; both are
+ * cleared when it is not done.
  */
-export function rememberOnEdit(
-  before: { status: string; statusBeforeDone: string | null },
-  newStatus: string,
-): string | null {
-  if (newStatus !== "done") return null;
-  return before.status === "done" ? before.statusBeforeDone : before.status;
+export function applyStatus(before: PartStatus, next: string): PartStatus {
+  if (next !== "done") return { status: next, statusBeforeDone: null, completedAt: null };
+  if (before.status === "done") {
+    return { status: next, statusBeforeDone: before.statusBeforeDone, completedAt: before.completedAt ?? new Date() };
+  }
+  return { status: next, statusBeforeDone: before.status, completedAt: new Date() };
+}
+
+/** The status the quick "done" tick moves a part to: done, or back to what it was before (building if unknown). */
+export function toggleTarget(before: PartStatus): string {
+  if (before.status !== "done") return "done";
+  return before.statusBeforeDone ?? "building";
 }

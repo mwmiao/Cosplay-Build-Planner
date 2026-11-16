@@ -20,30 +20,30 @@ export async function generateMetadata(): Promise<Metadata> {
 /** "" = ungrouped */
 const UNGROUPED = "-";
 
-export default async function ReferencesPage(
-  props: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<{ uploaded?: string; uploadError?: string; group?: string; reorder?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
+export default async function ReferencesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ uploaded?: string; uploadError?: string; group?: string; reorder?: string }>;
+}) {
+  const search = await searchParams;
   const user = await requireUser();
-  const project = await getProjectOr404(params.id, user.id);
+  const project = await getProjectOr404((await params).id, user.id);
   const { t } = await getI18n();
   const R = t.refs;
   const all = await db.referenceImage.findMany({
     where: { projectId: project.id, kind: "reference" },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   });
-  const uploaded = Number(searchParams.uploaded ?? 0);
+  const uploaded = Number(search.uploaded ?? 0);
 
   // Groups in the order they first appear, ungrouped last.
   const groups = [...new Set(all.map((i) => i.groupName).filter((g): g is string => !!g))];
   const hasUngrouped = all.some((i) => !i.groupName);
-  const group = searchParams.group === UNGROUPED || groups.includes(searchParams.group ?? "") ? searchParams.group : undefined;
+  const group = search.group === UNGROUPED || groups.includes(search.group ?? "") ? search.group : undefined;
   const images = group === undefined ? all : all.filter((i) => (group === UNGROUPED ? !i.groupName : i.groupName === group));
-  const reorder = searchParams.reorder === "1" && images.length > 1;
+  const reorder = search.reorder === "1" && images.length > 1;
 
   const href = (change: { group?: string | null; reorder?: boolean }) => {
     const next = { group: change.group === null ? undefined : (change.group ?? group), reorder: change.reorder ?? reorder };
@@ -75,9 +75,9 @@ export default async function ReferencesPage(
           {R.uploaded(uploaded)}
         </div>
       ) : null}
-      {searchParams.uploadError ? (
+      {search.uploadError ? (
         <div role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
-          {searchParams.uploadError}
+          {search.uploadError}
         </div>
       ) : null}
 

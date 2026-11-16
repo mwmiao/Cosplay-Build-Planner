@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
+import type { Dict } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import { requireAccount, requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -15,7 +16,7 @@ import { type FormState, errorState, formToObject, idSchema } from "@/lib/valida
 
 const blank = (x: unknown) => (typeof x === "string" && x.trim() === "" ? undefined : typeof x === "string" ? x.trim() : x);
 
-function eventSchema(t: Awaited<ReturnType<typeof getI18n>>["t"]) {
+function eventSchema(t: Dict) {
   const v = t.validation;
   const E = t.events;
   const day = z
@@ -235,7 +236,7 @@ export async function runEventSync(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Organisers (recurring events whose Instagram is checked daily)
 
-function organiserSchema(t: Awaited<ReturnType<typeof getI18n>>["t"]) {
+function organiserSchema(t: Dict) {
   const v = t.validation;
   const O = t.organisers;
   const optional = (max: number) => z.preprocess(blank, z.string().max(max, v.tooLong(max)).optional());

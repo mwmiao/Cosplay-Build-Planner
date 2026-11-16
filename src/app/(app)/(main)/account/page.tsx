@@ -4,7 +4,7 @@ import { ConfirmButton, SubmitButton } from "@/components/FormBits";
 import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { GUEST_MAX_BYTES, GUEST_MAX_PROJECTS, guestUsage } from "@/lib/guest";
-import { signOut } from "../../(auth)/actions";
+import { signOut } from "../../../(auth)/actions";
 import { ChangePasswordForm, DeleteAccountForm, DisplayNameForm } from "./AccountForms";
 
 export async function generateMetadata(): Promise<Metadata> {

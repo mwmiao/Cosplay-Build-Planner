@@ -24,17 +24,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.partForm.editTitle };
 }
 
-export default async function EditPartPage(
-  props: {
-    params: Promise<{ id: string; partId: string }>;
-    searchParams: Promise<{ uploaded?: string; uploadError?: string; reorder?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
+export default async function EditPartPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string; partId: string }>;
+  searchParams: Promise<{ uploaded?: string; uploadError?: string; reorder?: string }>;
+}) {
+  const search = await searchParams;
   const user = await requireUser();
-  const project = await getProjectOr404(params.id, user.id);
-  const partId = idSchema.safeParse(params.partId);
+  const project = await getProjectOr404((await params).id, user.id);
+  const partId = idSchema.safeParse((await params).partId);
   if (!partId.success) notFound();
   const part = await db.buildPart.findFirst({
     where: { id: partId.data, projectId: project.id, deletedAt: null },
@@ -47,8 +47,8 @@ export default async function EditPartPage(
     where: { projectId: project.id, kind: "part", partId: part.id },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   });
-  const uploaded = Number(searchParams.uploaded ?? 0);
-  const reorder = searchParams.reorder === "1" && photos.length > 1;
+  const uploaded = Number(search.uploaded ?? 0);
+  const reorder = search.reorder === "1" && photos.length > 1;
   const editHref = `/projects/${project.id}/parts/${part.id}/edit`;
 
   return (
@@ -104,9 +104,9 @@ export default async function EditPartPage(
             {t.refs.uploaded(uploaded)}
           </div>
         ) : null}
-        {searchParams.uploadError ? (
+        {search.uploadError ? (
           <div role="alert" className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
-            {searchParams.uploadError}
+            {search.uploadError}
           </div>
         ) : null}
         {reorder ? (

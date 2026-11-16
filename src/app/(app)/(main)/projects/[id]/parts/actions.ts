@@ -9,7 +9,7 @@ import { getI18n } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { reorderPositions } from "@/lib/ordering";
-import { rememberOnEdit, toggleDone } from "@/lib/partStatus";
+import { applyStatus, toggleTarget } from "@/lib/partStatus";
 import { UNPAID, type PaymentFields, convertPayment } from "@/lib/payments";
 import { RateUnavailableError } from "@/lib/rates";
 import { getDefaultCurrency } from "@/lib/settings";
@@ -168,8 +168,7 @@ export async function updatePart(
       data: {
         ...partData(d),
         ...payment.fields,
-        completedAt: d.status === "done" ? (before.completedAt ?? new Date()) : null,
-        statusBeforeDone: rememberOnEdit(before, d.status),
+        ...applyStatus(before, d.status),
       },
     });
     await syncShoppingItemForPart(tx, part, user.id);
@@ -186,10 +185,9 @@ export async function togglePartDone(projectId: string, partId: string): Promise
   const id = idSchema.parse(partId);
   await db.$transaction(async (tx) => {
     const before = await livePart(id, pid, user.id, tx);
-    const next = toggleDone(before.status, before.statusBeforeDone);
     const part = await tx.buildPart.update({
       where: { id: before.id },
-      data: { ...next, completedAt: next.status === "done" ? new Date() : null },
+      data: applyStatus(before, toggleTarget(before)),
     });
     await syncShoppingItemForPart(tx, part, user.id);
   });

@@ -16,8 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.admin.title };
 }
 
-export default async function AdminPage(props: { searchParams: Promise<{ removed?: string; dismissed?: string }> }) {
-  const searchParams = await props.searchParams;
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ removed?: string; dismissed?: string }> }) {
+  const search = await searchParams;
   const user = await requireModerator();
   const { t, f } = await getI18n();
   const A = t.admin;
@@ -52,7 +52,7 @@ export default async function AdminPage(props: { searchParams: Promise<{ removed
         <h2 id="mod-reports" className="section-title mb-2">
           {A.reports} {counts.reports ? <span className="text-sm font-normal text-zinc-600">({counts.reports})</span> : null}
         </h2>
-        {searchParams.dismissed === "1" && (
+        {search.dismissed === "1" && (
           <p role="status" className="mb-2 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
             {A.dismissed}
           </p>
@@ -166,7 +166,7 @@ export default async function AdminPage(props: { searchParams: Promise<{ removed
       </section>
         </>
       ) : null}
-      {searchParams.removed === "1" && (
+      {search.removed === "1" && (
         <p role="status" className="mb-4 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
           {A.removed}
         </p>

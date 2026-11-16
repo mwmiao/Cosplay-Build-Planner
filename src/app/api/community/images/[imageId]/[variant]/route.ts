@@ -16,15 +16,15 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(
   req: Request,
-  props: { params: Promise<{ imageId: string; variant: string }> }
+  { params }: { params: Promise<{ imageId: string; variant: string }> }
 ) {
-  const params = await props.params;
-  if (!idSchema.safeParse(params.imageId).success || (params.variant !== "thumb" && params.variant !== "full")) {
+  const { imageId, variant } = await params;
+  if (!idSchema.safeParse(imageId).success || (variant !== "thumb" && variant !== "full")) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const image = await db.referenceImage.findFirst({
     where: {
-      id: params.imageId,
+      id: imageId,
       kind: { in: ["cover", "reference", "progress"] },
       encrypted: false,
       project: { deletedAt: null, publication: { is: visible } },
@@ -45,7 +45,7 @@ export async function GET(
         : pub.imageMode === "all" || parseIds(pub.selectedImageIds).includes(image.id)
       : false;
   if (!image || !allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const full = resolveUploadPath(params.variant === "thumb" ? image.thumbPath : image.filePath);
+  const full = resolveUploadPath(variant === "thumb" ? image.thumbPath : image.filePath);
   if (!full) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
     // The publication check above runs on every request. The ETag only saves re-sending

@@ -14,10 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.instagram.editSource };
 }
 
-export default async function EditSourcePage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function EditSourcePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
-  const id = idSchema.safeParse(params.id);
+  const id = idSchema.safeParse((await params).id);
   if (!id.success) notFound();
   const s = await db.instagramSource.findUnique({ where: { id: id.data } });
   if (!s) notFound();

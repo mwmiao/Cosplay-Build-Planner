@@ -36,7 +36,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   const A = t.auth;
   const email = field(formData, "email").trim().toLowerCase();
   const password = field(formData, "password");
-  const ip = (await clientIp());
+  const ip = await clientIp();
   // Per address, per address+account, and a looser cap per account. A stranger
   // can therefore not lock you out by guessing from their own address (the
   // address+account limit only blocks them), while spread-out guessing against
@@ -61,7 +61,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
   const { t } = await getI18n();
   const A = t.auth;
-  if (!(await rateLimit(`register-ip:${(await clientIp())}`, 10, 60 * 60))) return { ok: false, message: A.tooMany };
+  if (!(await rateLimit(`register-ip:${await clientIp()}`, 10, 60 * 60))) return { ok: false, message: A.tooMany };
 
   const parsed = z
     .object({
@@ -95,9 +95,9 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
 export async function startGuest(formData?: FormData): Promise<void> {
   const next = safeNext(formData?.get("next"));
   if (await getCurrentUser()) redirect(next);
-  if (!(await rateLimit(`guest-ip:${(await clientIp())}`, 10, 24 * 60 * 60))) redirect("/login?error=guest-limit");
+  if (!(await rateLimit(`guest-ip:${await clientIp()}`, 10, 24 * 60 * 60))) redirect("/login?error=guest-limit");
   await getAuth().api.signInAnonymous({ headers: await headers() });
-  (await issueGuestKey());
+  await issueGuestKey();
   redirect(next === "/projects" ? "/projects?welcome=guest" : next);
 }
 
@@ -111,7 +111,7 @@ export async function signOut(): Promise<void> {
   // A guest can't log back in, so leaving guest mode deletes their data now.
   if (user?.isGuest) {
     await deleteGuest(user.id);
-    (await clearGuestKey());
+    await clearGuestKey();
   }
   redirect("/projects");
 }
@@ -123,7 +123,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   if (!emailConfigured()) return { ok: false, message: A.emailUnavailableTitle };
   const email = field(formData, "email").trim().toLowerCase();
   if (!z.string().email().safeParse(email).success) return { ok: false, errors: { email: [A.emailInvalid] } };
-  if (!(await rateLimit(`reset-ip:${(await clientIp())}`, 10, 60 * 60)) || !(await rateLimit(`reset-email:${email}`, 3, 60 * 60))) {
+  if (!(await rateLimit(`reset-ip:${await clientIp()}`, 10, 60 * 60)) || !(await rateLimit(`reset-email:${email}`, 3, 60 * 60))) {
     return { ok: false, message: A.tooMany };
   }
   try {
@@ -140,7 +140,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
 export async function resetPassword(_prev: FormState, formData: FormData): Promise<FormState> {
   const { t } = await getI18n();
   const A = t.auth;
-  if (!(await rateLimit(`reset-submit-ip:${(await clientIp())}`, 20, 15 * 60))) return { ok: false, message: A.tooMany };
+  if (!(await rateLimit(`reset-submit-ip:${await clientIp()}`, 20, 15 * 60))) return { ok: false, message: A.tooMany };
   const token = field(formData, "token");
   const password = field(formData, "password");
   if (password.length < PASSWORD_MIN) return { ok: false, errors: { password: [A.passwordTooShort(PASSWORD_MIN)] } };

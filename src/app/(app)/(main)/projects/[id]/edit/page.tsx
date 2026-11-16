@@ -21,16 +21,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.projectForm.editTitle };
 }
 
-export default async function EditProjectPage(
-  props: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<{ uploaded?: string; uploadError?: string }>;
-  }
-) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
+export default async function EditProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ uploaded?: string; uploadError?: string }>;
+}) {
+  const search = await searchParams;
   const user = await requireUser();
-  const project = await getProjectOr404(params.id, user.id);
+  const project = await getProjectOr404((await params).id, user.id);
   const { t } = await getI18n();
   const F = t.projectForm;
   const archived = project.archivedAt !== null;
@@ -79,11 +79,11 @@ export default async function EditProjectPage(
           {F.cover}
         </h2>
         <p className="hint mb-3">{F.coverHint}</p>
-        {searchParams.uploadError ? (
+        {search.uploadError ? (
           <div role="alert" className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
-            {searchParams.uploadError}
+            {search.uploadError}
           </div>
-        ) : Number(searchParams.uploaded ?? 0) > 0 ? (
+        ) : Number(search.uploaded ?? 0) > 0 ? (
           <div role="status" className="mb-3 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
             {F.coverSaved}
           </div>

@@ -80,8 +80,8 @@ function create() {
         emailDomainName: "guest.invalid",
         generateName: () => "Guest",
         onLinkAccount: async ({ anonymousUser, newUser }) => {
-          await moveGuestData(anonymousUser.user.id, newUser.user.id, (await guestKey()));
-          (await clearGuestKey());
+          await moveGuestData(anonymousUser.user.id, newUser.user.id, await guestKey());
+          await clearGuestKey();
         },
       }),
       nextCookies(),
