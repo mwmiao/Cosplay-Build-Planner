@@ -330,14 +330,15 @@ async function insertParts(tx: Tx, file: ExportFile, projectId: string, ownerId:
 
 /**
  * Replace: makes the project's parts match the file. Parts with the same stable id are
- * updated in place (keeping their database id and photos); parts
+ * updated in place (keeping their database id, photos and order of creation); parts
  * the file doesn't have are removed, and with them their photos.
  */
 async function syncPartsToFile(tx: Tx, file: ExportFile, projectId: string, ownerId: string) {
   const existing = await tx.buildPart.findMany({ where: { projectId }, select: { id: true, uid: true } });
   const idByUid = new Map(existing.map((p) => [p.uid, p.id]));
+  const fileUids = new Set(file.parts.map((p) => p.id));
 
-  const removed = await tx.buildPart.deleteMany({ where: { projectId, uid: { notIn: file.parts.map((p) => p.id) } } });
+  const removed = await tx.buildPart.deleteMany({ where: { projectId, uid: { notIn: [...fileUids] } } });
   let paidPreserved = 0;
   for (const [position, p] of file.parts.entries()) {
     const data = { ...partData(p, projectId, position), deletedAt: null };
@@ -348,7 +349,7 @@ async function syncPartsToFile(tx: Tx, file: ExportFile, projectId: string, owne
     await syncShoppingItemForPart(tx, part, ownerId);
     if (p.payment) paidPreserved += 1;
   }
-  return { paidPreserved, partsRemoved: removed.count };
+  return { partsCreated: file.parts.length, paidPreserved, partsRemoved: removed.count };
 }
 
 async function insertItems(tx: Tx, file: ExportFile, projectId: string, ownerId: string, skipItemUids: Set<string>) {
@@ -422,14 +423,15 @@ export async function applyImport(
       if (options.mode === "create") {
         // Always a new private project owned by the importing user.
         const project = await tx.project.create({ data: { ...projectData(file), ownerId: userId } });
-        const parts = await insertParts(tx, file, project.id, userId, new Set());
-        const itemsCreated = await insertItems(tx, file, project.id, userId, new Set());
+        const r = {
+          ...(await insertParts(tx, file, project.id, userId, new Set())),
+          itemsCreated: await insertItems(tx, file, project.id, userId, new Set()),
+        };
         return {
           mode: "create",
           projectId: project.id,
           projectName: project.characterName,
-          ...parts,
-          itemsCreated,
+          ...r,
           partsSkipped: 0,
           partsRemoved: 0,
           itemsSkipped: 0,
@@ -445,15 +447,13 @@ export async function applyImport(
         const removedItems = await tx.shoppingListItem.deleteMany({ where: { projectId: target.id, partId: null } });
         await tx.shoppingListItem.deleteMany({ where: { projectId: target.id } });
         const updated = await tx.project.update({ where: { id: target.id }, data: projectData(file) });
-        const { paidPreserved, partsRemoved } = await syncPartsToFile(tx, file, target.id, userId);
+        const { partsRemoved, ...parts } = await syncPartsToFile(tx, file, target.id, userId);
         const itemsCreated = await insertItems(tx, file, target.id, userId, new Set());
         return {
           mode: "replace",
           projectId: target.id,
           projectName: updated.characterName,
-          // Every part in the file is written: created, or updated in place.
-          partsCreated: file.parts.length,
-          paidPreserved,
+          ...parts,
           itemsCreated,
           partsSkipped: 0,
           partsRemoved,
@@ -471,8 +471,10 @@ export async function applyImport(
       ]);
       const partUids = new Set(parts.map((p) => p.uid));
       const itemUids = new Set(items.map((s) => s.uid));
-      const created = await insertParts(tx, file, target.id, userId, partUids);
-      const itemsCreated = await insertItems(tx, file, target.id, userId, itemUids);
+      const r = {
+        ...(await insertParts(tx, file, target.id, userId, partUids)),
+        itemsCreated: await insertItems(tx, file, target.id, userId, itemUids),
+      };
       if (!target.currency) {
         await tx.project.update({ where: { id: target.id }, data: { currency: file.project.currency } });
       }
@@ -480,11 +482,10 @@ export async function applyImport(
         mode: "merge",
         projectId: target.id,
         projectName: target.characterName,
-        ...created,
-        itemsCreated,
-        partsSkipped: file.parts.length - created.partsCreated,
+        ...r,
+        partsSkipped: file.parts.length - r.partsCreated,
         partsRemoved: 0,
-        itemsSkipped: file.shoppingItems.length - itemsCreated,
+        itemsSkipped: file.shoppingItems.length - r.itemsCreated,
         itemsRemoved: 0,
         ...base,
       } satisfies ImportReport;
